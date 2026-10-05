@@ -337,6 +337,22 @@ Check Inkscape availability:
 
 ## Harness Helpers
 
+### Corner clip sweep
+
+`tools/clip_sweep.sh` runs the real `LocalPlayerController` (compiled to JS and
+run with Node) through grids of stats and inputs against an inside corner, and
+reports every run where the player's body ends up inside solid blocks, with a
+command that reproduces it frame by frame:
+
+```sh
+tools/clip_sweep.sh                                # default grid, ~1 minute
+tools/clip_sweep.sh --speed 0:100:5 --jump 0:100:5 --dir right,left
+tools/clip_sweep.sh --random 50000 --seed 7        # random held-key sequences
+tools/clip_sweep.sh --help
+```
+
+It is a diagnostic tool, not part of `./test.sh`.
+
 ### Archival Flash side-by-side workflow
 
 The production build is native-only, but the checked-in Flash projector, SWF,

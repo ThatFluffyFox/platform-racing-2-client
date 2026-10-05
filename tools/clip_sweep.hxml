@@ -1,0 +1,8 @@
+--library lime
+--library openfl
+-cp haxe/src
+-cp haxe/test
+-D pr2_test
+-D js-es=6
+--main pr2.tools.ClipSweep
+--js test/output/clip_sweep.js
