@@ -18,6 +18,7 @@ class ClipGhost {
 	var frames:Array<GhostFrame> = [];
 	var index:Int = 0;
 	var holdRemaining:Int = 0;
+	var delayRemaining:Int = 0;
 
 	/** Copies the look (parts, hats, colours) of `source`, normally the local player. **/
 	public function new(source:Character) {
@@ -37,10 +38,12 @@ class ClipGhost {
 		character.visible = false;
 	}
 
-	public function play(recorded:Array<GhostFrame>):Void {
+	/** Plays from the start; `delayFrames` holds the first pose that long (to line up with a replay). **/
+	public function play(recorded:Array<GhostFrame>, delayFrames:Int = 0):Void {
 		frames = recorded;
 		index = 0;
 		holdRemaining = 0;
+		delayRemaining = delayFrames;
 		character.visible = frames.length > 0;
 		pose();
 	}
@@ -56,6 +59,10 @@ class ClipGhost {
 	/** Advance one simulation frame. **/
 	public function tick():Void {
 		if (frames.length == 0) return;
+		if (delayRemaining > 0) {
+			delayRemaining--;
+			return;
+		}
 		if (index >= frames.length - 1) {
 			if (holdRemaining++ < HOLD_FRAMES) return;
 			index = 0;

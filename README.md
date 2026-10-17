@@ -387,6 +387,15 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     are still tried).
 
   Every ticked option multiplies the number of attempts.
+- **Any frame** ignores those sliders: the ticked moves can happen on any frame
+  of the run (super jumps can also start charging on any frame). That is far
+  too many combinations to try them all, so each attempt picks random timings
+  and the search keeps going until **Stop**.
+- **Replay on me** plays the shown clip on your real player: it moves you to
+  the clip's start, gives you the clip's stats, and plays the clip's inputs
+  (the keyboard is ignored meanwhile), with the ghost running alongside. Your
+  own stats come back when it ends; press the button again to stop early. It
+  needs the race to be running, and other players see the jump.
 - **Start** searches from where you are standing in a cropped copy of the
   level, a few attempts per frame so the race keeps running. Every attempt
   starts from a fresh simulated player; your real player, blocks and network

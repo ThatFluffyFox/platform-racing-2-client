@@ -119,6 +119,8 @@ class ClipAttempt {
 		needed (50 is the 100 cap). 0 = normal jump (`jumpFrame`/`hold`).
 	**/
 	public var superCharge:Int = 0;
+	/** Frame the super jump starts charging (down held from here for `superCharge` frames). **/
+	public var superStart:Int = 0;
 
 	/** Shortest charge that launches (charge 26 > 25) and the frames to the 100 cap. **/
 	public static inline var MIN_SUPER_CHARGE:Int = 13;
@@ -152,7 +154,7 @@ class ClipAttempt {
 		var jumping = false;
 		var holdDown = false;
 		if (superCharge > 0) {
-			holdDown = frame < superCharge;
+			holdDown = frame >= superStart && frame < superStart + superCharge;
 		} else {
 			jumping = frame >= jumpFrame && frame < jumpFrame + hold;
 		}
@@ -162,13 +164,13 @@ class ClipAttempt {
 
 	/** Frame the jump (or super jump release) happens. **/
 	public function launchFrame():Int {
-		return superCharge > 0 ? superCharge : jumpFrame;
+		return superCharge > 0 ? superStart + superCharge : jumpFrame;
 	}
 
 	/** True once every scripted change (launch, jump hold, move start, turn) has happened. **/
 	public function scriptFinished(frame:Int):Bool {
 		if (script != null) return false;
-		var last = superCharge > 0 ? superCharge : jumpFrame + Std.int(Math.min(hold, 30));
+		var last = superCharge > 0 ? launchFrame() : jumpFrame + Std.int(Math.min(hold, 30));
 		return frame >= last && frame >= moveStart && frame >= turnFrame;
 	}
 
@@ -177,7 +179,8 @@ class ClipAttempt {
 		if (script != null) return '$stats random inputs';
 		var move = '${dir == 1 ? "right" : "left"}${moveStart > 0 ? ' from frame $moveStart' : ""}';
 		if (turnFrame >= 0) move += ', turn at $turnFrame';
-		var launch = superCharge > 0 ? 'super jump (charge $superCharge)' : 'jump@$jumpFrame hold=${hold >= 999 ? "all" : Std.string(hold)}';
+		var launch = superCharge > 0 ? 'super jump (charge $superCharge${superStart > 0 ? ' from frame $superStart' : ""})'
+			: 'jump@$jumpFrame hold=${hold >= 999 ? "all" : Std.string(hold)}';
 		return '$stats $move, $launch${down ? " +down" : ""}';
 	}
 }

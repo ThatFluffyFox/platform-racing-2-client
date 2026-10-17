@@ -43,6 +43,8 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testDelayedMoveJumpsInPlaceFirst", testDelayedMoveJumpsInPlaceFirst);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAirTurnFlipsDirection", testAirTurnFlipsDirection);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testFinderSearchesMoveOptions", testFinderSearchesMoveOptions);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSuperJumpCanStartOnAnyFrame", testSuperJumpCanStartOnAnyFrame);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAnyFrameSearchIsRandomAndRunsUntilStopped", testAnyFrameSearchIsRandomAndRunsUntilStopped);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -50,6 +52,7 @@ class ClipFinderTest {
 		course = raceCourse();
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testComboTogglesPanelInRace", testComboTogglesPanelInRace);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPanelSearchUsesPlayerStatsByDefault", testPanelSearchUsesPlayerStatsByDefault);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayDrivesRealPlayerAlongTheClip", testReplayDrivesRealPlayerAlongTheClip);
 		course.remove();
 		course = null;
 		trace('ClipFinderTest passed $assertions assertions');
@@ -176,6 +179,103 @@ class ClipFinderTest {
 		assertEquals("13/0/-1,13/0/3,13/5/-1,13/5/3,14/0/-1,14/0/3,14/5/-1,14/5/3", seen.join(","), "every combination exactly once");
 	}
 
+	private static function testSuperJumpCanStartOnAnyFrame():Void {
+		var attempt = clipAttempt(50);
+		attempt.superCharge = 13;
+		attempt.superStart = 20;
+		assertEquals(false, attempt.inputAt(19, true).down, "not charging before the start frame");
+		assertEquals(true, attempt.inputAt(20, true).down, "charging from the start frame");
+		assertEquals(true, attempt.inputAt(32, true).down, "still charging on the last charge frame");
+		assertEquals(false, attempt.inputAt(33, true).down, "released after the charge");
+		assertEquals(33, attempt.launchFrame(), "launch frame is start + charge");
+	}
+
+	private static function testAnyFrameSearchIsRandomAndRunsUntilStopped():Void {
+		// Short runs keep the simulated part of this test quick.
+		var settings = anyFrameSettings(7);
+		settings.frames = 15;
+		var endless = new ClipFinder(cornerBlocks(), settings);
+		assertEquals(0, endless.total, "no fixed total");
+		endless.step(2);
+		assertEquals(false, endless.done, "keeps going until stopped");
+
+		var a = new ClipFinder(cornerBlocks(), anyFrameSettings(7));
+		var b = new ClipFinder(cornerBlocks(), anyFrameSettings(7));
+		var lateJump = false, lateSuper = false, lateMove = false, turned = false, superJumps = 0;
+		for (_ in 0...200) {
+			var attempt = a.randomAttempt();
+			assertEquals(attempt.describe(), b.randomAttempt().describe(), "same seed, same attempts");
+			if (attempt.superCharge > 0) {
+				superJumps++;
+				lateSuper = lateSuper || attempt.superStart > 50;
+				assertTrue(attempt.launchFrame() <= attempt.frames, "a super jump always has room to launch");
+			} else {
+				lateJump = lateJump || attempt.jumpFrame > 50;
+			}
+			lateMove = lateMove || attempt.moveStart > 50;
+			turned = turned || attempt.turnFrame > 50;
+		}
+		assertTrue(lateJump && lateSuper && lateMove && turned, "jumps, super jumps, move starts and turns reach late frames");
+		assertTrue(superJumps > 50 && superJumps < 150, 'normal and super jumps are both common ($superJumps/200 super)');
+
+		settings = anyFrameSettings(3);
+		settings.frames = 15;
+		settings.randomAttempts = 3;
+		var capped = new ClipFinder(cornerBlocks(), settings);
+		capped.step(100);
+		assertTrue(capped.done, "a capped random search stops");
+		assertEquals(3, capped.tested, "after its attempt count");
+	}
+
+	private static function anyFrameSettings(seed:Int):ClipFinderSettings {
+		var last = 119;
+		var settings = new ClipFinderSettings(CLIP_START_X, FLOOR_Y, 1, new StatRange(80, 100), StatRange.fixed(50), StatRange.fixed(75));
+		settings.anyFrame = true;
+		settings.seed = seed;
+		settings.dirs = [1];
+		settings.maxJumpFrame = last;
+		settings.superCharges = [for (c in ClipAttempt.MIN_SUPER_CHARGE...ClipAttempt.MAX_SUPER_CHARGE + 1) c];
+		settings.moveStarts = [for (m in 0...last + 1) m];
+		settings.turnFrames = [-1].concat([for (t in 1...last + 1) t]);
+		return settings;
+	}
+
+	private static function testReplayDrivesRealPlayerAlongTheClip():Void {
+		course.setKey(Keyboard.F9, true);
+		course.setKey(Keyboard.C, true);
+		course.setKey(Keyboard.D, true);
+		var session = course.clipFinder;
+		var before = course.localCharacter.stateSnapshot();
+		// A recorded run from where the player is: right, jump at once, 30 frames.
+		var attempt = new ClipAttempt(Math.round(before.x), Math.round(before.y), 63, 41, 57, course.level.gravity, 1, 0, 8, false, 30);
+		var area = ClipArea.around(course.level.blocks, attempt.startX, attempt.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP,
+			ClipFinder.AREA_DOWN);
+		var run = ClipSimulator.run(area, attempt, true);
+		session.clips = [new pr2.gameplay.debug.ClipFinder.FoundClip(attempt, run)];
+		session.panel.setClipCount(1);
+		session.showClip(0);
+		session.startReplay();
+		assertTrue(session.replaying, "replay started");
+		assertEquals(63.0, course.localCharacter.stateSnapshot().speedStat, "the clip's stats are applied");
+		course.setKey(Keyboard.LEFT, true);
+		for (frame in 0...run.ghost.length) {
+			course.onEnterFrame(new Event(Event.ENTER_FRAME));
+			var state = course.localCharacter.stateSnapshot();
+			var recorded = run.ghost[frame];
+			assertTrue(Math.abs(state.x - recorded.x) < 0.01 && Math.abs(state.y - recorded.y) < 0.01,
+				'frame $frame follows the recording: (${state.x}, ${state.y}) vs (${recorded.x}, ${recorded.y})');
+		}
+		assertTrue(course.localCharacter.stateSnapshot().x > attempt.startX, "the held LEFT key was ignored during the replay");
+		course.onEnterFrame(new Event(Event.ENTER_FRAME));
+		assertEquals(false, session.replaying, "replay ends after the recording");
+		assertEquals(before.speedStat, course.localCharacter.stateSnapshot().speedStat, "the player's own stats come back");
+		course.setKey(Keyboard.LEFT, false);
+		session.close();
+		course.setKey(Keyboard.F9, false);
+		course.setKey(Keyboard.C, false);
+		course.setKey(Keyboard.D, false);
+	}
+
 	private static function highest(frames:Array<pr2.gameplay.debug.ClipSimulator.GhostFrame>):Float {
 		var top = Math.POSITIVE_INFINITY;
 		for (frame in frames) top = Math.min(top, frame.y);
@@ -272,6 +372,22 @@ class ClipFinderTest {
 		panel.superJumpRow.box.selected = false;
 		session.start();
 		assertTrue(panel.status.text.indexOf("Tick Normal jump") == 0, "needs at least one kind of jump");
+
+		// "Any frame" ignores the sliders and searches randomly until stopped.
+		ClipFinderSession.randomSeed = () -> 5;
+		panel.normalJumpRow.box.selected = true;
+		panel.anyFrameBox.selected = true;
+		session.start();
+		settings = session.finder.settings;
+		assertTrue(settings.anyFrame, "random timing");
+		assertEquals(119, settings.maxJumpFrame, "jumps on any frame of the run");
+		assertEquals(120, settings.moveStarts.length, "move starts on any frame");
+		assertEquals(120, settings.turnFrames.length, "no turn, or a turn on any frame 1-119");
+		assertEquals(0, session.finder.total, "runs until stopped");
+		course.onEnterFrame(new Event(Event.ENTER_FRAME));
+		assertTrue(panel.status.text.indexOf("random") > 0, 'status counts random attempts: ${panel.status.text}');
+		session.stopSearch();
+		assertTrue(panel.status.text.indexOf("Stopped") == 0, "Stop ends a random search");
 		session.close();
 		assertEquals(null, course.clipFinder, "closing the panel clears the session");
 		course.setKey(Keyboard.F9, false);

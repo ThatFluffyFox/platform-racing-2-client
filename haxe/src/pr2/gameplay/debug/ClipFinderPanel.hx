@@ -22,12 +22,13 @@ import pr2.ui.view.NativeView;
 **/
 class ClipFinderPanel extends NativeView {
 	public static inline var PANEL_WIDTH:Float = 262;
-	public static inline var PANEL_HEIGHT:Float = 370;
+	public static inline var PANEL_HEIGHT:Float = 392;
 
 	public var onStart:Null<Void->Void>;
 	public var onStop:Null<Void->Void>;
 	public var onClose:Null<Void->Void>;
 	public var onShowClip:Null<Int->Void>;
+	public var onReplay:Null<Void->Void>;
 
 	public final speedRow:StatRow;
 	public final accelRow:StatRow;
@@ -43,10 +44,14 @@ class ClipFinderPanel extends NativeView {
 	public final delayedMoveRow:OptionRow;
 	/** Flip the held direction on frames 1..N. **/
 	public final airTurnRow:OptionRow;
+	/** Ignore the sliders: the ticked moves may happen on any frame (random search until Stop). **/
+	public final anyFrameBox:GameCheckBox;
 	final rows:Array<OptionRow>;
 	final startButton:GameButton;
 	final prevButton:GameButton;
 	final nextButton:GameButton;
+	/** Plays the shown clip's inputs on the real player. **/
+	public final replayButton:GameButton;
 	final status:TextField;
 	final clipInfo:TextField;
 	var shownClip:Int = 0;
@@ -83,10 +88,14 @@ class ClipFinderPanel extends NativeView {
 		airTurnRow = new OptionRow(this, "Air turn", false, 242, 1, 60, 30, v -> 'turn 1-$v');
 		rows = [normalJumpRow, superJumpRow, delayedMoveRow, airTurnRow];
 
+		anyFrameBox = checkBox("Any frame (random timing, runs until Stop)", false, 10, 266);
+		anyFrameBox.setSize(240, 22);
+		anyFrameBox.onChange = function(selected:Bool):Void for (row in rows) row.setAnyFrame(selected);
+
 		startButton = ownControl(new GameButton("Start"));
 		startButton.setSize(80, 22);
 		startButton.x = 10;
-		startButton.y = 270;
+		startButton.y = 292;
 		startButton.onPress = function():Void {
 			if (startButton.label == "Start") {
 				if (onStart != null) onStart();
@@ -96,23 +105,29 @@ class ClipFinderPanel extends NativeView {
 		};
 		addChild(startButton);
 
-		status = text("", 98, 274, 158, 12);
+		status = text("", 98, 296, 158, 12);
 		addChild(status);
 
 		prevButton = ownControl(new GameButton("< Prev"));
 		prevButton.setSize(60, 22);
 		prevButton.x = 10;
-		prevButton.y = 296;
+		prevButton.y = 318;
 		prevButton.onPress = function():Void showClip(shownClip - 1);
 		addChild(prevButton);
 		nextButton = ownControl(new GameButton("Next >"));
 		nextButton.setSize(60, 22);
 		nextButton.x = 76;
-		nextButton.y = 296;
+		nextButton.y = 318;
 		nextButton.onPress = function():Void showClip(shownClip + 1);
 		addChild(nextButton);
+		replayButton = ownControl(new GameButton("Replay on me"));
+		replayButton.setSize(110, 22);
+		replayButton.x = 142;
+		replayButton.y = 318;
+		replayButton.onPress = function():Void if (onReplay != null) onReplay();
+		addChild(replayButton);
 
-		clipInfo = text("", 10, 322, PANEL_WIDTH - 20, 44);
+		clipInfo = text("", 10, 344, PANEL_WIDTH - 20, 44);
 		clipInfo.multiline = true;
 		clipInfo.wordWrap = true;
 		addChild(clipInfo);
@@ -122,7 +137,7 @@ class ClipFinderPanel extends NativeView {
 	public function setRunning(running:Bool):Void {
 		startButton.label = running ? "Stop" : "Start";
 		for (row in [speedRow, accelRow, jumpRow]) row.setLocked(running);
-		for (box in [leftBox, rightBox, downBox]) box.enabled = !running;
+		for (box in [leftBox, rightBox, downBox, anyFrameBox]) box.enabled = !running;
 		for (row in rows) row.setLocked(running);
 	}
 
@@ -132,6 +147,7 @@ class ClipFinderPanel extends NativeView {
 		clipTotal = count;
 		prevButton.enabled = count > 1;
 		nextButton.enabled = count > 1;
+		replayButton.enabled = count > 0;
 		if (count == 0) {
 			shownClip = 0;
 			clipInfo.text = "No clips yet. The ghost replays a clip on a loop once one is found.";
@@ -252,6 +268,7 @@ class OptionRow {
 	final label:TextField;
 	final describe:Int->String;
 	var locked:Bool = false;
+	var anyFrame:Bool = false;
 
 	public function new(panel:ClipFinderPanel, name:String, selected:Bool, y:Float, min:Float, max:Float, value:Float, describe:Int->String) {
 		this.describe = describe;
@@ -282,9 +299,15 @@ class OptionRow {
 		refresh();
 	}
 
+	/** With "Any frame" the slider is ignored; the tick box still picks whether the move is tried. **/
+	public function setAnyFrame(value:Bool):Void {
+		anyFrame = value;
+		refresh();
+	}
+
 	function refresh():Void {
 		box.enabled = !locked;
-		slider.enabled = box.selected && !locked;
-		label.text = box.selected ? describe(upTo()) : "off";
+		slider.enabled = box.selected && !locked && !anyFrame;
+		label.text = !box.selected ? "off" : (anyFrame ? "any frame" : describe(upTo()));
 	}
 }

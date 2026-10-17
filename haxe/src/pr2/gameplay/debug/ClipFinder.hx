@@ -54,6 +54,15 @@ class ClipFinderSettings {
 	public var hats:Null<ClipSimulator.ClipHats> = null;
 	/** Search stops collecting after this many clips (the search itself keeps counting). **/
 	public var maxStoredClips:Int = 100;
+	/**
+		Random timing instead of the exhaustive grid: every attempt picks a random
+		value from each list above (any frame of the run for jumps, super jump
+		start, move start and turn) and the search runs until stopped, or for
+		`randomAttempts` attempts when that is above 0.
+	**/
+	public var anyFrame:Bool = false;
+	public var randomAttempts:Int = 0;
+	public var seed:Int = 1;
 
 	public function new(startX:Float, startY:Float, gravity:Float, speed:StatRange, accel:StatRange, jump:StatRange) {
 		this.startX = startX;
@@ -93,7 +102,9 @@ class ClipFinder {
 	public var tested(default, null):Int = 0;
 	public var clipCount(default, null):Int = 0;
 	public var blockedStart(default, null):Bool = false;
+	/** Attempts the search will make; 0 when a random search runs until stopped. **/
 	public final total:Int;
+	final rng:ClipRng;
 
 	final speeds:Array<Float>;
 	final accels:Array<Float>;
@@ -113,18 +124,22 @@ class ClipFinder {
 			for (frame in 0...settings.maxJumpFrame + 1) for (hold in settings.holds) launches.push(new Launch(frame, hold, 0));
 		}
 		for (charge in settings.superCharges) launches.push(new Launch(0, 0, charge));
-		total = speeds.length * accels.length * jumps.length * settings.dirs.length * settings.moveStarts.length * settings.turnFrames.length
-			* launches.length * settings.downModes.length;
+		rng = new ClipRng(settings.seed);
+		total = settings.anyFrame ? settings.randomAttempts : speeds.length * accels.length * jumps.length * settings.dirs.length
+			* settings.moveStarts.length * settings.turnFrames.length * launches.length * settings.downModes.length;
 	}
 
 	public var done(get, never):Bool;
-	inline function get_done():Bool return next >= total || blockedStart;
+	function get_done():Bool {
+		if (blockedStart || launches.length == 0) return true;
+		return settings.anyFrame ? total > 0 && next >= total : next >= total;
+	}
 
 	/** Runs attempts until `maxRuns` have run or `deadline()` says time is up. Returns runs made. **/
 	public function step(maxRuns:Int, ?deadline:Void->Bool):Int {
 		var runs = 0;
 		while (!done && runs < maxRuns && (deadline == null || runs == 0 || !deadline())) {
-			var attempt = attemptAt(next);
+			var attempt = settings.anyFrame ? randomAttempt() : attemptAt(next);
 			next++;
 			runs++;
 			var result = ClipSimulator.run(area, attempt);
@@ -142,6 +157,43 @@ class ClipFinder {
 			}
 		}
 		return runs;
+	}
+
+	/**
+		One random attempt for "Any frame" mode. Stats, direction and fast-fall
+		come from the same lists as the grid; a normal jump is pressed on any
+		frame 0..maxJumpFrame and held 1..frames frames (or to the end), a super
+		jump charges for a listed length starting on any frame that still leaves
+		room to launch, and the move start / turn come from their lists (half the
+		attempts skip the turn when turns are enabled).
+	**/
+	public function randomAttempt():ClipAttempt {
+		var frames = settings.frames;
+		var launch = rng.pick(kindsInLaunches());
+		var jumpFrame = 0, hold = 0;
+		if (launch.superCharge == 0) {
+			jumpFrame = rng.int(settings.maxJumpFrame + 1);
+			hold = rng.int(4) == 0 ? 999 : 1 + rng.int(frames);
+		}
+		var attempt = new ClipAttempt(settings.startX, settings.startY, rng.pick(speeds), rng.pick(accels), rng.pick(jumps), settings.gravity,
+			rng.pick(settings.dirs), jumpFrame, hold, rng.pick(settings.downModes), frames);
+		if (launch.superCharge > 0) {
+			attempt.superCharge = rng.pick(settings.superCharges);
+			attempt.superStart = rng.int(Std.int(Math.max(1, frames - attempt.superCharge)));
+		}
+		attempt.moveStart = rng.pick(settings.moveStarts);
+		var turns = settings.turnFrames.filter(t -> t >= 0);
+		attempt.turnFrame = turns.length == 0 || rng.int(2) == 0 ? -1 : rng.pick(turns);
+		attempt.hats = settings.hats;
+		return attempt;
+	}
+
+	/** One representative per launch kind, so normal and super jumps are equally likely. **/
+	function kindsInLaunches():Array<Launch> {
+		var kinds:Array<Launch> = [];
+		if (settings.normalJumps) kinds.push(new Launch(0, 8, 0));
+		if (settings.superCharges.length > 0) kinds.push(new Launch(0, 0, settings.superCharges[0]));
+		return kinds;
 	}
 
 	/** Decodes a flat combination index (mixed radix, stats outermost). **/
@@ -169,6 +221,27 @@ class ClipFinder {
 		attempt.turnFrame = turnFrame;
 		attempt.hats = settings.hats;
 		return attempt;
+	}
+}
+
+/** Small seeded PRNG (xorshift32) so a random search can be reproduced in tests. **/
+private class ClipRng {
+	var state:Int;
+
+	public function new(seed:Int) {
+		state = seed == 0 ? 1 : seed;
+	}
+
+	public function int(max:Int):Int {
+		if (max <= 1) return 0;
+		state ^= state << 13;
+		state ^= state >>> 17;
+		state ^= state << 5;
+		return (state & 0x7fffffff) % max;
+	}
+
+	public function pick<T>(values:Array<T>):T {
+		return values[int(values.length)];
 	}
 }
 

@@ -17,7 +17,10 @@ import pr2.level.Level;
 	race keeps running. Every attempt starts from a fresh simulated player.
 	A translucent ghost of the player replays the selected clip on a loop.
 
-	The search never touches the real player, blocks or network state.
+	The search never touches the real player, blocks or network state. Only
+	"Replay on me" does: it moves the real player to the clip's start, gives it
+	the clip's stats and feeds the clip's inputs instead of the keyboard, then
+	restores the player's stats.
 **/
 class ClipFinderSession {
 	/** Simulation time allowed per game frame, so the race keeps its frame rate. **/
@@ -47,11 +50,12 @@ class ClipFinderSession {
 		var state = player.stateSnapshot();
 		panel = new ClipFinderPanel(state.speedStat, state.accelerationStat, state.jumpStat);
 		panel.x = 8;
-		panel.y = 24;
+		panel.y = 4;
 		panel.onStart = start;
 		panel.onStop = stopSearch;
 		panel.onClose = close;
 		panel.onShowClip = showClip;
+		panel.onReplay = startReplay;
 		panelLayer.addChild(panel);
 		ghost = new ClipGhost(player);
 		ghostLayer.addChild(ghost.character);
@@ -91,6 +95,20 @@ class ClipFinderSession {
 		// Delayed move and air turn add to the default (move at once, never turn).
 		settings.moveStarts = panel.delayedMoveRow.enabled ? [for (m in 0...panel.delayedMoveRow.upTo() + 1) m] : [0];
 		settings.turnFrames = panel.airTurnRow.enabled ? [-1].concat([for (t in 1...panel.airTurnRow.upTo() + 1) t]) : [-1];
+		if (panel.anyFrameBox.selected) {
+			// Every frame of the run, every super jump charge: far too many to try
+			// them all, so attempts are random and the search runs until Stop.
+			var last = settings.frames - 1;
+			settings.anyFrame = true;
+			settings.seed = randomSeed();
+			settings.maxJumpFrame = last;
+			if (settings.superCharges.length > 0) {
+				settings.superCharges = [for (c in ClipAttempt.MIN_SUPER_CHARGE...ClipAttempt.MAX_SUPER_CHARGE + 1) c];
+			}
+			if (panel.delayedMoveRow.enabled) settings.moveStarts = [for (m in 0...last + 1) m];
+			if (panel.airTurnRow.enabled) settings.turnFrames = [-1].concat([for (t in 1...last + 1) t]);
+		}
+		stopReplay();
 		finder = new ClipFinder(level.blocks, settings);
 		clips = finder.clips;
 		shownClips = 0;
@@ -129,6 +147,7 @@ class ClipFinderSession {
 
 	function showClip(index:Int):Void {
 		if (index < 0 || index >= clips.length) return;
+		stopReplay();
 		selectedClip = index;
 		var found = clips[index];
 		var recorded = found.run.ghost;
@@ -144,11 +163,90 @@ class ClipFinderSession {
 			return;
 		}
 		var verb = search.done ? "Done" : (stopped ? "Stopped" : "Testing");
-		panel.setStatus('$verb ${search.tested}/${search.total}, ${search.clipCount} clip${search.clipCount == 1 ? "" : "s"}');
+		var tried = search.total > 0 ? '${search.tested}/${search.total}' : '${search.tested} random';
+		panel.setStatus('$verb $tried, ${search.clipCount} clip${search.clipCount == 1 ? "" : "s"}');
+	}
+
+	/** Tests replace this to make "Any frame" searches reproducible. **/
+	public static var randomSeed:Void->Int = () -> 1 + Std.random(0x3fffffff);
+
+	// ---- Replay on the real player ----------------------------------------
+
+	/**
+		Puts the real player at the clip's start with the clip's stats; the
+		course then feeds `replayInput` instead of the keyboard. Set by Course,
+		which returns false when the race isn't running (nothing to replay into).
+	**/
+	public var onBeginReplay:Null<ClipAttempt->Bool>;
+
+	var replay:Null<ClipAttempt> = null;
+	var replayFrame:Int = 0;
+	var replayLength:Int = 0;
+	var savedSpeed:Float = 0;
+	var savedAccel:Float = 0;
+	var savedJump:Float = 0;
+
+	public var replaying(get, never):Bool;
+	inline function get_replaying():Bool return replay != null;
+
+	function startReplay():Void {
+		if (replaying) {
+			stopReplay();
+			return;
+		}
+		if (selectedClip < 0 || selectedClip >= clips.length) return;
+		var found = clips[selectedClip];
+		var state = player.stateSnapshot();
+		savedSpeed = state.speedStat;
+		savedAccel = state.accelerationStat;
+		savedJump = state.jumpStat;
+		if (onBeginReplay == null || !onBeginReplay(found.attempt)) {
+			panel.setStatus("Replay needs the race to be running.");
+			return;
+		}
+		applyStats(found.attempt.speed, found.attempt.accel, found.attempt.jump);
+		replay = found.attempt;
+		replayFrame = 0;
+		// The idle settle frame, then the same frames the ghost recorded.
+		replayLength = found.run.ghost == null ? found.attempt.frames + 1 : found.run.ghost.length;
+		panel.replayButton.label = "Stop replay";
+		// Restart the ghost so it runs alongside the real player. Its first pose is
+		// after the settle frame, which the player plays on the next game frame.
+		if (found.run.ghost != null) ghost.play(found.run.ghost, 1);
+	}
+
+	/**
+		The input for this frame while a replay runs, else null (use the keyboard).
+		Frame 0 is the idle settle frame the search also starts with.
+	**/
+	public function replayInput(grounded:Bool):Null<pr2.gameplay.player.LocalPlayerInput> {
+		var attempt = replay;
+		if (attempt == null || closed) return null;
+		if (replayFrame >= replayLength) {
+			stopReplay();
+			return null;
+		}
+		var input = replayFrame == 0 ? new pr2.gameplay.player.LocalPlayerInput() : attempt.inputAt(replayFrame - 1, grounded);
+		replayFrame++;
+		return input;
+	}
+
+	function stopReplay():Void {
+		if (replay == null) return;
+		replay = null;
+		applyStats(savedSpeed, savedAccel, savedJump);
+		panel.replayButton.label = "Replay on me";
+	}
+
+	/** setStats rebuilds speed from the stat, so re-apply the cowboy hat's floor (as the search does). **/
+	function applyStats(speed:Float, accel:Float, jump:Float):Void {
+		player.controller.setStats(speed, accel, jump);
+		if (player.controller.cowboyHatActive) player.controller.ensureCowboyStats();
 	}
 
 	public function close():Void {
 		if (closed) return;
+		stopReplay();
 		closed = true;
 		finder = null;
 		ghost.dispose();

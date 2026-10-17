@@ -244,6 +244,29 @@ class LocalPlayerController implements ItemRuntimeOwner {
 		markMovementDiscontinuity();
 		roguelikeStartX = px;
 		roguelikeStartY = py;
+		resetMotionState();
+		lastSafeX = x;
+		lastSafeY = y;
+		snakeTrailBlocks.clear();
+		blockVisualEvents.resize(0);
+		blockController.resetPreRaceState();
+		pendingMinePlacements.resize(0);
+		pendingProjectileDamages.resize(0);
+	}
+
+	/**
+		Debug-only (Clip Finder "Replay on me", not in Flash): moves the player to
+		a clip's start in the same motion state the clip search simulates from,
+		without touching course blocks, items, safe spot or race progress.
+	**/
+	public function placeForClipReplay(px:Float, py:Float):Void {
+		setPlayerPos(px, py);
+		markMovementDiscontinuity();
+		resetMotionState();
+	}
+
+	/** Movement, input and transient-effect state cleared by both resets above. */
+	private function resetMotionState():Void {
 		vx = 0;
 		vy = 0;
 		grounded = false;
@@ -267,17 +290,10 @@ class LocalPlayerController implements ItemRuntimeOwner {
 		waterTicks = 0;
 		standingTileX = tileIndex(x);
 		standingTileY = tileIndex(y);
-		lastSafeX = x;
-		lastSafeY = y;
 		rotateFramesRemaining = 0;
 		rotateDirection = 0;
 		hurtFramesRemaining = 0;
 		frozenSolidFramesRemaining = 0;
-		snakeTrailBlocks.clear();
-		blockVisualEvents.resize(0);
-		blockController.resetPreRaceState();
-		pendingMinePlacements.resize(0);
-		pendingProjectileDamages.resize(0);
 	}
 
 	public function beginDetailedTraceFrame(frame:Int):Void {

@@ -952,8 +952,10 @@ class Course extends Sprite {
 			} else {
 				player.controller.stopDetailedTrace();
 			}
-			var playerInput = input.copy();
 			var beforeStep = player.stateSnapshot();
+			// Debug Clip Finder "Replay on me" drives the player instead of the keyboard.
+			var replayed = clipFinder == null ? null : clipFinder.replayInput(beforeStep.grounded);
+			var playerInput = replayed != null ? replayed : input.copy();
 			if ((snakeManager != null && snakeManager.localActive()) || (input.item && beforeStep.itemId == Items.SNAKE)) {
 				playerInput.left = false;
 				playerInput.right = false;
@@ -1774,6 +1776,21 @@ class Course extends Sprite {
 		}
 		clipFinder = new ClipFinderSession(level, player, this, characterLayer);
 		clipFinder.onClosed = function():Void clipFinder = null;
+		clipFinder.onBeginReplay = beginClipReplay;
+	}
+
+	/** Moves the local player to a Clip Finder clip's start for "Replay on me". */
+	private function beginClipReplay(attempt:pr2.gameplay.debug.ClipSimulator.ClipAttempt):Bool {
+		if (player == null || !raceStarted || localFinishHandled) {
+			return false;
+		}
+		player.controller.placeForClipReplay(attempt.startX, attempt.startY);
+		player.x = attempt.startX;
+		player.y = attempt.startY;
+		markLocalPresentationDiscontinuity();
+		var target = cameraTargetWorld(attempt.startX, attempt.startY);
+		camera.snapTo(target.x, target.y);
+		return true;
 	}
 
 	private function resetInput(_:Event):Void {
