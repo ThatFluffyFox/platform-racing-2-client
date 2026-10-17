@@ -1777,6 +1777,10 @@ class Course extends Sprite {
 		clipFinder = new ClipFinderSession(level, player, this, characterLayer);
 		clipFinder.onClosed = function():Void clipFinder = null;
 		clipFinder.onBeginReplay = beginClipReplay;
+		clipFinder.stageToWorld = function(stageX:Float, stageY:Float):Point {
+			var local = globalToLocal(new Point(stageX, stageY));
+			return levelRenderer.screenToWorld(local.x, local.y);
+		};
 	}
 
 	/** Moves the local player to a Clip Finder clip's start for "Replay on me". */

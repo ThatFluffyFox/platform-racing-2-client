@@ -265,6 +265,18 @@ class LocalPlayerController implements ItemRuntimeOwner {
 		resetMotionState();
 	}
 
+	/**
+		Debug-only (Clip Finder): the clip search simulates a cropped copy of the
+		level, so it hands over the whole level's block extent to keep the
+		fall-off-the-map return (500 px past the extent) where the real game has it.
+	**/
+	public function setMapBoundsForClipSearch(minX:Float, minY:Float, maxX:Float, maxY:Float):Void {
+		mapMinX = minX;
+		mapMinY = minY;
+		mapMaxX = maxX;
+		mapMaxY = maxY;
+	}
+
 	/** Movement, input and transient-effect state cleared by both resets above. */
 	private function resetMotionState():Void {
 		vx = 0;

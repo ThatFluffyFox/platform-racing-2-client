@@ -391,6 +391,13 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
   of the run (super jumps can also start charging on any frame). That is far
   too many combinations to try them all, so each attempt picks random timings
   and the search keeps going until **Stop**.
+- **Target** (next to the title): click it, then click a block in the level.
+  Only clips into that block count, and it gets a red outline. Click the
+  button again to go back to any block.
+- The simulated copy of the level starts small around you and grows to cover
+  wherever the simulated player goes (up to the level's edge), re-running the
+  attempt after each growth; falling off the map uses the whole level's edge,
+  like the real game.
 - **Replay on me** plays the shown clip on your real player: it moves you to
   the clip's start, gives you the clip's stats, and plays the clip's inputs
   (the keyboard is ignored meanwhile), with the ghost running alongside. Your

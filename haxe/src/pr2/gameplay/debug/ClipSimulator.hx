@@ -30,9 +30,26 @@ class ClipSimulator {
 		Runs one attempt. `recordGhost` keeps every frame's pose for a replay.
 		`onFrame(frame, input, player, bodyInSolid)` is for tracing; when given,
 		the run plays all of `attempt.frames` instead of stopping early.
+
+		If the player leaves the cropped area, the area grows to take in where it
+		went and the attempt is run again from the start, so the simulated level
+		always covers the whole path (up to the level's edge plus open air).
 	**/
 	public static function run(area:ClipArea, attempt:ClipAttempt, recordGhost:Bool = false,
 			?onFrame:Int->LocalPlayerInput->LocalPlayerController->Bool->Void):ClipRun {
+		if (onFrame != null) {
+			// Grow the area first with a silent run, so the traced run happens once.
+			run(area, attempt, recordGhost);
+		}
+		while (true) {
+			var result = runOnce(area, attempt, recordGhost, onFrame);
+			if (result != null) return result;
+		}
+	}
+
+	/** One pass in the current area; null when the area grew and the attempt must restart. **/
+	static function runOnce(area:ClipArea, attempt:ClipAttempt, recordGhost:Bool,
+			?onFrame:Int->LocalPlayerInput->LocalPlayerController->Bool->Void):Null<ClipRun> {
 		var level = area.buildLevel(attempt.gravity);
 		if (area.overlapsSolid(level, attempt.startX, attempt.startY)) {
 			return ClipRun.blocked();
@@ -44,6 +61,8 @@ class ClipSimulator {
 		// Clears the constructor's grounded state, then one idle frame lets the
 		// real collision pass decide it: floor starts stand, mid-air starts fall.
 		player.resetPreRacePosition(attempt.startX, attempt.startY);
+		// The fall-off-the-map return uses the whole level's extent, not the crop's.
+		player.setMapBoundsForClipSearch(area.mapMinX, area.mapMinY, area.mapMaxX, area.mapMaxY);
 		player.step(new LocalPlayerInput());
 
 		var ghost:Null<Array<GhostFrame>> = recordGhost ? [GhostFrame.capture(player, bodyInSolid(level, player))] : null;
@@ -58,7 +77,7 @@ class ClipSimulator {
 			var inSolid = bodyInSolid(level, player);
 			if (ghost != null) ghost.push(GhostFrame.capture(player, inSolid));
 			if (onFrame != null) onFrame(frame, input, player, inSolid);
-			if (clipFrame < 0 && inSolid) {
+			if (clipFrame < 0 && inSolid && attempt.hitsTarget(player.x, player.y)) {
 				clipFrame = frame;
 				clipX = player.x;
 				clipY = player.y;
@@ -68,11 +87,15 @@ class ClipSimulator {
 				if (ghost != null) stopAt = Std.int(Math.min(attempt.frames, frame + 1 + GHOST_TAIL_FRAMES));
 			}
 			if (onFrame == null) {
-				// Over once the scripted jump is done and the player has stood
-				// still for a while, or has left the cropped area.
+				// Left the crop: grow it and start over, or stop if the player is
+				// past the level's edge (nothing out there to clip into).
+				if (!area.containsPixel(player.x, player.y)) {
+					if (area.growToInclude(player.x, player.y)) return null;
+					if (clipFrame < 0) break;
+				}
+				// Over once the scripted jump is done and the player has stood still for a while.
 				settledFrames = player.grounded && Math.abs(player.vx) < 0.5 && Math.abs(player.vy) < 1 ? settledFrames + 1 : 0;
 				if (clipFrame < 0 && attempt.scriptFinished(frame) && settledFrames >= 10) break;
-				if (clipFrame < 0 && !area.containsPixel(player.x, player.y)) break;
 			}
 			frame++;
 		}
@@ -121,6 +144,15 @@ class ClipAttempt {
 	public var superCharge:Int = 0;
 	/** Frame the super jump starts charging (down held from here for `superCharge` frames). **/
 	public var superStart:Int = 0;
+	/** Only clips into this tile count (the in-game "Target block"); null = any solid block. **/
+	public var targetTileX:Null<Int> = null;
+	public var targetTileY:Null<Int> = null;
+
+	/** True when the body point at (x, y - 15) is in the target tile, or there is no target. **/
+	public function hitsTarget(x:Float, y:Float):Bool {
+		if (targetTileX == null || targetTileY == null) return true;
+		return ClipSimulator.tileOf(x) == targetTileX && ClipSimulator.tileOf(y - 15) == targetTileY;
+	}
 
 	/** Shortest charge that launches (charge 26 > 25) and the frames to the 100 cap. **/
 	public static inline var MIN_SUPER_CHARGE:Int = 13;
@@ -296,32 +328,65 @@ class GhostFrame {
 
 /**
 	A cropped, self-contained copy of part of a level. Level.blockAt is a linear
-	scan, so a small crop keeps simulation fast even in huge levels.
+	scan, so a small crop keeps simulation fast even in huge levels. When a run
+	leaves the crop, `growToInclude` widens it (up to the level's block extent
+	plus a margin) and the run is repeated, so the simulated level always covers
+	wherever the player goes.
 **/
 class ClipArea {
-	public final minTileX:Int;
-	public final minTileY:Int;
-	public final maxTileX:Int;
-	public final maxTileY:Int;
-	final template:Array<LevelBlock>;
-	final startTile:TilePosition;
-	final allStatic:Bool;
+	/** Tiles added around a position the player reached outside the crop. **/
+	public static inline var GROW_MARGIN:Int = 10;
+	/** Tiles past the level's outermost blocks the crop may grow into (open air). **/
+	public static inline var EDGE_MARGIN:Int = 20;
+
+	public var minTileX(default, null):Int;
+	public var minTileY(default, null):Int;
+	public var maxTileX(default, null):Int;
+	public var maxTileY(default, null):Int;
+	/** Times the crop has grown, for tests and the status line. **/
+	public var growCount(default, null):Int = 0;
+	/** The whole level's block extent in pixels, as LocalPlayerController computes it. **/
+	public final mapMinX:Float;
+	public final mapMinY:Float;
+	public final mapMaxX:Float;
+	public final mapMaxY:Float;
+	/** The level's blocks; the crop copies from these, so they are never mutated here. **/
+	final source:Array<LevelBlock>;
+	final extentMinTileX:Int;
+	final extentMinTileY:Int;
+	final extentMaxTileX:Int;
+	final extentMaxTileY:Int;
+	var template:Array<LevelBlock> = [];
+	var startTile:TilePosition;
+	var allStatic:Bool = true;
 	var sharedLevel:Null<Level> = null;
 	var sharedGravity:Float = 0;
 
 	public function new(blocks:Array<LevelBlock>, minTileX:Int, minTileY:Int, maxTileX:Int, maxTileY:Int) {
-		this.minTileX = minTileX;
-		this.minTileY = minTileY;
-		this.maxTileX = maxTileX;
-		this.maxTileY = maxTileY;
-		template = [];
-		for (block in blocks) {
-			if (block.x >= minTileX && block.x <= maxTileX && block.y >= minTileY && block.y <= maxTileY) {
-				template.push(LevelBlock.fromWorldPixels(block.code, block.worldX, block.worldY, block.options));
+		source = blocks;
+		var t = ClipSimulator.TILE;
+		var minX = 0, minY = 0, maxX = 0, maxY = 0;
+		for (i in 0...blocks.length) {
+			var b = blocks[i];
+			if (i == 0) {
+				minX = maxX = b.x;
+				minY = maxY = b.y;
+			} else {
+				minX = Std.int(Math.min(minX, b.x));
+				minY = Std.int(Math.min(minY, b.y));
+				maxX = Std.int(Math.max(maxX, b.x));
+				maxY = Std.int(Math.max(maxY, b.y));
 			}
 		}
-		startTile = new TilePosition(Std.int((minTileX + maxTileX) / 2), Std.int((minTileY + maxTileY) / 2));
-		allStatic = Lambda.foreach(template, b -> isStatic(b.type));
+		mapMinX = minX * t;
+		mapMinY = minY * t;
+		mapMaxX = maxX * t;
+		mapMaxY = maxY * t;
+		extentMinTileX = minX - EDGE_MARGIN;
+		extentMinTileY = minY - EDGE_MARGIN;
+		extentMaxTileX = maxX + EDGE_MARGIN;
+		extentMaxTileY = maxY + EDGE_MARGIN;
+		setRect(minTileX, minTileY, maxTileX, maxTileY);
 	}
 
 	/** The crop `radiusX` tiles left/right, `up` tiles above and `down` below a world pixel. **/
@@ -329,6 +394,44 @@ class ClipArea {
 		var tx = ClipSimulator.tileOf(worldX);
 		var ty = ClipSimulator.tileOf(worldY);
 		return new ClipArea(blocks, tx - radiusX, ty - up, tx + radiusX, ty + down);
+	}
+
+	/**
+		Widens the crop to take in the world pixel (plus GROW_MARGIN tiles), but
+		not past the level's extent plus EDGE_MARGIN. Returns false when the
+		crop cannot grow any further toward that point.
+	**/
+	public function growToInclude(px:Float, py:Float):Bool {
+		var tx = ClipSimulator.tileOf(px);
+		var ty = ClipSimulator.tileOf(py);
+		var newMinX = clampInt(Std.int(Math.min(minTileX, tx - GROW_MARGIN)), extentMinTileX, extentMaxTileX);
+		var newMinY = clampInt(Std.int(Math.min(minTileY, ty - GROW_MARGIN)), extentMinTileY, extentMaxTileY);
+		var newMaxX = clampInt(Std.int(Math.max(maxTileX, tx + GROW_MARGIN)), extentMinTileX, extentMaxTileX);
+		var newMaxY = clampInt(Std.int(Math.max(maxTileY, ty + GROW_MARGIN)), extentMinTileY, extentMaxTileY);
+		newMinX = Std.int(Math.min(newMinX, minTileX));
+		newMinY = Std.int(Math.min(newMinY, minTileY));
+		newMaxX = Std.int(Math.max(newMaxX, maxTileX));
+		newMaxY = Std.int(Math.max(newMaxY, maxTileY));
+		if (newMinX == minTileX && newMinY == minTileY && newMaxX == maxTileX && newMaxY == maxTileY) return false;
+		growCount++;
+		setRect(newMinX, newMinY, newMaxX, newMaxY);
+		return true;
+	}
+
+	function setRect(minX:Int, minY:Int, maxX:Int, maxY:Int):Void {
+		minTileX = minX;
+		minTileY = minY;
+		maxTileX = maxX;
+		maxTileY = maxY;
+		template = [];
+		for (block in source) {
+			if (block.x >= minX && block.x <= maxX && block.y >= minY && block.y <= maxY) {
+				template.push(LevelBlock.fromWorldPixels(block.code, block.worldX, block.worldY, block.options));
+			}
+		}
+		startTile = new TilePosition(Std.int((minX + maxX) / 2), Std.int((minY + maxY) / 2));
+		allStatic = Lambda.foreach(template, b -> isStatic(b.type));
+		sharedLevel = null;
 	}
 
 	/**
@@ -364,6 +467,10 @@ class ClipArea {
 
 	public function blockCount():Int {
 		return template.length;
+	}
+
+	static inline function clampInt(value:Int, min:Int, max:Int):Int {
+		return value < min ? min : (value > max ? max : value);
 	}
 
 	static function isStatic(type:BlockType):Bool {

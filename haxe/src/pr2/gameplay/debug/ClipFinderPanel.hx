@@ -52,6 +52,9 @@ class ClipFinderPanel extends NativeView {
 	final nextButton:GameButton;
 	/** Plays the shown clip's inputs on the real player. **/
 	public final replayButton:GameButton;
+	/** Pick (or clear) the one block clips must go into. **/
+	public final targetButton:GameButton;
+	public var onTarget:Null<Void->Void>;
 	final status:TextField;
 	final clipInfo:TextField;
 	var shownClip:Int = 0;
@@ -72,6 +75,13 @@ class ClipFinderPanel extends NativeView {
 		close.onPress = function():Void if (onClose != null) onClose();
 		addChild(close);
 		addChild(text("Searches from where you are standing.", 10, 20, 240, 12));
+
+		targetButton = ownControl(new GameButton("Target: any block"));
+		targetButton.setSize(140, 20);
+		targetButton.x = PANEL_WIDTH - 176;
+		targetButton.y = 5;
+		targetButton.onPress = function():Void if (onTarget != null) onTarget();
+		addChild(targetButton);
 
 		speedRow = new StatRow(this, "Speed", speed, 36);
 		accelRow = new StatRow(this, "Accel", accel, 76);
@@ -138,6 +148,7 @@ class ClipFinderPanel extends NativeView {
 		startButton.label = running ? "Stop" : "Start";
 		for (row in [speedRow, accelRow, jumpRow]) row.setLocked(running);
 		for (box in [leftBox, rightBox, downBox, anyFrameBox]) box.enabled = !running;
+		targetButton.enabled = !running;
 		for (row in rows) row.setLocked(running);
 	}
 
@@ -191,6 +202,8 @@ class ClipFinderPanel extends NativeView {
 		onStop = null;
 		onClose = null;
 		onShowClip = null;
+		onReplay = null;
+		onTarget = null;
 		super.dispose();
 	}
 }

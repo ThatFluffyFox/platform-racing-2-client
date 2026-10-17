@@ -61,6 +61,9 @@ class ClipFinderSettings {
 		`randomAttempts` attempts when that is above 0.
 	**/
 	public var anyFrame:Bool = false;
+	/** Only count clips into this tile ("Target block"); null = any solid block. **/
+	public var targetTileX:Null<Int> = null;
+	public var targetTileY:Null<Int> = null;
 	public var randomAttempts:Int = 0;
 	public var seed:Int = 1;
 
@@ -185,6 +188,8 @@ class ClipFinder {
 		var turns = settings.turnFrames.filter(t -> t >= 0);
 		attempt.turnFrame = turns.length == 0 || rng.int(2) == 0 ? -1 : rng.pick(turns);
 		attempt.hats = settings.hats;
+		attempt.targetTileX = settings.targetTileX;
+		attempt.targetTileY = settings.targetTileY;
 		return attempt;
 	}
 
@@ -220,6 +225,8 @@ class ClipFinder {
 		attempt.moveStart = moveStart;
 		attempt.turnFrame = turnFrame;
 		attempt.hats = settings.hats;
+		attempt.targetTileX = settings.targetTileX;
+		attempt.targetTileY = settings.targetTileY;
 		return attempt;
 	}
 }

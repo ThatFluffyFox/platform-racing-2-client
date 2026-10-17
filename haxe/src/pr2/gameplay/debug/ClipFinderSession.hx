@@ -1,6 +1,9 @@
 package pr2.gameplay.debug;
 
 import openfl.display.DisplayObjectContainer;
+import openfl.display.Shape;
+import openfl.events.MouseEvent;
+import openfl.geom.Point;
 import pr2.character.Character;
 import pr2.character.LocalCharacter;
 import pr2.gameplay.debug.ClipFinder.ClipFinderSettings;
@@ -56,6 +59,7 @@ class ClipFinderSession {
 		panel.onClose = close;
 		panel.onShowClip = showClip;
 		panel.onReplay = startReplay;
+		panel.onTarget = toggleTargetPicking;
 		panelLayer.addChild(panel);
 		ghost = new ClipGhost(player);
 		ghostLayer.addChild(ghost.character);
@@ -84,6 +88,8 @@ class ClipFinderSession {
 			panel.accelRow.range(), panel.jumpRow.range());
 		settings.hats = ClipHats.from(player.controller);
 		settings.dirs = dirs;
+		settings.targetTileX = targetTileX;
+		settings.targetTileY = targetTileY;
 		settings.downModes = panel.downBox.selected ? [false, true] : [false];
 		settings.normalJumps = panel.normalJumpRow.enabled;
 		settings.maxJumpFrame = panel.normalJumpRow.upTo();
@@ -167,6 +173,86 @@ class ClipFinderSession {
 		panel.setStatus('$verb $tried, ${search.clipCount} clip${search.clipCount == 1 ? "" : "s"}');
 	}
 
+	// ---- Target block --------------------------------------------------------
+
+	/** Converts a stage (mouse) point to a world point; set by Course. **/
+	public var stageToWorld:Null<Float->Float->Point>;
+
+	var targetTileX:Null<Int> = null;
+	var targetTileY:Null<Int> = null;
+	var picking:Bool = false;
+	var targetMarker:Null<Shape> = null;
+
+	/** Button: start picking, cancel picking, or clear the current target. **/
+	function toggleTargetPicking():Void {
+		if (picking) {
+			setPicking(false);
+			panel.targetButton.label = "Target: any block";
+			panel.setStatus("Target unchanged.");
+		} else if (targetTileX != null) {
+			setTarget(null, null);
+			panel.setStatus("Clips into any block count.");
+		} else {
+			setPicking(true);
+			panel.targetButton.label = "Click a block...";
+			panel.setStatus("Click the block to clip into.");
+		}
+	}
+
+	function setPicking(value:Bool):Void {
+		if (picking == value) return;
+		picking = value;
+		var stage = panelLayer.stage;
+		if (stage == null) return;
+		if (value) {
+			stage.addEventListener(MouseEvent.CLICK, onStageClick);
+		} else {
+			stage.removeEventListener(MouseEvent.CLICK, onStageClick);
+		}
+	}
+
+	function onStageClick(event:MouseEvent):Void {
+		// Clicks on the panel itself (including the button that started picking) don't pick.
+		if (panel.hitTestPoint(event.stageX, event.stageY, false)) return;
+		pickAt(event.stageX, event.stageY);
+	}
+
+	/** Picks the solid block under a stage point as the target. Returns false if there is none. **/
+	public function pickAt(stageX:Float, stageY:Float):Bool {
+		if (!picking || stageToWorld == null) return false;
+		var world = stageToWorld(stageX, stageY);
+		var tx = ClipSimulator.tileOf(world.x);
+		var ty = ClipSimulator.tileOf(world.y);
+		var block = level.blockAt(tx, ty);
+		if (block == null || !block.type.isSolid()) {
+			panel.setStatus('No solid block at $tx,$ty. Click a block.');
+			return false;
+		}
+		setPicking(false);
+		setTarget(tx, ty);
+		panel.setStatus('Only clips into block $tx,$ty count.');
+		return true;
+	}
+
+	function setTarget(tx:Null<Int>, ty:Null<Int>):Void {
+		targetTileX = tx;
+		targetTileY = ty;
+		if (targetMarker != null && targetMarker.parent != null) targetMarker.parent.removeChild(targetMarker);
+		targetMarker = null;
+		if (tx == null || ty == null) {
+			panel.targetButton.label = "Target: any block";
+			return;
+		}
+		panel.targetButton.label = 'Target $tx,$ty (clear)';
+		// Red outline on the chosen block, in world space with the ghost.
+		var t = ClipSimulator.TILE;
+		var marker = new Shape();
+		marker.graphics.lineStyle(3, 0xFF2222, 0.9);
+		marker.graphics.drawRect(tx * t, ty * t, t, t);
+		ghostLayer.addChild(marker);
+		targetMarker = marker;
+	}
+
 	/** Tests replace this to make "Any frame" searches reproducible. **/
 	public static var randomSeed:Void->Int = () -> 1 + Std.random(0x3fffffff);
 
@@ -247,6 +333,8 @@ class ClipFinderSession {
 	public function close():Void {
 		if (closed) return;
 		stopReplay();
+		setPicking(false);
+		setTarget(null, null);
 		closed = true;
 		finder = null;
 		ghost.dispose();

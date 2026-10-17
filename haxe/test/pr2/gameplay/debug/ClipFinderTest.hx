@@ -45,6 +45,9 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testFinderSearchesMoveOptions", testFinderSearchesMoveOptions);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSuperJumpCanStartOnAnyFrame", testSuperJumpCanStartOnAnyFrame);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAnyFrameSearchIsRandomAndRunsUntilStopped", testAnyFrameSearchIsRandomAndRunsUntilStopped);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAreaGrowsToFollowThePlayer", testAreaGrowsToFollowThePlayer);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAreaUsesWholeLevelForMapEdges", testAreaUsesWholeLevelForMapEdges);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testTargetBlockFiltersClips", testTargetBlockFiltersClips);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -53,6 +56,7 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testComboTogglesPanelInRace", testComboTogglesPanelInRace);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPanelSearchUsesPlayerStatsByDefault", testPanelSearchUsesPlayerStatsByDefault);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayDrivesRealPlayerAlongTheClip", testReplayDrivesRealPlayerAlongTheClip);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPickingTargetBlockInRace", testPickingTargetBlockInRace);
 		course.remove();
 		course = null;
 		trace('ClipFinderTest passed $assertions assertions');
@@ -270,6 +274,70 @@ class ClipFinderTest {
 		assertEquals(false, session.replaying, "replay ends after the recording");
 		assertEquals(before.speedStat, course.localCharacter.stateSnapshot().speedStat, "the player's own stats come back");
 		course.setKey(Keyboard.LEFT, false);
+		session.close();
+		course.setKey(Keyboard.F9, false);
+		course.setKey(Keyboard.C, false);
+		course.setKey(Keyboard.D, false);
+	}
+
+	private static function testAreaGrowsToFollowThePlayer():Void {
+		// A crop far too small to reach the wall: the run must grow it and still clip.
+		var area = ClipArea.around(cornerBlocks(), CLIP_START_X, FLOOR_Y, 3, 3, 2);
+		assertEquals(false, area.containsPixel(WALL_FACE + 5, FLOOR_Y), "the small crop stops short of the wall");
+		var run = ClipSimulator.run(area, clipAttempt(90));
+		assertTrue(area.growCount > 0, "the crop grew");
+		assertTrue(area.containsPixel(WALL_FACE + 5, FLOOR_Y), "the crop now reaches the wall");
+		assertTrue(run.clipped, "the clip is still found");
+		assertEquals(26, run.clipFrame, "on the same frame as with the whole level");
+		var recorded = ClipSimulator.run(area, clipAttempt(90), true);
+		for (frame in recorded.ghost) assertTrue(area.containsPixel(frame.x, frame.y), "every recorded ghost frame is inside the simulated area");
+	}
+
+	private static function testAreaUsesWholeLevelForMapEdges():Void {
+		var area = ClipArea.around(cornerBlocks(), CLIP_START_X, FLOOR_Y, 3, 3, 2);
+		assertEquals(0.0, area.mapMinX, "left edge of the whole level");
+		assertEquals(21 * 30.0, area.mapMaxX, "right edge of the whole level, not the crop");
+		assertEquals(19 * 30.0, area.mapMaxY, "bottom edge of the whole level, not the crop");
+	}
+
+	private static function testTargetBlockFiltersClips():Void {
+		// The known clip's body point enters tile 19,16 (the wall's lowest air-level tile).
+		var onTarget = clipAttempt(90);
+		onTarget.targetTileX = 19;
+		onTarget.targetTileY = 16;
+		assertTrue(ClipSimulator.run(cornerArea(), onTarget).clipped, "a clip into the target block counts");
+		var elsewhere = clipAttempt(90);
+		elsewhere.targetTileX = 20;
+		elsewhere.targetTileY = 5;
+		assertEquals(false, ClipSimulator.run(cornerArea(), elsewhere).clipped, "a clip into another block does not");
+	}
+
+	private static function testPickingTargetBlockInRace():Void {
+		course.setKey(Keyboard.F9, true);
+		course.setKey(Keyboard.C, true);
+		course.setKey(Keyboard.D, true);
+		var session = course.clipFinder;
+		// Treat stage points as world points so the test can click exact tiles.
+		session.stageToWorld = (x, y) -> new openfl.geom.Point(x, y);
+		assertEquals(false, session.pickAt(45, 45), "clicks do nothing until picking starts");
+		session.toggleTargetPicking();
+		assertTrue(session.picking, "the button starts picking");
+		assertEquals(false, session.pickAt(15, 15), "the start marker is not a solid block");
+		assertTrue(session.picking, "still picking after a miss");
+		assertTrue(session.pickAt(45, 45), "the basic block at tile 1,1 is picked");
+		assertEquals(false, session.picking, "picking ends");
+		assertEquals("Target 1,1 (clear)", session.panel.targetButton.label, "button shows the target");
+		assertTrue(session.targetMarker != null && session.targetMarker.parent == course.characterLayer, "the block is outlined in the level");
+		session.panel.leftBox.selected = false;
+		session.panel.downBox.selected = false;
+		session.panel.normalJumpRow.slider.value = 0;
+		session.start();
+		assertEquals(1, session.finder.settings.targetTileX, "the search only counts clips into the target");
+		assertEquals(1, session.finder.attemptAt(0).targetTileY, "every attempt carries the target");
+		session.stopSearch();
+		session.toggleTargetPicking();
+		assertEquals(null, session.targetTileX, "pressing the button again clears the target");
+		assertEquals("Target: any block", session.panel.targetButton.label, "button back to any block");
 		session.close();
 		course.setKey(Keyboard.F9, false);
 		course.setKey(Keyboard.C, false);
