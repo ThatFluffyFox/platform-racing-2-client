@@ -33,6 +33,10 @@ class ClipSweep {
 	static var jumpFrames:Array<Float> = [0, 1, 2, 3, 4];
 	static var holds:Array<Float> = [8, 999];
 	static var downModes:Array<Float> = [0, 1];
+	static var moveStarts:Array<Float> = [0];
+	static var turnFrames:Array<Float> = [-1];
+	/** 0 = normal jump; 13-50 = super jump charged for that many frames. **/
+	static var superCharges:Array<Float> = [0];
 	static var dirs:Array<Float> = [1];
 	static var frames:Int = 120;
 	static var randomRuns:Int = 0;
@@ -83,6 +87,9 @@ class ClipSweep {
 			if (c.script == null) {
 				tally("hold", Std.string(c.hold));
 				tally("down", c.down ? "1" : "0");
+				tally("super", Std.string(c.superCharge));
+				tally("move-start", Std.string(c.moveStart));
+				tally("turn", Std.string(c.turnFrame));
 			}
 			if (printed < maxPrint) {
 				printed++;
@@ -109,7 +116,7 @@ class ClipSweep {
 			}
 		} else {
 			var perArena = speeds.length * accels.length * jumps.length * distances.length * heights.length * jumpFrames.length * holds.length
-				* downModes.length * (levelsArg != null && !explicit.exists("gravity") ? 1 : gravities.length);
+				* downModes.length * moveStarts.length * turnFrames.length * superCharges.length * (levelsArg != null && !explicit.exists("gravity") ? 1 : gravities.length);
 			out('Running up to $perArena grid runs at each of ${arenas.length} corner(s)...');
 			for (arena in arenas) {
 				total += sweepArena(arena, onClip);
@@ -125,7 +132,7 @@ class ClipSweep {
 		out('Ran $total runs$skipNote; $clips clipped into solid blocks.');
 		if (clips > 0) {
 			out("Clipping runs by value:");
-			for (stat in ["dir", "speed", "accel", "jump", "gravity", "hold", "down"]) {
+			for (stat in ["dir", "speed", "accel", "jump", "gravity", "hold", "down", "super", "move-start", "turn"]) {
 				var counts = byStat.get(stat);
 				if (counts == null) continue;
 				var keys = [for (k in counts.keys()) k];
@@ -144,8 +151,13 @@ class ClipSweep {
 		// A level's own gravity is used unless --gravity was given.
 		var gravityList = arena.gravity != null && !explicit.exists("gravity") ? [arena.gravity] : gravities;
 		for (g in gravityList) for (s in speeds) for (a in accels) for (j in jumps) for (d in distances) for (h in heights)
-			for (jf in jumpFrames) for (hold in holds) for (down in downModes) {
+			for (ms in moveStarts) for (tf in turnFrames) for (sc in superCharges) for (jf in jumpFrames) for (hold in holds) for (down in downModes) {
+				// A super jump ignores the normal jump timing: run it once, not once per jump frame/hold.
+				if (sc > 0 && (jf != jumpFrames[0] || hold != holds[0])) continue;
 				var c = new Case(arena.dir, g, s, a, j, d, h, Std.int(jf), Std.int(hold), down != 0, frames);
+				c.moveStart = Std.int(ms);
+				c.turnFrame = Std.int(tf);
+				c.superCharge = Std.int(sc);
 				runs++;
 				var r = run(arena, c);
 				if (r != null) {
@@ -163,6 +175,9 @@ class ClipSweep {
 		var startY = arena.floorY - c.height;
 		var attempt = new ClipAttempt(startX, startY, c.speed, c.accel, c.jump, c.gravity, c.dir, c.jumpFrame, c.hold, c.down, c.frames);
 		attempt.script = c.script;
+		attempt.moveStart = c.moveStart;
+		attempt.turnFrame = c.turnFrame;
+		attempt.superCharge = c.superCharge;
 		var onFrame = traceRun ? function(f:Int, input:LocalPlayerInput, player:LocalPlayerController, inSolid:Bool):Void {
 			out('f=$f in=${inputString(input)} x=${fmt(player.x)} y=${fmt(player.y)} vx=${fmt(player.vx)} vy=${fmt(player.vy)} grounded=${player.grounded} crouch=${player.crouching} bodyInSolid=$inSolid');
 		} : null;
@@ -316,6 +331,9 @@ class ClipSweep {
 				case "--jump-frame": jumpFrames = parseList(value);
 				case "--hold": holds = parseList(value);
 				case "--down": downModes = parseList(value);
+				case "--move-start": moveStarts = parseList(value);
+				case "--turn": turnFrames = parseList(value);
+				case "--super": superCharges = parseList(value);
 				case "--dir": dirs = [for (d in value.split(",")) d == "left" || d == "-1" ? -1.0 : 1.0];
 				case "--frames": frames = Std.parseInt(value);
 				case "--random": randomRuns = Std.parseInt(value);
@@ -377,6 +395,9 @@ class ClipSweep {
 		out("  --hold L        frames jump is held           default 8,999       [levels: 8]");
 		out("  --down L        0 = never, 1 = hold down while airborne after the jump  default 0,1  [levels: 1]");
 		out("  --dir L         right,left (which side the wall is on)  default right  [levels: right,left]");
+		out("  --move-start L  frame the direction starts being held (jump/stand in place first)  default 0");
+		out("  --turn L        frame the held direction flips, -1 = never  default -1");
+		out("  --super L       0 = normal jump, 13-50 = super jump: hold down that many frames, release  default 0");
 		out("  --frames N      frames simulated per run      default 120");
 		out("  --levels P      level .txt files or folders (comma-separated), as saved by");
 		out("                  tools/fetch_levels.py; sweeps every inside corner in each level");
@@ -560,6 +581,9 @@ private class Case {
 	public var randomIndex:Int = -1;
 	public var randomSeed:Int = 0;
 	public var randomCount:Int = 0;
+	public var moveStart:Int = 0;
+	public var turnFrame:Int = -1;
+	public var superCharge:Int = 0;
 
 	public function new(dir:Int, gravity:Float, speed:Float, accel:Float, jump:Float, distance:Float, height:Float, jumpFrame:Int, hold:Int,
 			down:Bool, frames:Int) {
@@ -606,7 +630,9 @@ private class Case {
 			if (count > 0) runs.push('${last}x$count');
 			return base + ' inputs=' + runs.join(" ");
 		}
-		return base + ' jumpFrame=$jumpFrame hold=$hold down=${down ? 1 : 0}';
+		var moves = (moveStart > 0 ? ' moveStart=$moveStart' : "") + (turnFrame >= 0 ? ' turn=$turnFrame' : "");
+		var launch = superCharge > 0 ? 'super=$superCharge' : 'jumpFrame=$jumpFrame hold=$hold';
+		return base + '$moves $launch down=${down ? 1 : 0}';
 	}
 
 	/** Arguments that replay this case; a random case is replayed by index. **/
@@ -615,7 +641,8 @@ private class Case {
 			return '--random $randomCount --seed $randomSeed --pick $randomIndex --frames $frames';
 		}
 		return '--dir ${dir == 1 ? "right" : "left"} --speed $speed --accel $accel --jump $jump --gravity $gravity --distance $distance --height $height'
-			+ ' --jump-frame $jumpFrame --hold $hold --down ${down ? 1 : 0} --frames $frames';
+			+ ' --jump-frame $jumpFrame --hold $hold --down ${down ? 1 : 0} --move-start $moveStart --turn $turnFrame --super $superCharge'
+			+ ' --frames $frames';
 	}
 
 	public static function random(rng:Rng, frames:Int, arena:Arena):Case {

@@ -38,10 +38,17 @@ class ClipFinderSettings {
 	public var accel:StatRange;
 	public var jump:StatRange;
 	public var dirs:Array<Int> = [1, -1];
-	/** Jump is first pressed on each frame 0..maxJumpFrame. **/
+	/** Try normal jumps: pressed on each frame 0..maxJumpFrame, held for each of `holds`. **/
+	public var normalJumps:Bool = true;
 	public var maxJumpFrame:Int = 20;
 	public var holds:Array<Int> = [4, 8, 999];
+	/** Super jump charge lengths (frames of down) to try as well; empty = none. **/
+	public var superCharges:Array<Int> = [];
 	public var downModes:Array<Bool> = [false, true];
+	/** Frames the direction starts being held (0 = from the start). **/
+	public var moveStarts:Array<Int> = [0];
+	/** Frames the direction flips mid-run (-1 = no turn). **/
+	public var turnFrames:Array<Int> = [-1];
 	public var frames:Int = 120;
 	/** Hats the simulated player wears (copied from the real player in game). **/
 	public var hats:Null<ClipSimulator.ClipHats> = null;
@@ -91,6 +98,8 @@ class ClipFinder {
 	final speeds:Array<Float>;
 	final accels:Array<Float>;
 	final jumps:Array<Float>;
+	/** Every launch to try: normal jumps (frame, hold) then super jump charges. **/
+	final launches:Array<Launch>;
 	var next:Int = 0;
 
 	public function new(blocks:Array<LevelBlock>, settings:ClipFinderSettings) {
@@ -99,8 +108,13 @@ class ClipFinder {
 		speeds = settings.speed.values();
 		accels = settings.accel.values();
 		jumps = settings.jump.values();
-		total = speeds.length * accels.length * jumps.length * settings.dirs.length * (settings.maxJumpFrame + 1) * settings.holds.length
-			* settings.downModes.length;
+		launches = [];
+		if (settings.normalJumps) {
+			for (frame in 0...settings.maxJumpFrame + 1) for (hold in settings.holds) launches.push(new Launch(frame, hold, 0));
+		}
+		for (charge in settings.superCharges) launches.push(new Launch(0, 0, charge));
+		total = speeds.length * accels.length * jumps.length * settings.dirs.length * settings.moveStarts.length * settings.turnFrames.length
+			* launches.length * settings.downModes.length;
 	}
 
 	public var done(get, never):Bool;
@@ -135,10 +149,12 @@ class ClipFinder {
 		var i = index;
 		var down = settings.downModes[i % settings.downModes.length];
 		i = Std.int(i / settings.downModes.length);
-		var hold = settings.holds[i % settings.holds.length];
-		i = Std.int(i / settings.holds.length);
-		var jumpFrame = i % (settings.maxJumpFrame + 1);
-		i = Std.int(i / (settings.maxJumpFrame + 1));
+		var launch = launches[i % launches.length];
+		i = Std.int(i / launches.length);
+		var turnFrame = settings.turnFrames[i % settings.turnFrames.length];
+		i = Std.int(i / settings.turnFrames.length);
+		var moveStart = settings.moveStarts[i % settings.moveStarts.length];
+		i = Std.int(i / settings.moveStarts.length);
 		var dir = settings.dirs[i % settings.dirs.length];
 		i = Std.int(i / settings.dirs.length);
 		var jump = jumps[i % jumps.length];
@@ -146,9 +162,24 @@ class ClipFinder {
 		var accel = accels[i % accels.length];
 		i = Std.int(i / accels.length);
 		var speed = speeds[i % speeds.length];
-		var attempt = new ClipAttempt(settings.startX, settings.startY, speed, accel, jump, settings.gravity, dir, jumpFrame, hold, down,
-			settings.frames);
+		var attempt = new ClipAttempt(settings.startX, settings.startY, speed, accel, jump, settings.gravity, dir, launch.jumpFrame, launch.hold,
+			down, settings.frames);
+		attempt.superCharge = launch.superCharge;
+		attempt.moveStart = moveStart;
+		attempt.turnFrame = turnFrame;
 		attempt.hats = settings.hats;
 		return attempt;
+	}
+}
+
+private class Launch {
+	public final jumpFrame:Int;
+	public final hold:Int;
+	public final superCharge:Int;
+
+	public function new(jumpFrame:Int, hold:Int, superCharge:Int) {
+		this.jumpFrame = jumpFrame;
+		this.hold = hold;
+		this.superCharge = superCharge;
 	}
 }

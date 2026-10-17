@@ -4,6 +4,7 @@ import openfl.text.TextField;
 import openfl.text.TextFormat;
 import pr2.assets.NativeAssetIds.FontAsset;
 import pr2.assets.NativeAssets;
+import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.ui.controls.GameButton;
 import pr2.ui.controls.GameCheckBox;
 import pr2.ui.controls.GameSlider;
@@ -15,12 +16,13 @@ import pr2.ui.view.NativeView;
 
 	Each stat is fixed at the player's current value unless its "Range" box is
 	ticked, which enables a min and a max slider (both starting at the current
-	value). All behaviour lives in ClipFinderSession; this view only reports
-	what the user picked.
+	value). Below the stats, each kind of move has a tick box and a slider for
+	how many frames of timing to try. All behaviour lives in ClipFinderSession;
+	this view only reports what the user picked.
 **/
 class ClipFinderPanel extends NativeView {
 	public static inline var PANEL_WIDTH:Float = 262;
-	public static inline var PANEL_HEIGHT:Float = 318;
+	public static inline var PANEL_HEIGHT:Float = 370;
 
 	public var onStart:Null<Void->Void>;
 	public var onStop:Null<Void->Void>;
@@ -33,8 +35,15 @@ class ClipFinderPanel extends NativeView {
 	public final leftBox:GameCheckBox;
 	public final rightBox:GameCheckBox;
 	public final downBox:GameCheckBox;
-	public final jumpWindowSlider:GameSlider;
-	final jumpWindowLabel:TextField;
+	/** Normal jumps pressed on frames 0..N. **/
+	public final normalJumpRow:OptionRow;
+	/** Super jumps charged for 13..N frames. **/
+	public final superJumpRow:OptionRow;
+	/** Start holding the direction on frames 0..N (jump or stand in place first). **/
+	public final delayedMoveRow:OptionRow;
+	/** Flip the held direction on frames 1..N. **/
+	public final airTurnRow:OptionRow;
+	final rows:Array<OptionRow>;
 	final startButton:GameButton;
 	final prevButton:GameButton;
 	final nextButton:GameButton;
@@ -57,39 +66,27 @@ class ClipFinderPanel extends NativeView {
 		close.y = 5;
 		close.onPress = function():Void if (onClose != null) onClose();
 		addChild(close);
-		addChild(text("Searches from where you are standing.", 10, 22, 240, 12));
+		addChild(text("Searches from where you are standing.", 10, 20, 240, 12));
 
-		speedRow = new StatRow(this, "Speed", speed, 40);
-		accelRow = new StatRow(this, "Accel", accel, 82);
-		jumpRow = new StatRow(this, "Jump", jump, 124);
+		speedRow = new StatRow(this, "Speed", speed, 36);
+		accelRow = new StatRow(this, "Accel", accel, 76);
+		jumpRow = new StatRow(this, "Jump", jump, 116);
 
-		leftBox = ownControl(new GameCheckBox("Left", true));
-		leftBox.x = 10;
-		leftBox.y = 168;
-		addChild(leftBox);
-		rightBox = ownControl(new GameCheckBox("Right", true));
-		rightBox.x = 70;
-		rightBox.y = 168;
-		addChild(rightBox);
-		downBox = ownControl(new GameCheckBox("Try fast-fall", true));
-		downBox.x = 135;
-		downBox.y = 168;
-		addChild(downBox);
+		leftBox = checkBox("Left", true, 10, 146);
+		rightBox = checkBox("Right", true, 70, 146);
+		downBox = checkBox("Try fast-fall", true, 135, 146);
 
-		jumpWindowLabel = text("", 10, 192, 140, 12);
-		addChild(jumpWindowLabel);
-		jumpWindowSlider = ownControl(new GameSlider(0, 60, 20, 1));
-		jumpWindowSlider.setSize(100, 22);
-		jumpWindowSlider.x = 150;
-		jumpWindowSlider.y = 194;
-		jumpWindowSlider.onChange = function(_):Void updateJumpWindowLabel();
-		addChild(jumpWindowSlider);
-		updateJumpWindowLabel();
+		normalJumpRow = new OptionRow(this, "Normal jump", true, 170, 0, 60, 20, v -> 'frames 0-$v');
+		superJumpRow = new OptionRow(this, "Super jump", false, 194, ClipAttempt.MIN_SUPER_CHARGE, ClipAttempt.MAX_SUPER_CHARGE,
+			ClipAttempt.MAX_SUPER_CHARGE, v -> 'charge ${ClipAttempt.MIN_SUPER_CHARGE}-$v');
+		delayedMoveRow = new OptionRow(this, "Delayed move", false, 218, 1, 60, 20, v -> 'start 0-$v');
+		airTurnRow = new OptionRow(this, "Air turn", false, 242, 1, 60, 30, v -> 'turn 1-$v');
+		rows = [normalJumpRow, superJumpRow, delayedMoveRow, airTurnRow];
 
 		startButton = ownControl(new GameButton("Start"));
 		startButton.setSize(80, 22);
 		startButton.x = 10;
-		startButton.y = 214;
+		startButton.y = 270;
 		startButton.onPress = function():Void {
 			if (startButton.label == "Start") {
 				if (onStart != null) onStart();
@@ -99,23 +96,23 @@ class ClipFinderPanel extends NativeView {
 		};
 		addChild(startButton);
 
-		status = text("", 98, 218, 158, 12);
+		status = text("", 98, 274, 158, 12);
 		addChild(status);
 
 		prevButton = ownControl(new GameButton("< Prev"));
 		prevButton.setSize(60, 22);
 		prevButton.x = 10;
-		prevButton.y = 242;
+		prevButton.y = 296;
 		prevButton.onPress = function():Void showClip(shownClip - 1);
 		addChild(prevButton);
 		nextButton = ownControl(new GameButton("Next >"));
 		nextButton.setSize(60, 22);
 		nextButton.x = 76;
-		nextButton.y = 242;
+		nextButton.y = 296;
 		nextButton.onPress = function():Void showClip(shownClip + 1);
 		addChild(nextButton);
 
-		clipInfo = text("", 10, 268, PANEL_WIDTH - 20, 44);
+		clipInfo = text("", 10, 322, PANEL_WIDTH - 20, 44);
 		clipInfo.multiline = true;
 		clipInfo.wordWrap = true;
 		addChild(clipInfo);
@@ -126,7 +123,7 @@ class ClipFinderPanel extends NativeView {
 		startButton.label = running ? "Stop" : "Start";
 		for (row in [speedRow, accelRow, jumpRow]) row.setLocked(running);
 		for (box in [leftBox, rightBox, downBox]) box.enabled = !running;
-		jumpWindowSlider.enabled = !running;
+		for (row in rows) row.setLocked(running);
 	}
 
 	public function setStatus(value:String):Void status.text = value;
@@ -152,11 +149,13 @@ class ClipFinderPanel extends NativeView {
 		if (onShowClip != null) onShowClip(wrapped);
 	}
 
-	function updateJumpWindowLabel():Void {
-		jumpWindowLabel.text = 'Jump on frames 0-${Std.int(jumpWindowSlider.value)}';
+	function checkBox(label:String, selected:Bool, x:Float, y:Float):GameCheckBox {
+		var box = ownControl(new GameCheckBox(label, selected));
+		box.x = x;
+		box.y = y;
+		addChild(box);
+		return box;
 	}
-
-	public function jumpWindow():Int return Std.int(jumpWindowSlider.value);
 
 	public function text(value:String, x:Float, y:Float, width:Float, height:Float, bold:Bool = false):TextField {
 		var field = new TextField();
@@ -203,12 +202,12 @@ class StatRow {
 		minSlider = panel.ownControl(new GameSlider(0, 100, this.current, 1));
 		minSlider.setSize(110, 22);
 		minSlider.x = 10;
-		minSlider.y = y + 18;
+		minSlider.y = y + 16;
 		panel.addChild(minSlider);
 		maxSlider = panel.ownControl(new GameSlider(0, 100, this.current, 1));
 		maxSlider.setSize(110, 22);
 		maxSlider.x = 140;
-		maxSlider.y = y + 18;
+		maxSlider.y = y + 16;
 		panel.addChild(maxSlider);
 		// Keep min <= max while dragging either thumb.
 		minSlider.onChange = function(v:Float):Void {
@@ -243,5 +242,49 @@ class StatRow {
 		minSlider.enabled = useRange && !locked;
 		maxSlider.enabled = useRange && !locked;
 		label.text = useRange ? '$name ${Std.int(minSlider.value)} to ${Std.int(maxSlider.value)}' : '$name ${Std.int(current)} (your stat)';
+	}
+}
+
+/** A move option: tick box, a label describing the frames tried, and a slider for the upper frame. **/
+class OptionRow {
+	public final box:GameCheckBox;
+	public final slider:GameSlider;
+	final label:TextField;
+	final describe:Int->String;
+	var locked:Bool = false;
+
+	public function new(panel:ClipFinderPanel, name:String, selected:Bool, y:Float, min:Float, max:Float, value:Float, describe:Int->String) {
+		this.describe = describe;
+		box = panel.ownControl(new GameCheckBox(name, selected));
+		box.x = 10;
+		box.y = y;
+		box.onChange = function(_):Void refresh();
+		panel.addChild(box);
+		label = panel.text("", 105, y + 3, 60, 12);
+		panel.addChild(label);
+		slider = panel.ownControl(new GameSlider(min, max, value, 1));
+		slider.setSize(85, 22);
+		slider.x = 168;
+		slider.y = y + 2;
+		slider.onChange = function(_):Void refresh();
+		panel.addChild(slider);
+		refresh();
+	}
+
+	public var enabled(get, never):Bool;
+	function get_enabled():Bool return box.selected;
+
+	/** The slider's value: the highest frame (or charge) to try. **/
+	public function upTo():Int return Std.int(slider.value);
+
+	public function setLocked(value:Bool):Void {
+		locked = value;
+		refresh();
+	}
+
+	function refresh():Void {
+		box.enabled = !locked;
+		slider.enabled = box.selected && !locked;
+		label.text = box.selected ? describe(upTo()) : "off";
 	}
 }

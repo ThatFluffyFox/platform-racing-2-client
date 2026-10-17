@@ -348,6 +348,7 @@ command that reproduces it frame by frame:
 tools/clip_sweep.sh                                # default grid, ~1 minute
 tools/clip_sweep.sh --speed 0:100:5 --jump 0:100:5 --dir right,left
 tools/clip_sweep.sh --random 50000 --seed 7        # random held-key sequences
+tools/clip_sweep.sh --super 0,13:50 --move-start 0:10 --turn -1,1:20  # super jumps, delayed moves, air turns
 tools/clip_sweep.sh --help
 ```
 
@@ -374,9 +375,18 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
 
 - Each stat is fixed at your current value; tick **Range** to search a min-max
   range instead (both sliders start at your stat).
-- **Left/Right** choose the run direction, **Try fast-fall** adds runs that hold
-  down after the jump, and the jump slider sets how many frames of jump timing
-  to try.
+- **Left/Right** choose the run direction and **Try fast-fall** adds runs that
+  hold down while airborne after the jump. Each move option has a tick box and
+  a slider for the frames it tries:
+  - **Normal jump**: press jump on frames 0-N (held 4, 8 or all frames).
+  - **Super jump**: hold down for 13-N frames on the ground, then release
+    (13 is the shortest charge that launches, 50 the full charge).
+  - **Delayed move**: start holding the direction on frames 0-N, so the player
+    stands or jumps in place first.
+  - **Air turn**: flip the held direction on frames 1-N (runs without a turn
+    are still tried).
+
+  Every ticked option multiplies the number of attempts.
 - **Start** searches from where you are standing in a cropped copy of the
   level, a few attempts per frame so the race keeps running. Every attempt
   starts from a fresh simulated player; your real player, blocks and network

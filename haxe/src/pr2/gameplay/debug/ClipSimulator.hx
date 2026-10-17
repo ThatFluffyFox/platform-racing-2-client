@@ -108,6 +108,21 @@ class ClipAttempt {
 	public var script:Null<Array<LocalPlayerInput>> = null;
 	/** Physics-affecting hats worn by the simulated player (none when null). **/
 	public var hats:Null<ClipHats> = null;
+	/** Frame the direction starts being held; before it the player stands or jumps in place. **/
+	public var moveStart:Int = 0;
+	/** Frame the held direction flips (an air turn), or -1 for never. **/
+	public var turnFrame:Int = -1;
+	/**
+		Super jump instead of a normal jump: hold down for this many frames, then
+		release. LocalPlayerController charges 2 per grounded frame and launches
+		with vy = -charge * 0.24 once the charge passes 25, so 13+ frames are
+		needed (50 is the 100 cap). 0 = normal jump (`jumpFrame`/`hold`).
+	**/
+	public var superCharge:Int = 0;
+
+	/** Shortest charge that launches (charge 26 > 25) and the frames to the 100 cap. **/
+	public static inline var MIN_SUPER_CHARGE:Int = 13;
+	public static inline var MAX_SUPER_CHARGE:Int = 50;
 
 	public function new(startX:Float, startY:Float, speed:Float, accel:Float, jump:Float, gravity:Float, dir:Int, jumpFrame:Int, hold:Int,
 			down:Bool, frames:Int) {
@@ -125,24 +140,45 @@ class ClipAttempt {
 	}
 
 	/**
-		Holds toward `dir` the whole time, holds jump from `jumpFrame` for `hold`
-		frames, and (with `down`) holds down whenever airborne after the jump.
+		Holds toward `dir` from `moveStart` (flipping at `turnFrame`). Then either
+		holds jump from `jumpFrame` for `hold` frames, or, for a super jump, holds
+		down for `superCharge` frames and releases. With `down`, also holds down
+		whenever airborne after the launch (fast-fall; never charges on the ground).
 	**/
 	public function inputAt(frame:Int, grounded:Bool):LocalPlayerInput {
 		if (script != null) return script[frame];
-		var jumping = frame >= jumpFrame && frame < jumpFrame + hold;
-		var fastFall = down && frame >= jumpFrame && !grounded;
-		return new LocalPlayerInput(dir == -1, dir == 1, jumping, fastFall);
+		var heldDir = 0;
+		if (frame >= moveStart) heldDir = turnFrame >= 0 && frame >= turnFrame ? -dir : dir;
+		var jumping = false;
+		var holdDown = false;
+		if (superCharge > 0) {
+			holdDown = frame < superCharge;
+		} else {
+			jumping = frame >= jumpFrame && frame < jumpFrame + hold;
+		}
+		if (down && frame >= launchFrame() && !grounded) holdDown = true;
+		return new LocalPlayerInput(heldDir == -1, heldDir == 1, jumping, holdDown);
 	}
 
+	/** Frame the jump (or super jump release) happens. **/
+	public function launchFrame():Int {
+		return superCharge > 0 ? superCharge : jumpFrame;
+	}
+
+	/** True once every scripted change (launch, jump hold, move start, turn) has happened. **/
 	public function scriptFinished(frame:Int):Bool {
-		return script == null && frame >= jumpFrame + Std.int(Math.min(hold, 30));
+		if (script != null) return false;
+		var last = superCharge > 0 ? superCharge : jumpFrame + Std.int(Math.min(hold, 30));
+		return frame >= last && frame >= moveStart && frame >= turnFrame;
 	}
 
 	public function describe():String {
 		var stats = 'speed=$speed accel=$accel jump=$jump';
 		if (script != null) return '$stats random inputs';
-		return '$stats ${dir == 1 ? "right" : "left"} jump@$jumpFrame hold=${hold >= 999 ? "all" : Std.string(hold)}${down ? " +down" : ""}';
+		var move = '${dir == 1 ? "right" : "left"}${moveStart > 0 ? ' from frame $moveStart' : ""}';
+		if (turnFrame >= 0) move += ', turn at $turnFrame';
+		var launch = superCharge > 0 ? 'super jump (charge $superCharge)' : 'jump@$jumpFrame hold=${hold >= 999 ? "all" : Std.string(hold)}';
+		return '$stats $move, $launch${down ? " +down" : ""}';
 	}
 }
 

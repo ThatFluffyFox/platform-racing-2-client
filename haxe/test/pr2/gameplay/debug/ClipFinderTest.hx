@@ -39,6 +39,10 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStartInsideBlockIsReported", testStartInsideBlockIsReported);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testFinderWalksEveryCombination", testFinderWalksEveryCombination);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testHatsChangeSimulatedPhysics", testHatsChangeSimulatedPhysics);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSuperJumpChargesThenLaunches", testSuperJumpChargesThenLaunches);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testDelayedMoveJumpsInPlaceFirst", testDelayedMoveJumpsInPlaceFirst);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAirTurnFlipsDirection", testAirTurnFlipsDirection);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testFinderSearchesMoveOptions", testFinderSearchesMoveOptions);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -116,6 +120,68 @@ class ClipFinderTest {
 		assertEquals("cowboy", hats.names().join(","), "hat names for the panel");
 	}
 
+	private static function testSuperJumpChargesThenLaunches():Void {
+		// Stand still (direction only from frame 999) far from the wall.
+		var normal = clipAttempt(50);
+		normal.moveStart = 999;
+		var superJump = clipAttempt(50);
+		superJump.moveStart = 999;
+		superJump.superCharge = ClipAttempt.MAX_SUPER_CHARGE;
+		var input = superJump.inputAt(0, true);
+		assertTrue(input.down && !input.jump && !input.left && !input.right, "charging holds only down");
+		assertEquals(false, superJump.inputAt(ClipAttempt.MAX_SUPER_CHARGE, true).down, "down is released to launch");
+		var normalRun = ClipSimulator.run(cornerArea(), normal, true);
+		var superRun = ClipSimulator.run(cornerArea(), superJump, true);
+		assertEquals(CLIP_START_X, superRun.ghost[ClipAttempt.MAX_SUPER_CHARGE].x, "charging stays in place");
+		assertTrue(highest(superRun.ghost) < highest(normalRun.ghost) - 60, 'super jump goes much higher (${highest(superRun.ghost)} vs ${highest(normalRun.ghost)})');
+	}
+
+	private static function testDelayedMoveJumpsInPlaceFirst():Void {
+		var attempt = new ClipAttempt(CLIP_START_X, FLOOR_Y, 90, 50, 75, 1, 1, 0, 8, false, 120);
+		attempt.moveStart = 10;
+		var run = ClipSimulator.run(cornerArea(), attempt, true);
+		// ghost[f + 1] is the pose after frame f.
+		assertEquals(CLIP_START_X, run.ghost[10].x, "no sideways movement before the move starts");
+		assertTrue(run.ghost[10].y < FLOOR_Y, "already in the air from the jump");
+		assertTrue(run.ghost[14].x > CLIP_START_X, "moves right once the direction is held");
+	}
+
+	private static function testAirTurnFlipsDirection():Void {
+		var attempt = new ClipAttempt(CLIP_START_X, FLOOR_Y, 90, 50, 75, 1, 1, 0, 8, false, 120);
+		attempt.turnFrame = 8;
+		assertTrue(attempt.inputAt(7, false).right, "holds right before the turn");
+		assertTrue(attempt.inputAt(8, false).left, "holds left from the turn");
+		var run = ClipSimulator.run(cornerArea(), attempt, true);
+		var furthest = 0.0;
+		for (frame in run.ghost) furthest = Math.max(furthest, frame.x);
+		assertTrue(run.ghost[run.ghost.length - 1].x < furthest - 30, "drifts back left after turning");
+		assertEquals(-1, run.ghost[run.ghost.length - 1].facing, "faces left after the turn");
+	}
+
+	private static function testFinderSearchesMoveOptions():Void {
+		var settings = new ClipFinderSettings(CLIP_START_X, FLOOR_Y, 1, StatRange.fixed(90), StatRange.fixed(50), StatRange.fixed(75));
+		settings.dirs = [1];
+		settings.downModes = [true];
+		settings.normalJumps = false;
+		settings.superCharges = [13, 14];
+		settings.moveStarts = [0, 5];
+		settings.turnFrames = [-1, 3];
+		var finder = new ClipFinder(cornerBlocks(), settings);
+		assertEquals(8, finder.total, "2 charges x 2 move starts x 2 turn options");
+		var seen = [for (i in 0...finder.total) {
+			var a = finder.attemptAt(i);
+			'${a.superCharge}/${a.moveStart}/${a.turnFrame}';
+		}];
+		seen.sort(Reflect.compare);
+		assertEquals("13/0/-1,13/0/3,13/5/-1,13/5/3,14/0/-1,14/0/3,14/5/-1,14/5/3", seen.join(","), "every combination exactly once");
+	}
+
+	private static function highest(frames:Array<pr2.gameplay.debug.ClipSimulator.GhostFrame>):Float {
+		var top = Math.POSITIVE_INFINITY;
+		for (frame in frames) top = Math.min(top, frame.y);
+		return top;
+	}
+
 	private static function testStatRangeValues():Void {
 		assertEquals("80,85,90", new StatRange(90, 80, 5).values().join(","), "reversed bounds are sorted");
 		assertEquals("77", StatRange.fixed(77).values().join(","), "fixed stat");
@@ -175,7 +241,7 @@ class ClipFinderTest {
 		// Keep the search tiny: one direction, jump on frame 0, no fast-fall.
 		session.panel.leftBox.selected = false;
 		session.panel.downBox.selected = false;
-		session.panel.jumpWindowSlider.value = 0;
+		session.panel.normalJumpRow.slider.value = 0;
 		session.start();
 		var finder = session.finder;
 		assertEquals(3, finder.total, "one stat set x three jump holds");
@@ -186,6 +252,26 @@ class ClipFinderTest {
 		}
 		assertTrue(finder.done, "search finishes over a few frames");
 		assertTrue(session.panel.status.text.indexOf("Done 3/3") == 0, 'status reports completion: ${session.panel.status.text}');
+
+		// The move options feed the search: super jumps instead of normal ones,
+		// moving from frames 0-2, and either no turn or a turn on frame 1.
+		var panel = session.panel;
+		panel.normalJumpRow.box.selected = false;
+		panel.superJumpRow.box.selected = true;
+		panel.superJumpRow.slider.value = 14;
+		panel.delayedMoveRow.box.selected = true;
+		panel.delayedMoveRow.slider.value = 2;
+		panel.airTurnRow.box.selected = true;
+		panel.airTurnRow.slider.value = 1;
+		session.start();
+		var settings = session.finder.settings;
+		assertEquals("13,14", settings.superCharges.join(","), "super jump charges 13 up to the slider");
+		assertEquals("0,1,2", settings.moveStarts.join(","), "delayed move starts include moving at once");
+		assertEquals("-1,1", settings.turnFrames.join(","), "air turn keeps the no-turn case");
+		assertEquals(12, session.finder.total, "3 move starts x 2 turn options x 2 charges");
+		panel.superJumpRow.box.selected = false;
+		session.start();
+		assertTrue(panel.status.text.indexOf("Tick Normal jump") == 0, "needs at least one kind of jump");
 		session.close();
 		assertEquals(null, course.clipFinder, "closing the panel clears the session");
 		course.setKey(Keyboard.F9, false);

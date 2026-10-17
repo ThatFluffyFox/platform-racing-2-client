@@ -4,6 +4,7 @@ import openfl.display.DisplayObjectContainer;
 import pr2.character.Character;
 import pr2.character.LocalCharacter;
 import pr2.gameplay.debug.ClipFinder.ClipFinderSettings;
+import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
 import pr2.level.Level;
 
@@ -46,7 +47,7 @@ class ClipFinderSession {
 		var state = player.stateSnapshot();
 		panel = new ClipFinderPanel(state.speedStat, state.accelerationStat, state.jumpStat);
 		panel.x = 8;
-		panel.y = 36;
+		panel.y = 24;
 		panel.onStart = start;
 		panel.onStop = stopSearch;
 		panel.onClose = close;
@@ -79,8 +80,17 @@ class ClipFinderSession {
 			panel.accelRow.range(), panel.jumpRow.range());
 		settings.hats = ClipHats.from(player.controller);
 		settings.dirs = dirs;
-		settings.maxJumpFrame = panel.jumpWindow();
 		settings.downModes = panel.downBox.selected ? [false, true] : [false];
+		settings.normalJumps = panel.normalJumpRow.enabled;
+		settings.maxJumpFrame = panel.normalJumpRow.upTo();
+		settings.superCharges = panel.superJumpRow.enabled ? [for (c in ClipAttempt.MIN_SUPER_CHARGE...panel.superJumpRow.upTo() + 1) c] : [];
+		if (!settings.normalJumps && settings.superCharges.length == 0) {
+			panel.setStatus("Tick Normal jump and/or Super jump.");
+			return;
+		}
+		// Delayed move and air turn add to the default (move at once, never turn).
+		settings.moveStarts = panel.delayedMoveRow.enabled ? [for (m in 0...panel.delayedMoveRow.upTo() + 1) m] : [0];
+		settings.turnFrames = panel.airTurnRow.enabled ? [-1].concat([for (t in 1...panel.airTurnRow.upTo() + 1) t]) : [-1];
 		finder = new ClipFinder(level.blocks, settings);
 		clips = finder.clips;
 		shownClips = 0;
