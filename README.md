@@ -365,6 +365,27 @@ tools/clip_sweep.sh --levels test/output/levels/50815.txt --max-clips-per-corner
 
 It is a diagnostic tool, not part of `./test.sh`.
 
+### In-game Clip Finder (F9+C+D)
+
+In a race, hold **F9 + C + D** to open the Clip Finder panel (press the combo
+again or click X to close). It is a debug addition with no Flash counterpart,
+in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
+`tools/clip_sweep.sh`.
+
+- Each stat is fixed at your current value; tick **Range** to search a min-max
+  range instead (both sliders start at your stat).
+- **Left/Right** choose the run direction, **Try fast-fall** adds runs that hold
+  down after the jump, and the jump slider sets how many frames of jump timing
+  to try.
+- **Start** searches from where you are standing in a cropped copy of the
+  level, a few attempts per frame so the race keeps running. Every attempt
+  starts from a fresh simulated player; your real player, blocks and network
+  state are never touched.
+- A translucent ghost of your character replays the selected clip, holds for a
+  moment, then resets and plays it again. **Prev/Next** switch between clips.
+
+It only works while the course is upright (not mid-rotation).
+
 ### Archival Flash side-by-side workflow
 
 The production build is native-only, but the checked-in Flash projector, SWF,

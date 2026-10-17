@@ -28,6 +28,7 @@ import pr2.effects.FollowFadeEffect;
 import pr2.gameplay.GameCommandShell.LocalCharacterInit;
 import pr2.gameplay.GameCommandShell.RemoteCharacterInit;
 import pr2.gameplay.SpecialEvent.PlaceArtifactRequest;
+import pr2.gameplay.debug.ClipFinderSession;
 import pr2.gameplay.player.BlockVisualEvent;
 import pr2.gameplay.player.BlockVisualEvent.BlockVisualEventKind;
 import pr2.gameplay.player.LocalPlayerState;
@@ -98,6 +99,11 @@ class Course extends Sprite {
 	public var backCharacterLayer(default, null):Sprite;
 	public var characterLayer(default, null):Sprite;
 	public var localCharacter(default, null):LocalCharacter;
+	/** Debug-only Clip Finder (F9+C+D); not part of the Flash client. */
+	private var clipFinder:Null<ClipFinderSession> = null;
+	private var clipComboF9:Bool = false;
+	private var clipComboC:Bool = false;
+	private var clipComboD:Bool = false;
 	public var remoteCharacters(default, null):Map<Int, RemoteCharacter> = new Map();
 	public var playerArray(default, null):Array<Character> = [];
 	public var playerSpectating(default, null):Null<Character>;
@@ -998,6 +1004,9 @@ class Course extends Sprite {
 		}
 		syncStatsDisplay(state);
 		syncHearts(state);
+		if (clipFinder != null) {
+			clipFinder.tick();
+		}
 		if (onFrame != null) {
 			onFrame(state);
 		}
@@ -1711,6 +1720,12 @@ class Course extends Sprite {
 		if (raceChat != null && raceChat.inputHasFocus()) {
 			return;
 		}
+		trackClipFinderCombo(keyCode, pressed);
+		// D is the default alternate "right" key: while F9 is held, C/D presses
+		// belong to the combo. Releases still go through so no key sticks.
+		if (pressed && clipComboF9 && (keyCode == Keyboard.C || keyCode == Keyboard.D)) {
+			return;
+		}
 		if (keyCode == Keyboard.SHIFT) {
 			scrollShift = pressed;
 		}
@@ -1738,7 +1753,33 @@ class Course extends Sprite {
 	}
 
 
+	/** F9+C+D (any order, all held) opens the debug Clip Finder, or closes it. */
+	private function trackClipFinderCombo(keyCode:UInt, pressed:Bool):Void {
+		var wasComplete = clipComboF9 && clipComboC && clipComboD;
+		if (keyCode == Keyboard.F9) clipComboF9 = pressed;
+		if (keyCode == Keyboard.C) clipComboC = pressed;
+		if (keyCode == Keyboard.D) clipComboD = pressed;
+		if (pressed && !wasComplete && clipComboF9 && clipComboC && clipComboD) {
+			toggleClipFinder();
+		}
+	}
+
+	private function toggleClipFinder():Void {
+		if (clipFinder != null) {
+			clipFinder.close();
+			return;
+		}
+		if (player == null || characterLayer == null) {
+			return;
+		}
+		clipFinder = new ClipFinderSession(level, player, this, characterLayer);
+		clipFinder.onClosed = function():Void clipFinder = null;
+	}
+
 	private function resetInput(_:Event):Void {
+		clipComboF9 = false;
+		clipComboC = false;
+		clipComboD = false;
 		input.clear();
 		scrollLeft = false;
 		scrollRight = false;
@@ -1761,6 +1802,9 @@ class Course extends Sprite {
 			stage.removeEventListener(KeyboardEvent.KEY_UP, onKeyUp);
 			stage.removeEventListener(Event.DEACTIVATE, resetInput);
 			stage.removeEventListener(FocusEvent.FOCUS_OUT, resetInput);
+		}
+		if (clipFinder != null) {
+			clipFinder.close();
 		}
 		if (miniMap != null) {
 			miniMap.remove();

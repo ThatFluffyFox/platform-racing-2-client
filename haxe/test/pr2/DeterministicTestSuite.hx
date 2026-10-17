@@ -56,6 +56,7 @@ import pr2.gameplay.presentation.PresentationPoseTest;
 import pr2.graphics.JPEGEncoderCompatTest;
 import pr2.gameplay.GameShellMountTest;
 import pr2.gameplay.CharacterLifecycleTest;
+import pr2.gameplay.debug.ClipFinderTest;
 import pr2.gameplay.LevelEntryStateTest;
 import pr2.gameplay.GameCommandShellTest;
 import pr2.gameplay.QuitButtonTest;
@@ -217,6 +218,7 @@ class DeterministicTestSuite {
 		DeterministicTestMode.runSuite("LevelConfigTest", ["gameplay", "level-rendering", "blocks"], LevelConfigTest.main);
 		DeterministicTestMode.runSuite("GameShellMountTest", ["gameplay", "physics", "level-rendering", "blocks", "items"], GameShellMountTest.main);
 		DeterministicTestMode.runSuite("CharacterLifecycleTest", ["gameplay", "physics", "network"], CharacterLifecycleTest.main);
+		DeterministicTestMode.runSuite("ClipFinderTest", ["gameplay", "physics", "ui"], ClipFinderTest.main);
 		DeterministicTestMode.runSuite("LevelEntryStateTest", ["gameplay"], LevelEntryStateTest.main);
 		DeterministicTestMode.runSuite("GameCommandShellTest", ["gameplay"], GameCommandShellTest.main);
 		DeterministicTestMode.runSuite("QuitButtonTest", ["gameplay"], QuitButtonTest.main);

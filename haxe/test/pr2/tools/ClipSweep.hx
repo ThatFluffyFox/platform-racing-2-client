@@ -1,12 +1,12 @@
 package pr2.tools;
 
+import pr2.gameplay.debug.ClipSimulator;
+import pr2.gameplay.debug.ClipSimulator.ClipArea;
+import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.player.LocalPlayerController;
 import pr2.gameplay.player.LocalPlayerInput;
 import pr2.level.BlockType;
-import pr2.level.Level;
 import pr2.level.Level.LevelBlock;
-import pr2.level.Level.StatDefaults;
-import pr2.level.Level.TilePosition;
 import pr2.level.LevelDecoder;
 import pr2.net.LevelDataClient;
 
@@ -24,8 +24,6 @@ import pr2.net.LevelDataClient;
 	See `tools/clip_sweep.sh --help` for usage.
 **/
 class ClipSweep {
-	static inline var TILE:Int = 30;
-
 	static var speeds:Array<Float> = [80, 90, 100];
 	static var accels:Array<Float> = [50, 100];
 	static var jumps:Array<Float> = [50, 75, 100];
@@ -158,67 +156,22 @@ class ClipSweep {
 		return runs;
 	}
 
+	/** One attempt through the shared core (pr2.gameplay.debug.ClipSimulator). **/
 	static function run(arena:Arena, c:Case):Null<Result> {
 		var halfWidth = LocalPlayerController.STANDING_WIDTH / 2;
 		var startX = arena.wallFace - c.dir * (halfWidth + c.distance);
 		var startY = arena.floorY - c.height;
-		var level = arena.buildLevel(c.gravity);
-		if (overlapsSolid(level, startX, startY)) {
+		var attempt = new ClipAttempt(startX, startY, c.speed, c.accel, c.jump, c.gravity, c.dir, c.jumpFrame, c.hold, c.down, c.frames);
+		attempt.script = c.script;
+		var onFrame = traceRun ? function(f:Int, input:LocalPlayerInput, player:LocalPlayerController, inSolid:Bool):Void {
+			out('f=$f in=${inputString(input)} x=${fmt(player.x)} y=${fmt(player.y)} vx=${fmt(player.vx)} vy=${fmt(player.vy)} grounded=${player.grounded} crouch=${player.crouching} bodyInSolid=$inSolid');
+		} : null;
+		var result = ClipSimulator.run(arena.area, attempt, false, onFrame);
+		if (result.startBlocked) {
 			skipped++;
 			return null;
 		}
-		var player = new LocalPlayerController(level);
-		player.setStartingStats(c.speed, c.accel, c.jump);
-		player.setGravity(c.gravity);
-		// Clears the constructor's grounded state, then one idle frame lets the
-		// real collision pass decide it: floor starts stand, mid-air starts fall.
-		player.resetPreRacePosition(startX, startY);
-		player.step(new LocalPlayerInput());
-		var settledFrames = 0;
-		var clip:Null<Result> = null;
-		for (f in 0...c.frames) {
-			var input = c.inputAt(f, player.grounded);
-			player.step(input);
-			var inSolid = bodyInSolid(level, player);
-			if (traceRun) {
-				out('f=$f in=${inputString(input)} x=${fmt(player.x)} y=${fmt(player.y)} vx=${fmt(player.vx)} vy=${fmt(player.vy)} grounded=${player.grounded} crouch=${player.crouching} bodyInSolid=$inSolid');
-			}
-			if (clip == null && inSolid) {
-				clip = new Result(f, player.x, player.y, player.vx, player.vy);
-				// --trace keeps going so the frames after the clip are visible.
-				if (!traceRun) return clip;
-			}
-			// Scripted runs are over once the jump is done and the player has
-			// stood still for a while; nothing changes after that.
-			settledFrames = player.grounded && Math.abs(player.vx) < 0.5 && Math.abs(player.vy) < 1 ? settledFrames + 1 : 0;
-			if (c.script == null && !traceRun && f >= c.jumpFrame + Std.int(Math.min(c.hold, 30)) && settledFrames >= 10) {
-				break;
-			}
-			// Left the cropped area around a level corner: nothing more to find.
-			if (!traceRun && arena.source != null && !arena.containsPixel(player.x, player.y)) {
-				break;
-			}
-		}
-		return clip;
-	}
-
-	/** The body midpoint is the same point Flash samples for `bodyTouch`. **/
-	static function bodyInSolid(level:Level, player:LocalPlayerController):Bool {
-		var block = level.blockAt(tileOf(player.x), tileOf(player.y - 15));
-		return block != null && block.type.isSolid() && !player.blockController.isBlockRemoved(block);
-	}
-
-	/** A start position is unusable if the standing player would overlap a block. **/
-	static function overlapsSolid(level:Level, x:Float, y:Float):Bool {
-		for (point in [[x - 9, y - 1], [x + 9, y - 1], [x, y - 15], [x, y - 30], [x - 9, y - 50], [x + 9, y - 50]]) {
-			var block = level.blockAt(tileOf(point[0]), tileOf(point[1]));
-			if (block != null && block.type.isSolid()) return true;
-		}
-		return false;
-	}
-
-	static inline function tileOf(px:Float):Int {
-		return Std.int(Math.floor(px / TILE));
+		return result.clipped ? new Result(result.clipFrame, result.x, result.y, result.vx, result.vy) : null;
 	}
 
 	// ---- Real levels -------------------------------------------------------
@@ -460,7 +413,7 @@ private class LevelSource {
 	public final gravity:Float;
 	public var cornerCount:Int = 0;
 
-	final blocks:Array<LevelBlock>;
+	public final blocks:Array<LevelBlock>;
 	final solid:Map<String, Bool> = new Map();
 
 	function new(path:String, id:Int, title:String, gravity:Float, blocks:Array<LevelBlock>) {
@@ -518,17 +471,6 @@ private class LevelSource {
 		return corners;
 	}
 
-	/** Blocks inside the tile rectangle, copied fresh so runs never share block state. **/
-	public function copyBlocks(minX:Int, minY:Int, maxX:Int, maxY:Int):Array<LevelBlock> {
-		var copies:Array<LevelBlock> = [];
-		for (block in blocks) {
-			if (block.x >= minX && block.x <= maxX && block.y >= minY && block.y <= maxY) {
-				copies.push(LevelBlock.fromWorldPixels(block.code, block.worldX, block.worldY, block.options));
-			}
-		}
-		return copies;
-	}
-
 	static inline function key(x:Int, y:Int):String {
 		return x + "," + y;
 	}
@@ -537,45 +479,40 @@ private class LevelSource {
 /** Where a sweep runs: the built-in corner, or a cropped area around one corner of a real level. **/
 private class Arena {
 	static inline var TILE:Int = 30;
+	/**
+		Crop around a level corner: CROP_BACK tiles on the approach side (the
+		longest default run-up is about 9 tiles), CROP_PAST beyond the wall face,
+		CROP_UP above and CROP_DOWN below.
+	**/
+	static inline var CROP_BACK:Int = 12;
+	static inline var CROP_PAST:Int = 4;
+	static inline var CROP_UP:Int = 10;
+	static inline var CROP_DOWN:Int = 4;
 
 	public final dir:Int;
 	/** Pixel x of the wall's face, and pixel y of the floor's top. **/
 	public final wallFace:Float;
 	public final floorY:Float;
+	public final area:ClipArea;
 	public final source:Null<LevelSource>;
 	public final corner:Null<Corner>;
 	public final gravity:Null<Float>;
 	public var clips:Int = 0;
 
-	final minTileX:Int;
-	final minTileY:Int;
-	final maxTileX:Int;
-	final maxTileY:Int;
-	final startTile:TilePosition;
-	var syntheticBlocks:Null<Array<LevelBlock>> = null;
-	var levelBlocks:Null<Array<LevelBlock>> = null;
-
-	function new(dir:Int, wallFace:Float, floorY:Float, source:Null<LevelSource>, corner:Null<Corner>, minTileX:Int, minTileY:Int,
-			maxTileX:Int, maxTileY:Int, startTile:TilePosition) {
+	function new(dir:Int, wallFace:Float, floorY:Float, area:ClipArea, source:Null<LevelSource>, corner:Null<Corner>) {
 		this.dir = dir;
 		this.wallFace = wallFace;
 		this.floorY = floorY;
+		this.area = area;
 		this.source = source;
 		this.corner = corner;
 		this.gravity = source == null ? null : source.gravity;
-		this.minTileX = minTileX;
-		this.minTileY = minTileY;
-		this.maxTileX = maxTileX;
-		this.maxTileY = maxTileY;
-		this.startTile = startTile;
 	}
 
 	/** dir=1: floor on the left, wall on the right; dir=-1: the mirror image. **/
 	public static function synthetic(dir:Int):Arena {
 		var cols = 22, rows = 20, floorRow = 17, thickness = 3;
 		var wallStart = dir == 1 ? cols - thickness : 0;
-		var arena = new Arena(dir, (dir == 1 ? wallStart : thickness) * TILE, floorRow * TILE, null, null, 0, 0, cols - 1, rows - 1,
-			new TilePosition(Std.int(cols / 2), floorRow - 1));
 		var blocks:Array<LevelBlock> = [];
 		for (col in 0...cols) {
 			var inWall = col >= wallStart && col < wallStart + thickness;
@@ -583,65 +520,16 @@ private class Arena {
 				if (inWall || row >= floorRow) blocks.push(new LevelBlock(col, row, BlockType.Basic));
 			}
 		}
-		arena.syntheticBlocks = blocks;
-		return arena;
+		return new Arena(dir, (dir == 1 ? wallStart : thickness) * TILE, floorRow * TILE, new ClipArea(blocks, 0, 0, cols - 1, rows - 1), null,
+			null);
 	}
-
-	/**
-		Crops the level around the corner: CROP_BACK tiles on the approach side
-		(the longest default run-up is about 9 tiles), CROP_PAST beyond the wall
-		face, CROP_UP above and CROP_DOWN below. Level.blockAt is a linear scan,
-		so a small crop keeps big levels fast.
-	**/
-	static inline var CROP_BACK:Int = 12;
-	static inline var CROP_PAST:Int = 4;
-	static inline var CROP_UP:Int = 10;
-	static inline var CROP_DOWN:Int = 4;
 
 	public static function forCorner(source:LevelSource, corner:Corner):Arena {
 		var minX = corner.dir == 1 ? corner.x - CROP_BACK : corner.x - CROP_PAST;
 		var maxX = corner.dir == 1 ? corner.x + CROP_PAST : corner.x + CROP_BACK;
-		var minY = corner.y - CROP_UP;
-		var maxY = corner.y + CROP_DOWN;
 		var wallFace = (corner.dir == 1 ? corner.x + 1 : corner.x) * TILE;
-		var arena = new Arena(corner.dir, wallFace, (corner.y + 1) * TILE, source, corner, minX, minY, maxX, maxY,
-			new TilePosition(corner.x, corner.y));
-		arena.levelBlocks = source.copyBlocks(minX, minY, maxX, maxY);
-		return arena;
-	}
-
-	/**
-		A fresh Level for one run. The player's BlockController removes and adds
-		blocks (crumble, mines, push), so runs must not share block objects.
-	**/
-	public function buildLevel(gravity:Float):Level {
-		if (sharedLevel != null && sharedGravity == gravity) return sharedLevel;
-		var template = syntheticBlocks != null ? syntheticBlocks : levelBlocks;
-		var blocks = [for (b in template) LevelBlock.fromWorldPixels(b.code, b.worldX, b.worldY, b.options)];
-		var level = new Level("clip-sweep", "Clip Sweep", maxTileX - minTileX + 1, maxTileY - minTileY + 1, TILE, gravity,
-			new StatDefaults(50, 1, 3), startTile, startTile, blocks, minTileX, minTileY);
-		// Areas made only of blocks that never break, move or get added to can
-		// safely reuse one Level; per-run block state lives in each player's
-		// own BlockController.
-		if (Lambda.foreach(template, b -> isStatic(b.type))) {
-			sharedLevel = level;
-			sharedGravity = gravity;
-		}
-		return level;
-	}
-
-	var sharedLevel:Null<Level> = null;
-	var sharedGravity:Float = 0;
-
-	static function isStatic(type:BlockType):Bool {
-		return switch (type) {
-			case Basic | Ice | Start | Water | ArrowUp | ArrowDown | ArrowLeft | ArrowRight: true;
-			default: false;
-		}
-	}
-
-	public function containsPixel(x:Float, y:Float):Bool {
-		return x >= minTileX * TILE && x < (maxTileX + 1) * TILE && y >= minTileY * TILE && y < (maxTileY + 2) * TILE;
+		var area = new ClipArea(source.blocks, minX, corner.y - CROP_UP, maxX, corner.y + CROP_DOWN);
+		return new Arena(corner.dir, wallFace, (corner.y + 1) * TILE, area, source, corner);
 	}
 
 	public function describe():String {
