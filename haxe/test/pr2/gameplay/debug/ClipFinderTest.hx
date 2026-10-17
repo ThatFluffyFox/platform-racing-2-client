@@ -10,7 +10,6 @@ import pr2.gameplay.debug.ClipFinder.StatRange;
 import pr2.gameplay.debug.ClipSimulator.ClipArea;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
-import pr2.gameplay.debug.ClipSimulator.ClipRun;
 import pr2.level.BlockType;
 import pr2.level.Level.LevelBlock;
 import pr2.level.LevelDecoder;
@@ -49,14 +48,14 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAreaGrowsToFollowThePlayer", testAreaGrowsToFollowThePlayer);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAreaUsesWholeLevelForMapEdges", testAreaUsesWholeLevelForMapEdges);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testTargetBlockFiltersClips", testTargetBlockFiltersClips);
-		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAimScoreRewardsFastApproachesAndHits", testAimScoreRewardsFastApproachesAndHits);
-		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRefineMakesSmallChanges", testRefineMakesSmallChanges);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
 		// setup, not Clip Finder behaviour, so it is kept out of their timing.
 		course = raceCourse();
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testComboTogglesPanelInRace", testComboTogglesPanelInRace);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testComboWorksPressedOneAfterAnother", testComboWorksPressedOneAfterAnother);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testChatCommandTogglesClipFinder", testChatCommandTogglesClipFinder);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPanelSearchUsesPlayerStatsByDefault", testPanelSearchUsesPlayerStatsByDefault);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayDrivesRealPlayerAlongTheClip", testReplayDrivesRealPlayerAlongTheClip);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPickingTargetBlockInRace", testPickingTargetBlockInRace);
@@ -335,73 +334,29 @@ class ClipFinderTest {
 		assertEquals(false, session.picking, "picking ends");
 		assertEquals("Target 1,1 (clear)", session.panel.targetButton.label, "button shows the target");
 		assertTrue(session.targetMarker != null && session.targetMarker.parent == course.characterLayer, "the block is outlined in the level");
+		assertTrue(session.panel.aimBox.selected, "picking a block ticks Aim at target");
 		session.panel.leftBox.selected = false;
 		session.panel.downBox.selected = false;
 		session.panel.normalJumpRow.slider.value = 0;
 		session.start();
-		assertEquals(1, session.finder.settings.targetTileX, "the search only counts clips into the target");
+		// Aiming is the normal clip tester, counting only clips into the picked block.
+		assertEquals(3, session.finder.total, "the same search as without a target");
+		assertEquals(1, session.finder.settings.targetTileX, "only clips into the target count");
 		assertEquals(1, session.finder.attemptAt(0).targetTileY, "every attempt carries the target");
 		session.stopSearch();
-		session.panel.aimBox.selected = true;
-		session.start();
-		assertTrue(session.finder.settings.aimAtTarget, "aiming at the picked block");
-		assertEquals(0, session.finder.total, "aiming runs until stopped");
-		course.onEnterFrame(new Event(Event.ENTER_FRAME));
-		assertTrue(session.panel.status.text.indexOf("Aiming") == 0, 'status shows the aiming search: ${session.panel.status.text}');
-		session.stopSearch();
 		session.panel.aimBox.selected = false;
+		session.start();
+		assertEquals(null, session.finder.settings.targetTileX, "unticked: the block stays picked but every clip counts");
+		session.stopSearch();
+		session.panel.aimBox.selected = true;
 		session.toggleTargetPicking();
+		assertEquals(false, session.panel.aimBox.selected, "clearing the target unticks Aim at target");
 		assertEquals(null, session.targetTileX, "pressing the button again clears the target");
 		assertEquals("Target: any block", session.panel.targetButton.label, "button back to any block");
 		session.close();
 		course.setKey(Keyboard.F9, false);
 		course.setKey(Keyboard.C, false);
 		course.setKey(Keyboard.D, false);
-	}
-
-	private static function testAimScoreRewardsFastApproachesAndHits():Void {
-		var hit = clipAttempt(90);
-		hit.targetTileX = 19;
-		hit.targetTileY = 16;
-		var hitRun = ClipSimulator.run(cornerArea(), hit);
-		assertEquals(ClipRun.AIM_HIT, hitRun.aimScore, "a clip into the target scores best");
-		assertEquals(0.0, hitRun.closestToTarget, "and reaches it");
-		var slow = clipAttempt(50);
-		slow.targetTileX = 19;
-		slow.targetTileY = 16;
-		var slowRun = ClipSimulator.run(cornerArea(), slow);
-		assertEquals(10.0, slowRun.closestToTarget, "a slow approach stops against the wall, 10 px from the tile");
-		assertTrue(slowRun.aimScore < slowRun.closestToTarget, "speed near the target improves the score");
-		assertTrue(hitRun.aimScore < slowRun.aimScore, "a hit beats a near miss");
-		assertEquals(Math.POSITIVE_INFINITY, ClipSimulator.run(cornerArea(), clipAttempt(50)).aimScore, "no target, no score");
-	}
-
-	private static function testRefineMakesSmallChanges():Void {
-		var settings = anyFrameSettings(11);
-		settings.aimAtTarget = true;
-		settings.targetTileX = 19;
-		settings.targetTileY = 16;
-		settings.dirs = [1, -1];
-		settings.downModes = [false, true];
-		var finder = new ClipFinder(cornerBlocks(), settings);
-		var parent = clipAttempt(90);
-		for (_ in 0...200) {
-			var child = finder.refine(parent);
-			var changes = 0;
-			if (child.speed != parent.speed) changes++;
-			if (child.accel != parent.accel) changes++;
-			if (child.jump != parent.jump) changes++;
-			if (child.jumpFrame != parent.jumpFrame) changes++;
-			if (child.hold != parent.hold) changes++;
-			if (child.moveStart != parent.moveStart) changes++;
-			if (child.turnFrame != parent.turnFrame) changes++;
-			if (child.down != parent.down) changes++;
-			if (child.dir != parent.dir) changes++;
-			assertTrue(changes <= 2, 'refining changes at most two things (${child.describe()})');
-			assertTrue(Math.abs(child.speed - parent.speed) <= 2 && Math.abs(child.jumpFrame - parent.jumpFrame) <= 2, "changes are small");
-			assertTrue(child.speed >= 80 && child.speed <= 100, "stats stay inside the range");
-			assertEquals(19, child.targetTileX, "the target is kept");
-		}
 	}
 
 	private static function highest(frames:Array<pr2.gameplay.debug.ClipSimulator.GhostFrame>):Float {
@@ -455,6 +410,40 @@ class ClipFinderTest {
 		course.setKey(Keyboard.F9, false);
 		course.setKey(Keyboard.C, false);
 		course.setKey(Keyboard.D, false);
+	}
+
+	private static function testComboWorksPressedOneAfterAnother():Void {
+		var now = 100.0;
+		Course.clipComboClock = () -> now;
+		// Tap each key (press and release) in turn, within a second: opens.
+		for (key in [Keyboard.D, Keyboard.F9, Keyboard.C]) {
+			course.setKey(key, true);
+			course.setKey(key, false);
+			now += 0.3;
+		}
+		assertTrue(course.clipFinder != null, "F9, C and D tapped within a second open the Clip Finder");
+		// The same taps spread over more than a second do nothing.
+		for (key in [Keyboard.F9, Keyboard.C, Keyboard.D]) {
+			course.setKey(key, true);
+			course.setKey(key, false);
+			now += 0.8;
+		}
+		assertTrue(course.clipFinder != null, "taps too far apart don't toggle it");
+		// Tapped again quickly: closes.
+		for (key in [Keyboard.C, Keyboard.D, Keyboard.F9]) {
+			course.setKey(key, true);
+			course.setKey(key, false);
+			now += 0.2;
+		}
+		assertEquals(null, course.clipFinder, "a second quick combo closes it");
+		Course.clipComboClock = haxe.Timer.stamp;
+	}
+
+	private static function testChatCommandTogglesClipFinder():Void {
+		assertTrue(course.handleRaceChatLine(" /CLIP "), "/clip is handled locally, not sent to chat");
+		assertTrue(course.clipFinder != null, "/clip opens the Clip Finder");
+		assertTrue(course.handleRaceChatLine("/clipfinder"), "/clipfinder works too");
+		assertEquals(null, course.clipFinder, "and closes it again");
 	}
 
 	private static function testPanelSearchUsesPlayerStatsByDefault():Void {

@@ -368,8 +368,11 @@ It is a diagnostic tool, not part of `./test.sh`.
 
 ### In-game Clip Finder (F9+C+D)
 
-In a race, hold **F9 + C + D** to open the Clip Finder panel (press the combo
-again or click X to close). It is a debug addition with no Flash counterpart,
+In a race, press **F9 + C + D** to open the Clip Finder panel: hold them
+together, or tap them one after another within a second, in any order. The
+same combo or the X button closes it. Typing **/clip** in the race chat does
+the same, which helps on keyboards where F9 is a media key (on many laptops
+and Macs, hold **Fn** for F9). It is a debug addition with no Flash counterpart,
 in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
 `tools/clip_sweep.sh`.
 
@@ -392,16 +395,11 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
   too many combinations to try them all, so each attempt picks random timings
   and the search keeps going until **Stop**.
 - **Target** (next to the title): click it, then click a block in the level.
-  Only clips into that block count, and it gets a red outline. Click the
-  button again to go back to any block.
-- **Aim at target** (needs a target) steers the search toward that block
-  instead of searching blindly. Each attempt is scored by how close the body
-  gets to the block and how fast it is moving there (clips need speed); the
-  most promising attempts are kept and nudged a stat point or a frame at a
-  time, some attempts stay random, and it starts over when it stops
-  improving. Until a clip is found the ghost shows the closest near miss. It
-  runs until **Stop**. On the test corner it found clips into the target
-  within 1,000-3,000 attempts where blind random search found none in 4,000.
+  The block gets a red outline and **Aim at target** is ticked. Click the
+  button again to clear it.
+- **Aim at target** runs the same clip tester as usual (grid, or random with
+  **Any frame**), but only clips into the picked block count. Untick it to keep
+  the block picked but count every clip.
 - The simulated copy of the level starts small around you and grows to cover
   wherever the simulated player goes (up to the level's edge), re-running the
   attempt after each growth; falling off the map uses the whole level's edge,

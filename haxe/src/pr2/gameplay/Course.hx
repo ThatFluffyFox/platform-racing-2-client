@@ -101,9 +101,9 @@ class Course extends Sprite {
 	public var localCharacter(default, null):LocalCharacter;
 	/** Debug-only Clip Finder (F9+C+D); not part of the Flash client. */
 	private var clipFinder:Null<ClipFinderSession> = null;
-	private var clipComboF9:Bool = false;
-	private var clipComboC:Bool = false;
-	private var clipComboD:Bool = false;
+	/** Held state and last press time of F9, C and D (in that order) for the combo. */
+	private var clipComboHeld:Array<Bool> = [false, false, false];
+	private var clipComboPressedAt:Array<Float> = [Math.NEGATIVE_INFINITY, Math.NEGATIVE_INFINITY, Math.NEGATIVE_INFINITY];
 	public var remoteCharacters(default, null):Map<Int, RemoteCharacter> = new Map();
 	public var playerArray(default, null):Array<Character> = [];
 	public var playerSpectating(default, null):Null<Character>;
@@ -562,6 +562,12 @@ class Course extends Sprite {
 	public function handleRaceChatLine(message:String):Bool {
 		if (ChatText.trimWhitespace(message).toLowerCase() == "/level" && config.levelId > 0) {
 			new LevelInfoPopup(Std.int(config.levelId));
+			return true;
+		}
+		// Debug Clip Finder: a keyboard-independent way to open/close it (not sent to chat).
+		var command = ChatText.trimWhitespace(message).toLowerCase();
+		if (command == "/clip" || command == "/clipfinder") {
+			toggleClipFinder();
 			return true;
 		}
 		return onChatLine != null && onChatLine(message);
@@ -1719,13 +1725,16 @@ class Course extends Sprite {
 	}
 
 	private function setKey(keyCode:UInt, pressed:Bool):Void {
+		// Checked before the chat-focus guard so the combo also works while the
+		// chat box has focus (F9 never types anything).
+		var comboKey = trackClipFinderCombo(keyCode, pressed);
 		if (raceChat != null && raceChat.inputHasFocus()) {
 			return;
 		}
-		trackClipFinderCombo(keyCode, pressed);
-		// D is the default alternate "right" key: while F9 is held, C/D presses
-		// belong to the combo. Releases still go through so no key sticks.
-		if (pressed && clipComboF9 && (keyCode == Keyboard.C || keyCode == Keyboard.D)) {
+		// D is the default alternate "right" key: while F9 is part of a combo
+		// in progress, C/D presses belong to it. Releases still go through so
+		// no key sticks.
+		if (pressed && comboKey && keyCode != Keyboard.F9 && clipComboRecent(Keyboard.F9)) {
 			return;
 		}
 		if (keyCode == Keyboard.SHIFT) {
@@ -1754,16 +1763,46 @@ class Course extends Sprite {
 		if (keyCode == Keyboard.SPACE || AlternateControls.matches("item", keyCode)) input.item = pressed;
 	}
 
+	/** Seconds within which F9, C and D must all be pressed (held keys always count). */
+	private static inline var CLIP_COMBO_WINDOW:Float = 1.0;
+	/** Clock for the combo window; tests replace it. */
+	@:noCompletion public static var clipComboClock:Void->Float = haxe.Timer.stamp;
 
-	/** F9+C+D (any order, all held) opens the debug Clip Finder, or closes it. */
-	private function trackClipFinderCombo(keyCode:UInt, pressed:Bool):Void {
-		var wasComplete = clipComboF9 && clipComboC && clipComboD;
-		if (keyCode == Keyboard.F9) clipComboF9 = pressed;
-		if (keyCode == Keyboard.C) clipComboC = pressed;
-		if (keyCode == Keyboard.D) clipComboD = pressed;
-		if (pressed && !wasComplete && clipComboF9 && clipComboC && clipComboD) {
-			toggleClipFinder();
+	/**
+		F9 + C + D opens the debug Clip Finder, or closes it. The keys can be
+		held together or pressed one after another within CLIP_COMBO_WINDOW, in
+		any order. Returns true when `keyCode` is one of the three keys.
+	*/
+	private function trackClipFinderCombo(keyCode:UInt, pressed:Bool):Bool {
+		var index = clipComboIndex(keyCode);
+		if (index < 0) return false;
+		if (!pressed) {
+			clipComboHeld[index] = false;
+			return true;
 		}
+		var repeat = clipComboHeld[index];
+		clipComboHeld[index] = true;
+		if (repeat) return true;
+		var now = clipComboClock();
+		clipComboPressedAt[index] = now;
+		for (i in 0...3) {
+			if (!clipComboHeld[i] && now - clipComboPressedAt[i] > CLIP_COMBO_WINDOW) return true;
+		}
+		// Fire once. Key repeats of held keys never count as presses, so holding
+		// the combo doesn't re-toggle; a fresh press (re-pressing any one of the
+		// three with the others still held or recent) toggles again.
+		for (i in 0...3) clipComboPressedAt[i] = Math.NEGATIVE_INFINITY;
+		toggleClipFinder();
+		return true;
+	}
+
+	private function clipComboRecent(keyCode:UInt):Bool {
+		var index = clipComboIndex(keyCode);
+		return index >= 0 && (clipComboHeld[index] || clipComboClock() - clipComboPressedAt[index] <= CLIP_COMBO_WINDOW);
+	}
+
+	private static function clipComboIndex(keyCode:UInt):Int {
+		return keyCode == Keyboard.F9 ? 0 : (keyCode == Keyboard.C ? 1 : (keyCode == Keyboard.D ? 2 : -1));
 	}
 
 	private function toggleClipFinder():Void {
@@ -1798,9 +1837,7 @@ class Course extends Sprite {
 	}
 
 	private function resetInput(_:Event):Void {
-		clipComboF9 = false;
-		clipComboC = false;
-		clipComboD = false;
+		clipComboHeld = [false, false, false];
 		input.clear();
 		scrollLeft = false;
 		scrollRight = false;

@@ -46,7 +46,7 @@ class ClipFinderPanel extends NativeView {
 	public final airTurnRow:OptionRow;
 	/** Ignore the sliders: the ticked moves may happen on any frame (random search until Stop). **/
 	public final anyFrameBox:GameCheckBox;
-	/** Steer the search toward the target block (needs a target); runs until Stop. **/
+	/** Only count clips into the picked target block (ticked automatically when one is picked). **/
 	public final aimBox:GameCheckBox;
 	final rows:Array<OptionRow>;
 	final startButton:GameButton;
@@ -168,9 +168,6 @@ class ClipFinderPanel extends NativeView {
 			clipInfo.text = "No clips yet. The ghost replays a clip on a loop once one is found.";
 		}
 	}
-
-	/** Free text in the clip info area (the aiming near-miss). **/
-	public function setInfo(value:String):Void clipInfo.text = value;
 
 	public function setClipInfo(index:Int, description:String):Void {
 		shownClip = index;
