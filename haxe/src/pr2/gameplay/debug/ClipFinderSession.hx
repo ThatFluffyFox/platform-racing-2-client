@@ -114,7 +114,17 @@ class ClipFinderSession {
 			if (panel.delayedMoveRow.enabled) settings.moveStarts = [for (m in 0...last + 1) m];
 			if (panel.airTurnRow.enabled) settings.turnFrames = [-1].concat([for (t in 1...last + 1) t]);
 		}
+		if (panel.aimBox.selected) {
+			if (targetTileX == null) {
+				panel.setStatus("Pick a target block first (Target button).");
+				return;
+			}
+			settings.aimAtTarget = true;
+			settings.seed = randomSeed();
+		}
 		stopReplay();
+		shownBest = null;
+		framesSinceBestShown = 0;
 		finder = new ClipFinder(level.blocks, settings);
 		clips = finder.clips;
 		shownClips = 0;
@@ -147,8 +157,30 @@ class ClipFinderSession {
 			}
 			updateStatus();
 			if (search.done) panel.setRunning(false);
+			showClosestMiss(search);
 		}
 		ghost.tick();
+	}
+
+	var shownBest:Null<ClipAttempt> = null;
+	var framesSinceBestShown:Int = 0;
+	/** At most this often (in frames) the near-miss ghost is re-recorded while aiming. **/
+	static inline var BEST_GHOST_INTERVAL:Int = 15;
+
+	/**
+		While aiming and before any clip, the ghost shows the closest attempt so
+		far, so you can watch the search home in on the target.
+	**/
+	function showClosestMiss(search:ClipFinder):Void {
+		framesSinceBestShown++;
+		var best = search.bestAttempt;
+		if (!search.settings.aimAtTarget || clips.length > 0 || best == null || best == shownBest) return;
+		if (shownBest != null && framesSinceBestShown < BEST_GHOST_INTERVAL) return;
+		shownBest = best;
+		framesSinceBestShown = 0;
+		var recorded = ClipSimulator.run(search.area, best, true).ghost;
+		if (recorded != null) ghost.play(recorded);
+		panel.setInfo('Closest so far, ${Math.round(search.bestDistance)} px from the target: ${best.describe()}.');
 	}
 
 	function showClip(index:Int):Void {
@@ -169,8 +201,14 @@ class ClipFinderSession {
 			return;
 		}
 		var verb = search.done ? "Done" : (stopped ? "Stopped" : "Testing");
+		var clipText = '${search.clipCount} clip${search.clipCount == 1 ? "" : "s"}';
+		if (search.settings.aimAtTarget) {
+			var closest = search.bestDistance == Math.POSITIVE_INFINITY ? "-" : '${Math.round(search.bestDistance)}px';
+			panel.setStatus('${stopped ? "Stopped" : "Aiming"} ${search.tested}, best $closest, $clipText');
+			return;
+		}
 		var tried = search.total > 0 ? '${search.tested}/${search.total}' : '${search.tested} random';
-		panel.setStatus('$verb $tried, ${search.clipCount} clip${search.clipCount == 1 ? "" : "s"}');
+		panel.setStatus('$verb $tried, $clipText');
 	}
 
 	// ---- Target block --------------------------------------------------------

@@ -46,6 +46,8 @@ class ClipFinderPanel extends NativeView {
 	public final airTurnRow:OptionRow;
 	/** Ignore the sliders: the ticked moves may happen on any frame (random search until Stop). **/
 	public final anyFrameBox:GameCheckBox;
+	/** Steer the search toward the target block (needs a target); runs until Stop. **/
+	public final aimBox:GameCheckBox;
 	final rows:Array<OptionRow>;
 	final startButton:GameButton;
 	final prevButton:GameButton;
@@ -98,9 +100,11 @@ class ClipFinderPanel extends NativeView {
 		airTurnRow = new OptionRow(this, "Air turn", false, 242, 1, 60, 30, v -> 'turn 1-$v');
 		rows = [normalJumpRow, superJumpRow, delayedMoveRow, airTurnRow];
 
-		anyFrameBox = checkBox("Any frame (random timing, runs until Stop)", false, 10, 266);
-		anyFrameBox.setSize(240, 22);
+		anyFrameBox = checkBox("Any frame (random)", false, 10, 266);
+		anyFrameBox.setSize(120, 22);
 		anyFrameBox.onChange = function(selected:Bool):Void for (row in rows) row.setAnyFrame(selected);
+		aimBox = checkBox("Aim at target", false, 140, 266);
+		aimBox.setSize(110, 22);
 
 		startButton = ownControl(new GameButton("Start"));
 		startButton.setSize(80, 22);
@@ -147,7 +151,7 @@ class ClipFinderPanel extends NativeView {
 	public function setRunning(running:Bool):Void {
 		startButton.label = running ? "Stop" : "Start";
 		for (row in [speedRow, accelRow, jumpRow]) row.setLocked(running);
-		for (box in [leftBox, rightBox, downBox, anyFrameBox]) box.enabled = !running;
+		for (box in [leftBox, rightBox, downBox, anyFrameBox, aimBox]) box.enabled = !running;
 		targetButton.enabled = !running;
 		for (row in rows) row.setLocked(running);
 	}
@@ -164,6 +168,9 @@ class ClipFinderPanel extends NativeView {
 			clipInfo.text = "No clips yet. The ghost replays a clip on a loop once one is found.";
 		}
 	}
+
+	/** Free text in the clip info area (the aiming near-miss). **/
+	public function setInfo(value:String):Void clipInfo.text = value;
 
 	public function setClipInfo(index:Int, description:String):Void {
 		shownClip = index;

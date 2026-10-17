@@ -394,6 +394,14 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
 - **Target** (next to the title): click it, then click a block in the level.
   Only clips into that block count, and it gets a red outline. Click the
   button again to go back to any block.
+- **Aim at target** (needs a target) steers the search toward that block
+  instead of searching blindly. Each attempt is scored by how close the body
+  gets to the block and how fast it is moving there (clips need speed); the
+  most promising attempts are kept and nudged a stat point or a frame at a
+  time, some attempts stay random, and it starts over when it stops
+  improving. Until a clip is found the ghost shows the closest near miss. It
+  runs until **Stop**. On the test corner it found clips into the target
+  within 1,000-3,000 attempts where blind random search found none in 4,000.
 - The simulated copy of the level starts small around you and grows to cover
   wherever the simulated player goes (up to the level's edge), re-running the
   attempt after each growth; falling off the map uses the whole level's edge,

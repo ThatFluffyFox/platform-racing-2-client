@@ -10,6 +10,7 @@ import pr2.gameplay.debug.ClipFinder.StatRange;
 import pr2.gameplay.debug.ClipSimulator.ClipArea;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
+import pr2.gameplay.debug.ClipSimulator.ClipRun;
 import pr2.level.BlockType;
 import pr2.level.Level.LevelBlock;
 import pr2.level.LevelDecoder;
@@ -48,6 +49,8 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAreaGrowsToFollowThePlayer", testAreaGrowsToFollowThePlayer);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAreaUsesWholeLevelForMapEdges", testAreaUsesWholeLevelForMapEdges);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testTargetBlockFiltersClips", testTargetBlockFiltersClips);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAimScoreRewardsFastApproachesAndHits", testAimScoreRewardsFastApproachesAndHits);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRefineMakesSmallChanges", testRefineMakesSmallChanges);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -319,6 +322,10 @@ class ClipFinderTest {
 		var session = course.clipFinder;
 		// Treat stage points as world points so the test can click exact tiles.
 		session.stageToWorld = (x, y) -> new openfl.geom.Point(x, y);
+		session.panel.aimBox.selected = true;
+		session.start();
+		assertTrue(session.panel.status.text.indexOf("Pick a target block first") == 0, "aiming needs a target");
+		session.panel.aimBox.selected = false;
 		assertEquals(false, session.pickAt(45, 45), "clicks do nothing until picking starts");
 		session.toggleTargetPicking();
 		assertTrue(session.picking, "the button starts picking");
@@ -335,6 +342,14 @@ class ClipFinderTest {
 		assertEquals(1, session.finder.settings.targetTileX, "the search only counts clips into the target");
 		assertEquals(1, session.finder.attemptAt(0).targetTileY, "every attempt carries the target");
 		session.stopSearch();
+		session.panel.aimBox.selected = true;
+		session.start();
+		assertTrue(session.finder.settings.aimAtTarget, "aiming at the picked block");
+		assertEquals(0, session.finder.total, "aiming runs until stopped");
+		course.onEnterFrame(new Event(Event.ENTER_FRAME));
+		assertTrue(session.panel.status.text.indexOf("Aiming") == 0, 'status shows the aiming search: ${session.panel.status.text}');
+		session.stopSearch();
+		session.panel.aimBox.selected = false;
 		session.toggleTargetPicking();
 		assertEquals(null, session.targetTileX, "pressing the button again clears the target");
 		assertEquals("Target: any block", session.panel.targetButton.label, "button back to any block");
@@ -342,6 +357,51 @@ class ClipFinderTest {
 		course.setKey(Keyboard.F9, false);
 		course.setKey(Keyboard.C, false);
 		course.setKey(Keyboard.D, false);
+	}
+
+	private static function testAimScoreRewardsFastApproachesAndHits():Void {
+		var hit = clipAttempt(90);
+		hit.targetTileX = 19;
+		hit.targetTileY = 16;
+		var hitRun = ClipSimulator.run(cornerArea(), hit);
+		assertEquals(ClipRun.AIM_HIT, hitRun.aimScore, "a clip into the target scores best");
+		assertEquals(0.0, hitRun.closestToTarget, "and reaches it");
+		var slow = clipAttempt(50);
+		slow.targetTileX = 19;
+		slow.targetTileY = 16;
+		var slowRun = ClipSimulator.run(cornerArea(), slow);
+		assertEquals(10.0, slowRun.closestToTarget, "a slow approach stops against the wall, 10 px from the tile");
+		assertTrue(slowRun.aimScore < slowRun.closestToTarget, "speed near the target improves the score");
+		assertTrue(hitRun.aimScore < slowRun.aimScore, "a hit beats a near miss");
+		assertEquals(Math.POSITIVE_INFINITY, ClipSimulator.run(cornerArea(), clipAttempt(50)).aimScore, "no target, no score");
+	}
+
+	private static function testRefineMakesSmallChanges():Void {
+		var settings = anyFrameSettings(11);
+		settings.aimAtTarget = true;
+		settings.targetTileX = 19;
+		settings.targetTileY = 16;
+		settings.dirs = [1, -1];
+		settings.downModes = [false, true];
+		var finder = new ClipFinder(cornerBlocks(), settings);
+		var parent = clipAttempt(90);
+		for (_ in 0...200) {
+			var child = finder.refine(parent);
+			var changes = 0;
+			if (child.speed != parent.speed) changes++;
+			if (child.accel != parent.accel) changes++;
+			if (child.jump != parent.jump) changes++;
+			if (child.jumpFrame != parent.jumpFrame) changes++;
+			if (child.hold != parent.hold) changes++;
+			if (child.moveStart != parent.moveStart) changes++;
+			if (child.turnFrame != parent.turnFrame) changes++;
+			if (child.down != parent.down) changes++;
+			if (child.dir != parent.dir) changes++;
+			assertTrue(changes <= 2, 'refining changes at most two things (${child.describe()})');
+			assertTrue(Math.abs(child.speed - parent.speed) <= 2 && Math.abs(child.jumpFrame - parent.jumpFrame) <= 2, "changes are small");
+			assertTrue(child.speed >= 80 && child.speed <= 100, "stats stay inside the range");
+			assertEquals(19, child.targetTileX, "the target is kept");
+		}
 	}
 
 	private static function highest(frames:Array<pr2.gameplay.debug.ClipSimulator.GhostFrame>):Float {

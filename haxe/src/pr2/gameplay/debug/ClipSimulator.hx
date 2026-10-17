@@ -67,6 +67,8 @@ class ClipSimulator {
 
 		var ghost:Null<Array<GhostFrame>> = recordGhost ? [GhostFrame.capture(player, bodyInSolid(level, player))] : null;
 		var settledFrames = 0;
+		var closest = Math.POSITIVE_INFINITY;
+		var aimScore = Math.POSITIVE_INFINITY;
 		var clipFrame = -1;
 		var clipX = 0.0, clipY = 0.0, clipVx = 0.0, clipVy = 0.0;
 		var stopAt = attempt.frames;
@@ -77,6 +79,15 @@ class ClipSimulator {
 			var inSolid = bodyInSolid(level, player);
 			if (ghost != null) ghost.push(GhostFrame.capture(player, inSolid));
 			if (onFrame != null) onFrame(frame, input, player, inSolid);
+			var distance = attempt.distanceToTarget(player.x, player.y);
+			if (distance < Math.POSITIVE_INFINITY) {
+				closest = Math.min(closest, distance);
+				var score = distance;
+				if (distance <= ClipRun.AIM_NEAR) {
+					score -= Math.min(Math.abs(player.vx), ClipRun.AIM_SPEED_CAP) + Math.min(Math.abs(player.vy), ClipRun.AIM_SPEED_CAP);
+				}
+				aimScore = Math.min(aimScore, score);
+			}
 			if (clipFrame < 0 && inSolid && attempt.hitsTarget(player.x, player.y)) {
 				clipFrame = frame;
 				clipX = player.x;
@@ -99,7 +110,10 @@ class ClipSimulator {
 			}
 			frame++;
 		}
-		return new ClipRun(clipFrame, clipX, clipY, clipVx, clipVy, ghost);
+		var result = new ClipRun(clipFrame, clipX, clipY, clipVx, clipVy, ghost);
+		result.closestToTarget = closest;
+		result.aimScore = clipFrame >= 0 && attempt.targetTileX != null ? ClipRun.AIM_HIT : aimScore;
+		return result;
 	}
 
 	/** True when the body midpoint (Flash's `bodyTouch` point) is inside a live solid block. **/
@@ -147,6 +161,17 @@ class ClipAttempt {
 	/** Only clips into this tile count (the in-game "Target block"); null = any solid block. **/
 	public var targetTileX:Null<Int> = null;
 	public var targetTileY:Null<Int> = null;
+
+	/** Pixels from the body point at (x, y - 15) to the target tile (0 inside); infinite with no target. **/
+	public function distanceToTarget(x:Float, y:Float):Float {
+		if (targetTileX == null || targetTileY == null) return Math.POSITIVE_INFINITY;
+		var t = ClipSimulator.TILE;
+		var bx = x, by = y - 15;
+		var left = targetTileX * t, top = targetTileY * t;
+		var dx = bx < left ? left - bx : (bx >= left + t ? bx - (left + t) : 0.0);
+		var dy = by < top ? top - by : (by >= top + t ? by - (top + t) : 0.0);
+		return Math.sqrt(dx * dx + dy * dy);
+	}
 
 	/** True when the body point at (x, y - 15) is in the target tile, or there is no target. **/
 	public function hitsTarget(x:Float, y:Float):Bool {
@@ -285,6 +310,23 @@ class ClipRun {
 	/** Recorded poses (index 0 = start) when the run was asked to record. **/
 	public final ghost:Null<Array<GhostFrame>>;
 	public var startBlocked(default, null):Bool = false;
+	/**
+		Closest the body point came to the attempt's target tile, in pixels
+		(0 = inside it). Infinite when the attempt has no target.
+	**/
+	public var closestToTarget:Float = Math.POSITIVE_INFINITY;
+	/**
+		Aiming score, lower is better. Clips need speed: walls and floors push a
+		slow player straight back out, so a plain distance stalls at "touching".
+		Near the target (within AIM_NEAR px) the score is the distance minus how
+		fast the player was moving (capped per axis); a clip into the target
+		scores AIM_HIT. Infinite when the attempt has no target.
+	**/
+	public var aimScore:Float = Math.POSITIVE_INFINITY;
+
+	public static inline var AIM_NEAR:Float = 15;
+	public static inline var AIM_SPEED_CAP:Float = 12;
+	public static inline var AIM_HIT:Float = -1000;
 
 	public function new(clipFrame:Int, x:Float, y:Float, vx:Float, vy:Float, ghost:Null<Array<GhostFrame>>) {
 		this.clipFrame = clipFrame;

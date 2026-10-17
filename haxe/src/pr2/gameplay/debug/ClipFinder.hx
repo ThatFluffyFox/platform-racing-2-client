@@ -61,6 +61,13 @@ class ClipFinderSettings {
 		`randomAttempts` attempts when that is above 0.
 	**/
 	public var anyFrame:Bool = false;
+	/**
+		Aim at the target instead of searching blindly: attempts are scored by
+		how close the body gets to the target tile, the closest ones are kept
+		and nudged (a stat point, a frame of timing...) while some stay random.
+		Needs a target; runs until stopped like `anyFrame`.
+	**/
+	public var aimAtTarget:Bool = false;
 	/** Only count clips into this tile ("Target block"); null = any solid block. **/
 	public var targetTileX:Null<Int> = null;
 	public var targetTileY:Null<Int> = null;
@@ -128,21 +135,149 @@ class ClipFinder {
 		}
 		for (charge in settings.superCharges) launches.push(new Launch(0, 0, charge));
 		rng = new ClipRng(settings.seed);
-		total = settings.anyFrame ? settings.randomAttempts : speeds.length * accels.length * jumps.length * settings.dirs.length
+		total = settings.anyFrame || aiming() ? settings.randomAttempts : speeds.length * accels.length * jumps.length * settings.dirs.length
 			* settings.moveStarts.length * settings.turnFrames.length * launches.length * settings.downModes.length;
 	}
 
 	public var done(get, never):Bool;
 	function get_done():Bool {
 		if (blockedStart || launches.length == 0) return true;
-		return settings.anyFrame ? total > 0 && next >= total : next >= total;
+		return settings.anyFrame || aiming() ? total > 0 && next >= total : next >= total;
+	}
+
+	inline function aiming():Bool return settings.aimAtTarget && settings.targetTileX != null;
+
+	// ---- Aim at target -------------------------------------------------------
+
+	/** How many of the closest attempts are kept and refined. **/
+	public static inline var ELITE_SIZE:Int = 8;
+	/** Chance (out of 10) an aimed attempt is fresh random rather than a refined elite. **/
+	static inline var EXPLORE_TENTHS:Int = 3;
+
+	/** Closest attempts so far, best first. **/
+	final elites:Array<ScoredAttempt> = [];
+	/** Closest any attempt has come to the target, in pixels (0 = clipped into it). **/
+	public var bestDistance(default, null):Float = Math.POSITIVE_INFINITY;
+	/** The most promising attempt so far (lowest aiming score). **/
+	public var bestAttempt(default, null):Null<ClipAttempt> = null;
+
+	/** Attempts without a better score before the kept attempts are dropped and the search starts over. **/
+	public static inline var STALL_LIMIT:Int = 300;
+	var sinceImprovement:Int = 0;
+	/** Best score since the last restart (bestScore keeps the overall best). **/
+	var roundBest:Float = Math.POSITIVE_INFINITY;
+
+	function aimedAttempt():ClipAttempt {
+		if (sinceImprovement >= STALL_LIMIT && elites.length > 0) {
+			// Stuck refining one approach: forget it and explore afresh.
+			elites.resize(0);
+			roundBest = Math.POSITIVE_INFINITY;
+			sinceImprovement = 0;
+		}
+		if (elites.length < ELITE_SIZE / 2 || rng.int(10) < EXPLORE_TENTHS) return randomAttempt();
+		// Lean toward the best: pick among the first few elites more often.
+		var parent = elites[rng.int(rng.int(elites.length) + 1)].attempt;
+		return refine(parent);
+	}
+
+	/** Keeps the most promising attempts (by ClipRun.aimScore) and the closest distance seen. **/
+	function remember(attempt:ClipAttempt, score:Float, distance:Float):Void {
+		bestDistance = Math.min(bestDistance, distance);
+		if (score < bestScore) {
+			bestScore = score;
+			bestAttempt = attempt;
+		}
+		if (score < roundBest) {
+			roundBest = score;
+			sinceImprovement = 0;
+		} else {
+			sinceImprovement++;
+		}
+		if (score == Math.POSITIVE_INFINITY) return;
+		if (elites.length >= ELITE_SIZE && score >= elites[elites.length - 1].score) return;
+		var key = attempt.describe();
+		for (e in elites) if (e.attempt.describe() == key) return;
+		elites.push(new ScoredAttempt(attempt, score));
+		elites.sort((a, b) -> Reflect.compare(a.score, b.score));
+		if (elites.length > ELITE_SIZE) elites.pop();
+	}
+
+	/** Best aiming score so far (see ClipRun.aimScore); the near-miss ghost shows its attempt. **/
+	public var bestScore(default, null):Float = Math.POSITIVE_INFINITY;
+
+	/**
+		A small change to one or two of the attempt's choices: a neighbouring stat
+		value, a frame or two earlier or later for the jump / super jump / move /
+		turn, a different hold or charge, or flipping fast-fall or direction.
+	**/
+	public function refine(parent:ClipAttempt):ClipAttempt {
+		var speed = parent.speed, accel = parent.accel, jump = parent.jump;
+		var dir = parent.dir, down = parent.down;
+		var jumpFrame = parent.jumpFrame, hold = parent.hold;
+		var superCharge = parent.superCharge, superStart = parent.superStart;
+		var moveStart = parent.moveStart, turnFrame = parent.turnFrame;
+		var last = settings.frames - 1;
+		var turns = settings.turnFrames.filter(t -> t >= 0);
+		for (_ in 0...1 + rng.int(2)) {
+			switch (rng.int(9)) {
+				case 0: speed = neighbour(speeds, speed);
+				case 1: accel = neighbour(accels, accel);
+				case 2: jump = neighbour(jumps, jump);
+				case 3:
+					if (superCharge > 0) superStart = clampInt(superStart + nudge(), 0, Std.int(Math.max(0, last - superCharge)));
+					else jumpFrame = clampInt(jumpFrame + nudge(), 0, settings.maxJumpFrame);
+				case 4:
+					if (superCharge > 0) {
+						var charges = settings.superCharges;
+						var i = clampInt(charges.indexOf(superCharge) + nudge(), 0, charges.length - 1);
+						superCharge = charges[i];
+					} else {
+						hold = hold >= 999 ? 1 + rng.int(settings.frames) : clampInt(hold + nudge(), 1, settings.frames);
+					}
+				case 5:
+					if (settings.moveStarts.length > 1) moveStart = clampInt(moveStart + nudge(), 0, settings.moveStarts[settings.moveStarts.length - 1]);
+				case 6:
+					if (turns.length > 0) turnFrame = turnFrame < 0 ? rng.pick(turns) : clampInt(turnFrame + nudge(), turns[0], turns[turns.length - 1]);
+				case 7:
+					if (settings.downModes.length > 1) down = !down;
+				default:
+					if (settings.dirs.length > 1 && rng.int(3) == 0) dir = -dir;
+			}
+		}
+		var child = new ClipAttempt(settings.startX, settings.startY, speed, accel, jump, settings.gravity, dir, jumpFrame, hold, down,
+			settings.frames);
+		child.superCharge = superCharge;
+		child.superStart = superStart;
+		child.moveStart = moveStart;
+		child.turnFrame = turnFrame;
+		child.hats = settings.hats;
+		child.targetTileX = settings.targetTileX;
+		child.targetTileY = settings.targetTileY;
+		return child;
+	}
+
+	/** -2..2, never 0. **/
+	function nudge():Int {
+		var s = 1 + rng.int(2);
+		return rng.int(2) == 0 ? -s : s;
+	}
+
+	function neighbour(values:Array<Float>, current:Float):Float {
+		if (values.length <= 1) return current;
+		var i = 0;
+		for (j in 0...values.length) if (Math.abs(values[j] - current) < Math.abs(values[i] - current)) i = j;
+		return values[clampInt(i + nudge(), 0, values.length - 1)];
+	}
+
+	static inline function clampInt(v:Int, min:Int, max:Int):Int {
+		return v < min ? min : (v > max ? max : v);
 	}
 
 	/** Runs attempts until `maxRuns` have run or `deadline()` says time is up. Returns runs made. **/
 	public function step(maxRuns:Int, ?deadline:Void->Bool):Int {
 		var runs = 0;
 		while (!done && runs < maxRuns && (deadline == null || runs == 0 || !deadline())) {
-			var attempt = settings.anyFrame ? randomAttempt() : attemptAt(next);
+			var attempt = aiming() ? aimedAttempt() : (settings.anyFrame ? randomAttempt() : attemptAt(next));
 			next++;
 			runs++;
 			var result = ClipSimulator.run(area, attempt);
@@ -152,6 +287,7 @@ class ClipFinder {
 				break;
 			}
 			tested++;
+			if (aiming()) remember(attempt, result.aimScore, result.closestToTarget);
 			if (result.clipped) {
 				clipCount++;
 				if (clips.length < settings.maxStoredClips) {
@@ -249,6 +385,16 @@ private class ClipRng {
 
 	public function pick<T>(values:Array<T>):T {
 		return values[int(values.length)];
+	}
+}
+
+private class ScoredAttempt {
+	public final attempt:ClipAttempt;
+	public final score:Float;
+
+	public function new(attempt:ClipAttempt, score:Float) {
+		this.attempt = attempt;
+		this.score = score;
 	}
 }
 
