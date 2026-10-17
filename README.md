@@ -351,6 +351,18 @@ tools/clip_sweep.sh --random 50000 --seed 7        # random held-key sequences
 tools/clip_sweep.sh --help
 ```
 
+To sweep real levels, download them first (saved to `test/output/levels`, which
+is git-ignored), then point the sweep at the folder. It finds every inside
+corner in each level and sweeps each one; every run starts from a fresh player
+and level, so after a clip the next attempt starts clean:
+
+```sh
+tools/fetch_levels.py                              # campaign, best, best_week, newest
+tools/fetch_levels.py --ids 50815,1234567          # or specific levels
+tools/clip_sweep.sh --levels test/output/levels
+tools/clip_sweep.sh --levels test/output/levels/50815.txt --max-clips-per-corner 1
+```
+
 It is a diagnostic tool, not part of `./test.sh`.
 
 ### Archival Flash side-by-side workflow
