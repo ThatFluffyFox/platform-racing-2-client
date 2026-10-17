@@ -10,6 +10,8 @@ import pr2.gameplay.debug.ClipFinder.StatRange;
 import pr2.gameplay.debug.ClipSimulator.ClipArea;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
+import pr2.gameplay.debug.ClipScanner.ClipScanSettings;
+import pr2.gameplay.debug.ClipScanOverlay.PortalKind;
 import pr2.level.BlockType;
 import pr2.level.Level.LevelBlock;
 import pr2.level.LevelDecoder;
@@ -21,6 +23,7 @@ import pr2.net.ServerLevelData;
 @:access(pr2.gameplay.debug.ClipFinderSession)
 @:access(pr2.gameplay.debug.ClipGhost)
 @:access(pr2.gameplay.debug.ClipFinderPanel)
+@:access(pr2.gameplay.debug.ClipScanner)
 class ClipFinderTest {
 	private static var assertions:Int = 0;
 	private static var course:Null<Course> = null;
@@ -48,6 +51,10 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAreaGrowsToFollowThePlayer", testAreaGrowsToFollowThePlayer);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testAreaUsesWholeLevelForMapEdges", testAreaUsesWholeLevelForMapEdges);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testTargetBlockFiltersClips", testTargetBlockFiltersClips);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScannerFindsCorners", testScannerFindsCorners);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScannedClipLandsPastTheWall", testScannedClipLandsPastTheWall);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScannedClipWithNothingToLandOnFallsAway", testScannedClipWithNothingToLandOnFallsAway);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScannerMarksCornersItCannotClip", testScannerMarksCornersItCannotClip);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -59,6 +66,7 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPanelSearchUsesPlayerStatsByDefault", testPanelSearchUsesPlayerStatsByDefault);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayDrivesRealPlayerAlongTheClip", testReplayDrivesRealPlayerAlongTheClip);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPickingTargetBlockInRace", testPickingTargetBlockInRace);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanFromPanel", testScanFromPanel);
 		course.remove();
 		course = null;
 		trace('ClipFinderTest passed $assertions assertions');
@@ -354,6 +362,75 @@ class ClipFinderTest {
 		assertEquals(null, session.targetTileX, "pressing the button again clears the target");
 		assertEquals("Target: any block", session.panel.targetButton.label, "button back to any block");
 		session.close();
+		course.setKey(Keyboard.F9, false);
+		course.setKey(Keyboard.C, false);
+		course.setKey(Keyboard.D, false);
+	}
+
+	private static function testScannerFindsCorners():Void {
+		var right = ClipScanner.findCorners(cornerBlocks(), 1);
+		assertEquals(1, right.length, "the test level has one corner with the wall on the right");
+		assertEquals(18, right[0].x, "its air tile column");
+		assertEquals(16, right[0].y, "its air tile row");
+		assertEquals(WALL_FACE, right[0].wallFace, "wall face");
+		assertEquals(FLOOR_Y, right[0].floorY, "floor top");
+		assertEquals(0, ClipScanner.findCorners(cornerBlocks(), -1).length, "and none facing left");
+	}
+
+	/** One run-up (202 px) and one launch (a short hop into fast-fall), to keep tests quick. **/
+	private static function scanSettings(speed:Float):ClipScanSettings {
+		var settings = new ClipScanSettings(speed, 50, 75, 1);
+		settings.distances = [202];
+		settings.jumpHolds = [8];
+		settings.superCharges = [];
+		return settings;
+	}
+
+	private static function testScannedClipLandsPastTheWall():Void {
+		// The test corner, plus a ledge past the wall for a clip to land on.
+		var blocks = cornerBlocks();
+		for (col in 22...32) blocks.push(new LevelBlock(col, 25, BlockType.Basic));
+		var scanner = new ClipScanner(blocks, scanSettings(90));
+		assertEquals(1, scanner.corners.length, "the ledge adds no corner facing a wall");
+		while (!scanner.done) scanner.step(10);
+		assertEquals(1, scanner.portals.length, "the corner clips");
+		var portal = scanner.portals[0];
+		assertTrue(portal.exitX != null && portal.exitX > WALL_FACE + 90, 'comes to rest past the wall (${portal.exitX})');
+		assertEquals(25 * 30.0, portal.exitY, "on the ledge");
+		assertEquals(PortalKind.PassesThrough, ClipScanOverlay.kindOf(portal), "a clip through the wall");
+		assertTrue(portal.attempt.releaseFrame > portal.run.clipFrame, "keys are released only after landing");
+	}
+
+	private static function testScannedClipWithNothingToLandOnFallsAway():Void {
+		var scanner = new ClipScanner(cornerBlocks(), scanSettings(90));
+		while (!scanner.done) scanner.step(10);
+		assertEquals(1, scanner.portals.length, "the corner clips");
+		assertEquals(PortalKind.FallsAway, ClipScanOverlay.kindOf(scanner.portals[0]), "falls out (and respawns) with nothing to land on");
+	}
+
+	private static function testScannerMarksCornersItCannotClip():Void {
+		var scanner = new ClipScanner(cornerBlocks(), scanSettings(50));
+		while (!scanner.done) scanner.step(10);
+		assertEquals(0, scanner.portals.length, "speed 50 can't clip");
+		assertEquals(1, scanner.solidCorners.length, "the corner is marked as not clippable");
+	}
+
+	private static function testScanFromPanel():Void {
+		course.setKey(Keyboard.F9, true);
+		course.setKey(Keyboard.C, true);
+		course.setKey(Keyboard.D, true);
+		var session = course.clipFinder;
+		session.startScan();
+		assertTrue(session.scanner != null, "Scan level starts a scan");
+		assertTrue(session.overlay != null && session.overlay.parent == course.characterLayer, "the overlay is drawn in the level");
+		for (_ in 0...200) {
+			if (session.scanner == null) break;
+			course.onEnterFrame(new Event(Event.ENTER_FRAME));
+		}
+		assertEquals(null, session.scanner, "the scan finishes");
+		assertTrue(session.panel.status.text.indexOf("Scan done") == 0, 'status reports the result: ${session.panel.status.text}');
+		session.close();
+		assertTrue(session.overlay == null, "closing removes the overlay");
 		course.setKey(Keyboard.F9, false);
 		course.setKey(Keyboard.C, false);
 		course.setKey(Keyboard.D, false);

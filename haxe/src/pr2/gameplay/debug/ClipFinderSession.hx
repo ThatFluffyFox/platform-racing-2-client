@@ -60,6 +60,7 @@ class ClipFinderSession {
 		panel.onShowClip = showClip;
 		panel.onReplay = startReplay;
 		panel.onTarget = toggleTargetPicking;
+		panel.onScan = startScan;
 		panelLayer.addChild(panel);
 		ghost = new ClipGhost(player);
 		ghostLayer.addChild(ghost.character);
@@ -124,6 +125,8 @@ class ClipFinderSession {
 		stopReplay();
 		finder = new ClipFinder(level.blocks, settings);
 		clips = finder.clips;
+		clipPortals = [];
+		scanner = null;
 		shownClips = 0;
 		selectedClip = -1;
 		ghost.stop();
@@ -133,6 +136,10 @@ class ClipFinderSession {
 	}
 
 	function stopSearch():Void {
+		if (scanner != null) {
+			stopScan();
+			return;
+		}
 		if (finder == null) return;
 		panel.setRunning(false);
 		updateStatus(true);
@@ -142,6 +149,7 @@ class ClipFinderSession {
 	/** Called once per simulation frame by the course. **/
 	public function tick():Void {
 		if (closed) return;
+		tickScan();
 		var search = finder;
 		if (search != null && !search.done) {
 			var deadline = haxe.Timer.stamp() + FRAME_BUDGET_SECONDS;
@@ -165,7 +173,109 @@ class ClipFinderSession {
 		var found = clips[index];
 		var recorded = found.run.ghost;
 		if (recorded != null) ghost.play(recorded);
-		panel.setClipInfo(index, '${found.attempt.describe()}, clips on frame ${found.run.clipFrame + 1}. Replaying on a loop.');
+		var portal = index < clipPortals.length ? clipPortals[index] : null;
+		if (portal != null) {
+			panel.setClipInfo(index, 'Corner ${portal.corner.x},${portal.corner.y}: ${portalOutcome(portal)}. ${found.attempt.describe()}.');
+		} else {
+			panel.setClipInfo(index, '${found.attempt.describe()}, clips on frame ${found.run.clipFrame + 1}. Replaying on a loop.');
+		}
+	}
+
+	// ---- Level scan ------------------------------------------------------------
+
+	var scanner:Null<ClipScanner> = null;
+	var overlay:Null<ClipScanOverlay> = null;
+	/** For clips found by the scan, the portal each came from (same index as `clips`). **/
+	var clipPortals:Array<Null<ClipScanner.ClipPortal>> = [];
+	var drawnPortals:Int = 0;
+	var drawnSolid:Int = 0;
+
+	/** "Scan level": every corner in the level, with your stats, nearest first. **/
+	function startScan():Void {
+		var state = player.stateSnapshot();
+		if (state.courseRotation != 0) {
+			panel.setStatus("Only works while the course is upright.");
+			return;
+		}
+		stopReplay();
+		finder = null;
+		var gravity = level.gravity * (player.hasHatFlag(Character.MOON) ? MOON_GRAVITY : 1);
+		var settings = new ClipScanner.ClipScanSettings(state.speedStat, state.accelerationStat, state.jumpStat, gravity);
+		settings.hats = ClipHats.from(player.controller);
+		settings.originX = state.x;
+		settings.originY = state.y;
+		scanner = new ClipScanner(level.blocks, settings);
+		clips = [];
+		clipPortals = [];
+		shownClips = 0;
+		selectedClip = -1;
+		drawnPortals = 0;
+		drawnSolid = 0;
+		ghost.stop();
+		if (overlay == null) overlay = new ClipScanOverlay();
+		overlay.redraw([], []);
+		ghostLayer.addChild(overlay);
+		panel.setClipCount(0);
+		panel.setRunning(true);
+		updateScanStatus();
+	}
+
+	function stopScan():Void {
+		if (scanner == null) return;
+		panel.setRunning(false);
+		updateScanStatus(true);
+		scanner = null;
+	}
+
+	function tickScan():Void {
+		var scan = scanner;
+		if (scan == null) return;
+		if (!scan.done) {
+			var deadline = haxe.Timer.stamp() + FRAME_BUDGET_SECONDS;
+			scan.step(1000, () -> haxe.Timer.stamp() > deadline);
+		}
+		while (clips.length < scan.portals.length) {
+			var portal = scan.portals[clips.length];
+			clips.push(new ClipFinder.FoundClip(portal.attempt, portal.run));
+			clipPortals.push(portal);
+		}
+		if (clips.length != shownClips) {
+			shownClips = clips.length;
+			panel.setClipCount(shownClips);
+			if (selectedClip < 0) showClip(0);
+		}
+		if (overlay != null && (scan.portals.length != drawnPortals || scan.solidCorners.length != drawnSolid)) {
+			drawnPortals = scan.portals.length;
+			drawnSolid = scan.solidCorners.length;
+			overlay.redraw(scan.portals, scan.solidCorners);
+		}
+		updateScanStatus();
+		if (scan.done) {
+			panel.setRunning(false);
+			scanner = null;
+		}
+	}
+
+	function updateScanStatus(stopped:Bool = false):Void {
+		var scan = scanner;
+		if (scan == null) return;
+		var total = scan.corners.length;
+		var found = scan.portals.length;
+		if (scan.done) {
+			panel.setStatus('Scan done: $found of $total corners clip');
+		} else {
+			var verb = stopped ? "Stopped at" : "Scanning";
+			panel.setStatus('$verb corner ${Std.int(Math.min(scan.cornerIndex + 1, total))}/$total, $found clip');
+		}
+	}
+
+	static function portalOutcome(portal:ClipScanner.ClipPortal):String {
+		var exitX = portal.exitX, exitY = portal.exitY;
+		return switch (ClipScanOverlay.kindOf(portal)) {
+			case PassesThrough: 'passes through, lands at tile ${ClipSimulator.tileOf(exitX)},${ClipSimulator.tileOf(exitY - 1)}';
+			case PopsBack: 'clips in but pops back out on the same side';
+			case FallsAway: 'clips in and falls out of the level';
+		}
 	}
 
 	function updateStatus(stopped:Bool = false):Void {
@@ -346,6 +456,9 @@ class ClipFinderSession {
 		stopReplay();
 		setPicking(false);
 		setTarget(null, null);
+		scanner = null;
+		if (overlay != null) overlay.dispose();
+		overlay = null;
 		closed = true;
 		finder = null;
 		ghost.dispose();

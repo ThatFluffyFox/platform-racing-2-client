@@ -397,6 +397,15 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
 - **Target** (next to the title): click it, then click a block in the level.
   The block gets a red outline and **Aim at target** is ticked. Click the
   button again to clear it.
+- **Scan level** (under the title) checks every inside corner in the level,
+  nearest first, with your own stats, gravity and hats: run-ups of 100-260 px
+  into a full jump, a short hop or a super jump, each into fast-fall. Each
+  corner's wall tile is marked: a grey cross if it can't be clipped, or a box
+  if it can (green = you pass through and land beyond it, yellow = you pop
+  back out on the same side, orange = you fall out of the level), with a
+  line from the run-up start to where you land. Found clips go into the
+  Prev/Next list, so the ghost and **Replay on me** work on them. This is
+  stage 1 of route planning (finding a way to a block through walls).
 - **Aim at target** runs the same clip tester as usual (grid, or random with
   **Any frame**), but only clips into the picked block count. Untick it to keep
   the block picked but count every clip.

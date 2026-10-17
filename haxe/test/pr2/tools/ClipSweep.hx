@@ -3,6 +3,7 @@ package pr2.tools;
 import pr2.gameplay.debug.ClipSimulator;
 import pr2.gameplay.debug.ClipSimulator.ClipArea;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
+import pr2.gameplay.debug.ClipScanner;
 import pr2.gameplay.player.LocalPlayerController;
 import pr2.gameplay.player.LocalPlayerInput;
 import pr2.level.BlockType;
@@ -433,9 +434,7 @@ private class LevelSource {
 	public final title:String;
 	public final gravity:Float;
 	public var cornerCount:Int = 0;
-
 	public final blocks:Array<LevelBlock>;
-	final solid:Map<String, Bool> = new Map();
 
 	function new(path:String, id:Int, title:String, gravity:Float, blocks:Array<LevelBlock>) {
 		this.path = path;
@@ -443,9 +442,6 @@ private class LevelSource {
 		this.title = title;
 		this.gravity = gravity;
 		this.blocks = blocks;
-		for (block in blocks) {
-			if (!block.isMarker() && block.type.isSolid()) solid.set(key(block.x, block.y), true);
-		}
 	}
 
 	/** Same steps as GamePage.onLevelData: verify/sanitize, decode blocks, take the level's gravity. **/
@@ -464,36 +460,9 @@ private class LevelSource {
 		return '$id "$title"';
 	}
 
-	public inline function isSolid(x:Int, y:Int):Bool {
-		return solid.exists(key(x, y));
-	}
-
-	/**
-		Air tile with air above it (room to stand), a solid floor below, and a
-		solid wall beside it. The wall need not continue below the floor; the
-		sweep's physics decides whether a corner can actually be clipped.
-	**/
+	/** Inside corners, found by the same rule as the in-game level scan (ClipScanner.findCorners). **/
 	public function findCorners(dir:Int):Array<Corner> {
-		var corners:Array<Corner> = [];
-		var seen:Map<String, Bool> = new Map();
-		for (block in blocks) {
-			if (block.isMarker() || !block.type.isSolid()) continue;
-			// Treat every solid block as a potential floor tile under the corner.
-			var cx = block.x;
-			var cy = block.y - 1;
-			var k = key(cx, cy);
-			if (seen.exists(k)) continue;
-			seen.set(k, true);
-			if (!isSolid(cx, cy) && !isSolid(cx, cy - 1) && isSolid(cx + dir, cy)) {
-				corners.push(new Corner(cx, cy, dir));
-			}
-		}
-		corners.sort((a, b) -> a.y != b.y ? a.y - b.y : a.x - b.x);
-		return corners;
-	}
-
-	static inline function key(x:Int, y:Int):String {
-		return x + "," + y;
+		return [for (c in ClipScanner.findCorners(blocks, dir)) new Corner(c.x, c.y, c.dir)];
 	}
 }
 

@@ -34,22 +34,26 @@ class ClipSimulator {
 		If the player leaves the cropped area, the area grows to take in where it
 		went and the attempt is run again from the start, so the simulated level
 		always covers the whole path (up to the level's edge plus open air).
+
+		A recorded run keeps going `tailFrames` after the clip, or until the
+		player has stood still outside any block for 10 frames, whichever is
+		first; the level scanner uses a long tail to see where a clip leads.
 	**/
 	public static function run(area:ClipArea, attempt:ClipAttempt, recordGhost:Bool = false,
-			?onFrame:Int->LocalPlayerInput->LocalPlayerController->Bool->Void):ClipRun {
+			?onFrame:Int->LocalPlayerInput->LocalPlayerController->Bool->Void, tailFrames:Int = GHOST_TAIL_FRAMES):ClipRun {
 		if (onFrame != null) {
 			// Grow the area first with a silent run, so the traced run happens once.
-			run(area, attempt, recordGhost);
+			run(area, attempt, recordGhost, null, tailFrames);
 		}
 		while (true) {
-			var result = runOnce(area, attempt, recordGhost, onFrame);
+			var result = runOnce(area, attempt, recordGhost, onFrame, tailFrames);
 			if (result != null) return result;
 		}
 	}
 
 	/** One pass in the current area; null when the area grew and the attempt must restart. **/
 	static function runOnce(area:ClipArea, attempt:ClipAttempt, recordGhost:Bool,
-			?onFrame:Int->LocalPlayerInput->LocalPlayerController->Bool->Void):Null<ClipRun> {
+			onFrame:Null<Int->LocalPlayerInput->LocalPlayerController->Bool->Void>, tailFrames:Int):Null<ClipRun> {
 		var level = area.buildLevel(attempt.gravity);
 		if (area.overlapsSolid(level, attempt.startX, attempt.startY)) {
 			return ClipRun.blocked();
@@ -67,6 +71,7 @@ class ClipSimulator {
 
 		var ghost:Null<Array<GhostFrame>> = recordGhost ? [GhostFrame.capture(player, bodyInSolid(level, player))] : null;
 		var settledFrames = 0;
+		var longTail = tailFrames > GHOST_TAIL_FRAMES;
 		var clipFrame = -1;
 		var clipX = 0.0, clipY = 0.0, clipVx = 0.0, clipVy = 0.0;
 		var stopAt = attempt.frames;
@@ -84,7 +89,10 @@ class ClipSimulator {
 				clipVx = player.vx;
 				clipVy = player.vy;
 				if (ghost == null && onFrame == null) break;
-				if (ghost != null) stopAt = Std.int(Math.min(attempt.frames, frame + 1 + GHOST_TAIL_FRAMES));
+				if (ghost != null) {
+					// A long tail (the scanner) may run past the scripted frames to see where the player ends up.
+					stopAt = longTail ? frame + 1 + tailFrames : Std.int(Math.min(attempt.frames, frame + 1 + tailFrames));
+				}
 			}
 			if (onFrame == null) {
 				// Left the crop: grow it and start over, or stop if the player is
@@ -96,6 +104,8 @@ class ClipSimulator {
 				// Over once the scripted jump is done and the player has stood still for a while.
 				settledFrames = player.grounded && Math.abs(player.vx) < 0.5 && Math.abs(player.vy) < 1 ? settledFrames + 1 : 0;
 				if (clipFrame < 0 && attempt.scriptFinished(frame) && settledFrames >= 10) break;
+				// After a clip, a long tail ends once the player has come to rest outside the blocks.
+				if (clipFrame >= 0 && longTail && settledFrames >= 10 && !inSolid) break;
 			}
 			frame++;
 		}
@@ -144,6 +154,12 @@ class ClipAttempt {
 	public var superCharge:Int = 0;
 	/** Frame the super jump starts charging (down held from here for `superCharge` frames). **/
 	public var superStart:Int = 0;
+	/**
+		From this frame on nothing is held (-1 = never). The level scan sets it
+		to the frame after the clip, so the player comes to rest where the clip
+		leads instead of running on.
+	**/
+	public var releaseFrame:Int = -1;
 	/** Only clips into this tile count (the in-game "Target block"); null = any solid block. **/
 	public var targetTileX:Null<Int> = null;
 	public var targetTileY:Null<Int> = null;
@@ -181,6 +197,7 @@ class ClipAttempt {
 	**/
 	public function inputAt(frame:Int, grounded:Bool):LocalPlayerInput {
 		if (script != null) return script[frame];
+		if (releaseFrame >= 0 && frame >= releaseFrame) return new LocalPlayerInput();
 		var heldDir = 0;
 		if (frame >= moveStart) heldDir = turnFrame >= 0 && frame >= turnFrame ? -dir : dir;
 		var jumping = false;
@@ -312,17 +329,19 @@ class GhostFrame {
 	public final state:CharacterState;
 	public final facing:Int;
 	public final inSolid:Bool;
+	public final grounded:Bool;
 
-	public function new(x:Float, y:Float, state:CharacterState, facing:Int, inSolid:Bool) {
+	public function new(x:Float, y:Float, state:CharacterState, facing:Int, inSolid:Bool, grounded:Bool = false) {
 		this.x = x;
 		this.y = y;
 		this.state = state;
 		this.facing = facing;
 		this.inSolid = inSolid;
+		this.grounded = grounded;
 	}
 
 	public static function capture(player:LocalPlayerController, inSolid:Bool):GhostFrame {
-		return new GhostFrame(player.x, player.y, player.stateSnapshot().characterState, player.facingScaleX, inSolid);
+		return new GhostFrame(player.x, player.y, player.stateSnapshot().characterState, player.facingScaleX, inSolid, player.grounded);
 	}
 }
 

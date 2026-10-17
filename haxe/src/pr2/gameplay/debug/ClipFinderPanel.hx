@@ -57,6 +57,9 @@ class ClipFinderPanel extends NativeView {
 	/** Pick (or clear) the one block clips must go into. **/
 	public final targetButton:GameButton;
 	public var onTarget:Null<Void->Void>;
+	/** Scans every corner in the level for clips with your stats (stage 1 of route planning). **/
+	public final scanButton:GameButton;
+	public var onScan:Null<Void->Void>;
 	final status:TextField;
 	final clipInfo:TextField;
 	var shownClip:Int = 0;
@@ -76,7 +79,13 @@ class ClipFinderPanel extends NativeView {
 		close.y = 5;
 		close.onPress = function():Void if (onClose != null) onClose();
 		addChild(close);
-		addChild(text("Searches from where you are standing.", 10, 20, 240, 12));
+		scanButton = ownControl(new GameButton("Scan level"));
+		scanButton.setSize(80, 16);
+		scanButton.x = 10;
+		scanButton.y = 19;
+		scanButton.onPress = function():Void if (onScan != null) onScan();
+		addChild(scanButton);
+		addChild(text("Search starts where you stand.", 96, 21, 160, 12));
 
 		targetButton = ownControl(new GameButton("Target: any block"));
 		targetButton.setSize(140, 20);
@@ -153,6 +162,7 @@ class ClipFinderPanel extends NativeView {
 		for (row in [speedRow, accelRow, jumpRow]) row.setLocked(running);
 		for (box in [leftBox, rightBox, downBox, anyFrameBox, aimBox]) box.enabled = !running;
 		targetButton.enabled = !running;
+		scanButton.enabled = !running;
 		for (row in rows) row.setLocked(running);
 	}
 
@@ -208,6 +218,7 @@ class ClipFinderPanel extends NativeView {
 		onShowClip = null;
 		onReplay = null;
 		onTarget = null;
+		onScan = null;
 		super.dispose();
 	}
 }
