@@ -195,7 +195,8 @@ class ClipFinderSession {
 		if (routeText != null) {
 			panel.setClipInfo(index, 'Route: $routeText');
 		} else if (portal != null) {
-			panel.setClipInfo(index, 'Corner ${portal.corner.x},${portal.corner.y}: ${portalOutcome(portal)}. ${found.attempt.describe()}.');
+			var where = portal.corner.mine != null ? 'Mine at ${portal.corner.mine.x},${portal.corner.mine.y}' : 'Corner ${portal.corner.x},${portal.corner.y}';
+			panel.setClipInfo(index, '$where: ${portalOutcome(portal)}. ${found.attempt.describe()}.');
 		} else {
 			panel.setClipInfo(index, '${found.attempt.describe()}, clips on frame ${found.run.clipFrame + 1}. Replaying on a loop.');
 		}
@@ -228,6 +229,8 @@ class ClipFinderSession {
 		settings.originY = state.y;
 		// Holding a Laser Gun: also try laser recoil clips at each corner.
 		settings.laser = player.controller.itemId == Items.LASER_GUN;
+		// The stat rows: each corner and mine is tried with every sampled set (your own stats first).
+		settings.statSets = statSetsFromPanel(SCAN_SAMPLES);
 		scanner = new ClipScanner(liveBlocks(), settings);
 		clips = [];
 		clipPortals = [];
@@ -286,10 +289,10 @@ class ClipFinderSession {
 		var total = scan.corners.length;
 		var found = scan.portals.length;
 		if (scan.done) {
-			panel.setStatus('Scan done: $found of $total corners clip');
+			panel.setStatus('Scan done: $found of $total corners/mines clip');
 		} else {
 			var verb = stopped ? "Stopped at" : "Scanning";
-			panel.setStatus('$verb corner ${Std.int(Math.min(scan.cornerIndex + 1, total))}/$total, $found clip');
+			panel.setStatus('$verb ${Std.int(Math.min(scan.cornerIndex + 1, total))}/$total corners/mines, $found clip');
 		}
 	}
 
@@ -300,6 +303,30 @@ class ClipFinderSession {
 			case PopsBack: 'clips in but pops back out on the same side';
 			case FallsAway: 'clips in and falls out of the level';
 		}
+	}
+
+	/** Values tried per ranged stat: the level scan, and route planning (a full plan per set). **/
+	static inline var SCAN_SAMPLES:Int = 4;
+	static inline var ROUTE_SAMPLES:Int = 3;
+
+	/**
+		The stat rows as [speed, accel, jump] sets: a fixed stat is its one
+		value; a ranged stat gives up to `samples` evenly spread values (both
+		ends included). Sets nearest the player's own stats come first.
+	**/
+	function statSetsFromPanel(samples:Int):Array<Array<Float>> {
+		var state = player.stateSnapshot();
+		var own = [state.speedStat, state.accelerationStat, state.jumpStat];
+		var axes = [for (range in [panel.speedRow.range(), panel.accelRow.range(), panel.jumpRow.range()]) sample(range.values(), samples)];
+		var sets = [for (a in axes[0]) for (b in axes[1]) for (c in axes[2]) [a, b, c]];
+		inline function distance(set:Array<Float>):Float return Math.abs(set[0] - own[0]) + Math.abs(set[1] - own[1]) + Math.abs(set[2] - own[2]);
+		sets.sort((x, y) -> Reflect.compare(distance(x), distance(y)));
+		return sets;
+	}
+
+	static function sample(values:Array<Float>, count:Int):Array<Float> {
+		if (values.length <= count) return values;
+		return [for (i in 0...count) values[Math.round(i * (values.length - 1) / (count - 1))]];
 	}
 
 	// ---- Route to target -----------------------------------------------------
@@ -329,11 +356,15 @@ class ClipFinderSession {
 		finder = null;
 		scanner = null;
 		var gravity = level.gravity * (player.hasHatFlag(Character.MOON) ? MOON_GRAVITY : 1);
-		var settings = new ClipRoutePlanner.RouteSettings(Math.round(state.x), Math.round(state.y), state.speedStat, state.accelerationStat,
+		// The stat rows: plan with each sampled set in turn (your own stats first) until one finds a route.
+		routeSets = statSetsFromPanel(ROUTE_SAMPLES);
+		routeSetIndex = 0;
+		routeBlocks = liveBlocks();
+		routeTemplate = new ClipRoutePlanner.RouteSettings(Math.round(state.x), Math.round(state.y), state.speedStat, state.accelerationStat,
 			state.jumpStat, gravity, tx, ty);
-		settings.hats = ClipHats.from(player.controller);
-		settings.items = ClipSimulator.ClipItems.from(player.controller);
-		planner = ClipSimulator.keepRealItem(() -> new ClipRoutePlanner(liveBlocks(), settings));
+		routeTemplate.hats = ClipHats.from(player.controller);
+		routeTemplate.items = ClipSimulator.ClipItems.from(player.controller);
+		planner = plannerFor(routeSets[0]);
 		clips = [];
 		clipPortals = [];
 		routeText = null;
@@ -352,6 +383,20 @@ class ClipFinderSession {
 		planner = null;
 	}
 
+	/** Stat sets for Stage 2 (each [speed, accel, jump]), tried in order, and which one is planning. **/
+	var routeSets:Array<Array<Float>> = [];
+	var routeSetIndex:Int = 0;
+	var routeTemplate:Null<ClipRoutePlanner.RouteSettings> = null;
+	var routeBlocks:Array<pr2.level.Level.LevelBlock> = [];
+
+	function plannerFor(stats:Array<Float>):ClipRoutePlanner {
+		var t = routeTemplate;
+		var settings = new ClipRoutePlanner.RouteSettings(t.startX, t.startY, stats[0], stats[1], stats[2], t.gravity, t.targetTileX, t.targetTileY);
+		settings.hats = t.hats;
+		settings.items = t.items;
+		return ClipSimulator.keepRealItem(() -> new ClipRoutePlanner(routeBlocks, settings));
+	}
+
 	function tickRoute():Void {
 		var plan = planner;
 		if (plan == null) return;
@@ -361,6 +406,13 @@ class ClipFinderSession {
 		}
 		updateRouteStatus();
 		if (!plan.done) return;
+		if (plan.route == null && routeSetIndex + 1 < routeSets.length) {
+			// No route with these stats: try the next set.
+			routeSetIndex++;
+			planner = plannerFor(routeSets[routeSetIndex]);
+			updateRouteStatus();
+			return;
+		}
 		panel.setRunning(false);
 		planner = null;
 		var found = plan.foundClip();
@@ -377,8 +429,10 @@ class ClipFinderSession {
 		var plan = planner;
 		if (plan == null) return;
 		var route = plan.route;
+		var s = plan.settings;
+		var statsText = routeSets.length > 1 ? ' [stats ${s.speed}/${s.accel}/${s.jump}, ${routeSetIndex + 1} of ${routeSets.length}]' : "";
 		if (route != null) {
-			panel.setStatus('Route found: ${route.steps.length} steps, ${route.clips} clip${route.clips == 1 ? "" : "s"}');
+			panel.setStatus('Route found: ${route.steps.length} steps, ${route.clips} clip${route.clips == 1 ? "" : "s"}$statsText');
 		} else if (plan.done) {
 			panel.setStatus('No route found (${plan.spotsExplored} spots tried).');
 			// Why the moves ran out, in the info box under the buttons.
@@ -533,6 +587,8 @@ class ClipFinderSession {
 			return;
 		}
 		applyStats(found.attempt.speed, found.attempt.accel, found.attempt.jump);
+		// Mines and bricks the replay destroys are put back when it ends.
+		replayBreakables = level.blocks.filter(b -> b.type == pr2.level.BlockType.Mine || b.type == pr2.level.BlockType.Brick);
 		replay = found.attempt;
 		replayFrame = 0;
 		// The idle settle frame, then the same frames the ghost recorded.
@@ -559,10 +615,20 @@ class ClipFinderSession {
 		return input;
 	}
 
+	/** Mines and bricks in the level when the replay started. **/
+	var replayBreakables:Array<pr2.level.Level.LevelBlock> = [];
+
 	function stopReplay():Void {
 		if (replay == null) return;
 		replay = null;
 		applyStats(savedSpeed, savedAccel, savedJump);
+		// Put back what the replay blew up or broke (the game draws them again; other players still saw them go).
+		var restored = 0;
+		for (block in replayBreakables) {
+			if (level.blocks.indexOf(block) < 0 && player.controller.blockController.addBlock(block)) restored++;
+		}
+		replayBreakables = [];
+		if (restored > 0) panel.setStatus('Replay over: put back $restored block${restored == 1 ? "" : "s"} it blew up.');
 		panel.replayButton.label = "Replay on me";
 	}
 

@@ -304,6 +304,14 @@ class StatRow {
 	public var useRange(get, never):Bool;
 	function get_useRange():Bool return rangeBox.selected;
 
+	/** Ticks Range and sets both ends (what dragging the two sliders does). **/
+	public function setRange(min:Float, max:Float):Void {
+		rangeBox.selected = true;
+		minSlider.value = min;
+		maxSlider.value = max;
+		refresh();
+	}
+
 	public function range():ClipFinder.StatRange {
 		return useRange ? new ClipFinder.StatRange(minSlider.value, maxSlider.value, 1) : ClipFinder.StatRange.fixed(current);
 	}

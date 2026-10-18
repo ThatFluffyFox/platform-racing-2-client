@@ -415,7 +415,18 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     landing speed can put you through the floor. Only that exact frame
     works, and it depends on your stats, so every fire frame from 4 to 75 is
     tried (with three jump heights and 0-2 px from the wall).
-  - **Stage 2: route to target** plans a way from where you stand to the
+    It also scans **mines**: a mine on the floor with room to stand beside
+    it (walk, hop or jump at it from 2 px and 40 px), a mine set into the
+    floor (step onto it or run across it), and a mine overhead (jump up into
+    it). Any blast that drives you into a block is listed and marked on the
+    mine, with where you come out. With **Range** ticked on a stat row, every
+    corner and mine is tried with each sampled set of stats (up to 4 values
+    per ranged stat, your own stats first), and a clip shows the stats that
+    did it.
+  - **Stage 2: route to target** (with Range ticked on stat rows, it plans
+    with each sampled set of stats in turn, up to 3 values per ranged stat
+    and your own stats first, until one finds a route; the status shows which
+    set) plans a way from where you stand to the
     picked target block with your stats, gravity and hats, and goes through
     walls and floors when that is the way there. It tries walks, jumps, super
     jumps and a jump in place from each spot it can stand on, cheapest first.
@@ -491,7 +502,9 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
   the clip's start, gives you the clip's stats, and plays the clip's inputs
   (the keyboard is ignored meanwhile), with the ghost running alongside. Your
   own stats come back when it ends; press the button again to stop early. It
-  needs the race to be running, and other players see the jump.
+  needs the race to be running, and other players see the jump. Mines it
+  blows up and bricks it breaks are put back when it ends (only on your
+  screen; other players saw them go).
 - **Start** searches from where you are standing in a cropped copy of the
   level, a few attempts per frame so the race keeps running. Every attempt
   starts from a fresh simulated player; your real player, blocks and network

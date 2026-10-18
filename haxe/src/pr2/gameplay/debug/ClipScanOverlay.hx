@@ -50,7 +50,7 @@ class ClipScanOverlay extends Shape {
 		var g = graphics;
 		g.clear();
 		for (corner in solidCorners) {
-			var x = corner.wallTileX * t, y = corner.y * t;
+			var x = corner.markX * t, y = corner.markY * t;
 			g.lineStyle(1, COLOR_SOLID, 0.6);
 			g.moveTo(x + 8, y + 8);
 			g.lineTo(x + t - 8, y + t - 8);
@@ -60,7 +60,7 @@ class ClipScanOverlay extends Shape {
 		for (portal in portals) {
 			var color = colorOf(kindOf(portal));
 			var corner = portal.corner;
-			var x = corner.wallTileX * t, y = corner.y * t;
+			var x = corner.markX * t, y = corner.markY * t;
 			g.lineStyle(3, color, 0.95);
 			g.beginFill(color, 0.25);
 			g.drawRect(x, y, t, t);

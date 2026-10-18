@@ -15,12 +15,26 @@ class ClipCorner {
 	public final x:Int;
 	public final y:Int;
 	public final dir:Int;
+	/**
+		For a mine spot (the level scan also tries mines): the mine's tile and
+		how it is reached; null for an inside corner. (x, y) is then the tile
+		the player stands in and `dir` faces the mine.
+	**/
+	public var mine:Null<MineSpot> = null;
 
-	public function new(x:Int, y:Int, dir:Int) {
+	public function new(x:Int, y:Int, dir:Int, ?mine:MineSpot) {
 		this.x = x;
 		this.y = y;
 		this.dir = dir;
+		this.mine = mine;
 	}
+
+	/** The tile the overlay marks: the wall tile of a corner, or the mine. **/
+	public var markX(get, never):Int;
+	inline function get_markX():Int return mine != null ? mine.x : wallTileX;
+
+	public var markY(get, never):Int;
+	inline function get_markY():Int return mine != null ? mine.y : y;
 
 	/** Pixel x of the wall face the player runs into. **/
 	public var wallFace(get, never):Float;
@@ -33,6 +47,25 @@ class ClipCorner {
 	/** The wall tile next to the corner, the one a clip goes into. **/
 	public var wallTileX(get, never):Int;
 	inline function get_wallTileX():Int return x + dir;
+}
+
+/** How a mine spot is used: a mine beside the player on the floor, set into the floor, or overhead. **/
+enum MineUse {
+	Beside;
+	InFloor;
+	Overhead;
+}
+
+class MineSpot {
+	public final x:Int;
+	public final y:Int;
+	public final use:MineUse;
+
+	public function new(x:Int, y:Int, use:MineUse) {
+		this.x = x;
+		this.y = y;
+		this.use = use;
+	}
 }
 
 /** A corner the scan clipped through, with the attempt that did it and where it led. **/
@@ -68,6 +101,11 @@ class ClipPortal {
 	function get_passesThrough():Bool {
 		var x = exitX, y = exitY;
 		if (x == null || y == null) return false;
+		if (corner.mine != null) {
+			// A mine blast that went into blocks: it leads somewhere when it comes to rest away from where it started.
+			var t = ClipSimulator.TILE;
+			return Math.abs(x - attempt.startX) > t * 1.5 || Math.abs(y - attempt.startY) > t * 1.5;
+		}
 		return corner.dir * (x - corner.wallFace) > 0 || y > corner.floorY + 1;
 	}
 
@@ -129,6 +167,13 @@ class ClipScanSettings {
 	public var laserHolds:Array<Int> = [3, 8, 30];
 	/** Frames the player turns away on (and fires the frame after). **/
 	public var laserFireFrames:Array<Int> = [for (f in 4...76) f];
+	/** Also scan mines: blasts from beside, from the floor and from below that drive the player into blocks. **/
+	public var mines:Bool = true;
+	/**
+		Stats to scan with, each [speed, accel, jump] (null = just `speed`,
+		`accel`, `jump`). Every corner is tried with each set, in order.
+	**/
+	public var statSets:Null<Array<Array<Float>>> = null;
 
 	public function new(speed:Float, accel:Float, jump:Float, gravity:Float) {
 		this.speed = speed;
@@ -177,6 +222,8 @@ class ClipScanner {
 		launches = [for (hold in settings.jumpHolds) new ScanLaunch(hold, 0)];
 		for (charge in settings.superCharges) if (charge > 0) launches.push(new ScanLaunch(0, charge));
 		corners = onlyCorner != null ? [onlyCorner] : findCorners(blocks, 1).concat(findCorners(blocks, -1));
+		if (onlyCorner == null && settings.mines) corners = corners.concat(findMineSpots(blocks));
+		statSets = settings.statSets != null && settings.statSets.length > 0 ? settings.statSets : [[settings.speed, settings.accel, settings.jump]];
 		var ox = settings.originX, oy = settings.originY;
 		corners.sort((a, b) -> Reflect.compare(distanceSq(a, ox, oy), distanceSq(b, ox, oy)));
 	}
@@ -184,9 +231,20 @@ class ClipScanner {
 	public var done(get, never):Bool;
 	inline function get_done():Bool return cornerIndex >= corners.length;
 
-	/** Attempts per corner when no clip is found (the most a corner can cost). **/
+	/** The stat sets every corner is tried with. **/
+	final statSets:Array<Array<Float>>;
+
+	/** Attempts per inside corner when no clip is found, over all stat sets. **/
 	public var attemptsPerCorner(get, never):Int;
-	inline function get_attemptsPerCorner():Int return runUpAttempts + laserAttempts;
+	inline function get_attemptsPerCorner():Int return (runUpAttempts + laserAttempts) * statSets.length;
+
+	/** Attempts at one target with one stat set. **/
+	function attemptsPerSet(corner:ClipCorner):Int {
+		var mine = corner.mine;
+		return mine == null ? runUpAttempts + laserAttempts : mineMoves(mine.use).length;
+	}
+
+	public function attemptsFor(corner:ClipCorner):Int return attemptsPerSet(corner) * statSets.length;
 
 	var runUpAttempts(get, never):Int;
 	inline function get_runUpAttempts():Int return settings.distances.length * launches.length;
@@ -202,7 +260,7 @@ class ClipScanner {
 		while (!done && runs < maxRuns && (deadline == null || runs == 0 || !deadline())) {
 			var corner = corners[cornerIndex];
 			if (area == null) area = cornerArea(corner);
-			if (attemptIndex >= attemptsPerCorner) {
+			if (attemptIndex >= attemptsFor(corner)) {
 				solidCorners.push(corner);
 				nextCorner();
 				continue;
@@ -246,13 +304,22 @@ class ClipScanner {
 		area = null;
 	}
 
-	/** Distance-major order, so the nearest run-ups are tried with every launch first; then the laser attempts. **/
+	/**
+		Stat sets in order (all of one set's attempts first). Within a set:
+		distance-major run-ups, so the nearest are tried with every launch
+		first; then the laser attempts; a mine spot has its own moves.
+	**/
 	public function attemptAt(corner:ClipCorner, index:Int):ClipAttempt {
-		if (index >= runUpAttempts) return laserAttemptAt(corner, index - runUpAttempts);
+		var perSet = attemptsPerSet(corner);
+		var stats = statSets[Std.int(index / perSet)];
+		index = index % perSet;
+		var mine = corner.mine;
+		if (mine != null) return mineAttemptAt(corner, mine, index, stats);
+		if (index >= runUpAttempts) return laserAttemptAt(corner, index - runUpAttempts, stats);
 		var launch = launches[index % launches.length];
 		var distance = settings.distances[Std.int(index / launches.length)];
 		var startX = corner.wallFace - corner.dir * (10 + distance);
-		var attempt = new ClipAttempt(startX, corner.floorY, settings.speed, settings.accel, settings.jump, settings.gravity, corner.dir, 0,
+		var attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], settings.gravity, corner.dir, 0,
 			launch.hold, true, settings.frames);
 		attempt.superCharge = launch.superCharge;
 		attempt.hats = settings.hats;
@@ -264,7 +331,7 @@ class ClipScanner {
 		(held `hold` frames), turn away from the wall on `fireAt` and fire on the
 		next frame, then let go.
 	**/
-	function laserAttemptAt(corner:ClipCorner, index:Int):ClipAttempt {
+	function laserAttemptAt(corner:ClipCorner, index:Int, stats:Array<Float>):ClipAttempt {
 		var s = settings;
 		var fires = s.laserFireFrames.length, holds = s.laserHolds.length;
 		var fireAt = s.laserFireFrames[index % fires];
@@ -277,7 +344,7 @@ class ClipScanner {
 			var turn = f == fireAt;
 			new LocalPlayerInput(turn && corner.dir == 1, turn && corner.dir == -1, jumping, false, f == fireAt + 1);
 		}];
-		var attempt = new ClipAttempt(startX, corner.floorY, s.speed, s.accel, s.jump, s.gravity, corner.dir, 0, 0, false, length);
+		var attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], s.gravity, corner.dir, 0, 0, false, length);
 		attempt.script = script;
 		attempt.items = new ClipItems(LASER_GUN);
 		attempt.hats = s.hats;
@@ -286,6 +353,89 @@ class ClipScanner {
 	}
 
 	static inline var LASER_GUN:Int = 1;
+
+	/** The moves tried at a mine spot, facing it (right): what it is, gap from the mine (or offset under it) and inputs. **/
+	static function mineMoves(use:MineUse):Array<MineMove> {
+		var moves:Array<MineMove> = [];
+		switch (use) {
+			case Beside:
+				for (gap in [2.0, 40.0]) {
+					moves.push(new MineMove('walk at it from ${gap}px', gap, holdKeys(1, 30, 0)));
+					moves.push(new MineMove('hop at it from ${gap}px', gap, holdKeys(1, 30, 3)));
+					moves.push(new MineMove('jump at it from ${gap}px', gap, holdKeys(1, 30, 30)));
+				}
+			case InFloor:
+				for (gap in [4.0, 60.0]) {
+					moves.push(new MineMove('step onto it from ${gap}px', gap, holdKeys(1, 20 + Std.int(gap), 0)));
+					moves.push(new MineMove('run across it from ${gap}px', gap, holdKeys(1, 90, 0)));
+				}
+			case Overhead:
+				moves.push(new MineMove("jump up into it", 0, holdKeys(0, 0, 30)));
+				moves.push(new MineMove("jump up into it (off-centre)", 12, holdKeys(0, 0, 30)));
+		}
+		return moves;
+	}
+
+	/** Hold `dir` (0 = none) for `frames` frames and jump for the first `jumpHold`. **/
+	static function holdKeys(dir:Int, frames:Int, jumpHold:Int):Array<LocalPlayerInput> {
+		var length = Std.int(Math.max(frames, jumpHold));
+		return [for (f in 0...length) new LocalPlayerInput(dir == -1 && f < frames, dir == 1 && f < frames, f < jumpHold, false)];
+	}
+
+	/** A mine attempt: stand at the move's gap from the mine and play it (inputs face the mine). **/
+	function mineAttemptAt(corner:ClipCorner, mine:MineSpot, index:Int, stats:Array<Float>):ClipAttempt {
+		var t = ClipSimulator.TILE;
+		var move = mineMoves(mine.use)[index];
+		var dir = corner.dir;
+		var startX = switch (mine.use) {
+			case Overhead: (mine.x + 0.5) * t - move.gap;
+			default: (dir == 1 ? mine.x * t : (mine.x + 1) * t) - dir * (10 + move.gap);
+		}
+		var inputs = [for (i in move.inputs) new LocalPlayerInput(dir == -1 ? i.right : i.left, dir == -1 ? i.left : i.right, i.jump, i.down)];
+		var length = inputs.length + settings.frames;
+		var attempt = new ClipAttempt(startX, (corner.y + 1) * t, stats[0], stats[1], stats[2], settings.gravity, dir, 0, 0, false, length);
+		attempt.script = inputs;
+		attempt.hats = settings.hats;
+		attempt.label = 'mine at ${mine.x},${mine.y}: ${move.label}';
+		return attempt;
+	}
+
+	/**
+		Mines a player can use: one on the floor with standing room beside it,
+		one set into the floor with room to stand on its neighbour, and one
+		overhead with room to stand under it (and jump up into it).
+	**/
+	public static function findMineSpots(blocks:Array<LevelBlock>):Array<ClipCorner> {
+		var solid:Map<String, Bool> = new Map();
+		for (block in blocks) {
+			if (!block.isMarker() && block.type.isSolid()) solid.set(block.x + "," + block.y, true);
+		}
+		inline function isSolid(x:Int, y:Int):Bool return solid.exists(x + "," + y);
+		var spots:Array<ClipCorner> = [];
+		for (b in blocks) {
+			if (b.isMarker() || b.type != BlockType.Mine) continue;
+			var mx = b.x, my = b.y;
+			for (dir in [1, -1]) {
+				var sx = mx - dir;
+				// Beside: stand next to it on the same floor.
+				if (!isSolid(sx, my) && !isSolid(sx, my - 1) && isSolid(sx, my + 1)) spots.push(new ClipCorner(sx, my, dir, new MineSpot(mx, my, Beside)));
+				// In the floor: stand on the tile next to it, with the mine's own top open.
+				if (!isSolid(mx, my - 1) && !isSolid(mx, my - 2) && isSolid(sx, my) && !isSolid(sx, my - 1) && !isSolid(sx, my - 2))
+					spots.push(new ClipCorner(sx, my - 1, dir, new MineSpot(mx, my, InFloor)));
+			}
+			// Overhead: open below it, then a floor to stand on within a few tiles.
+			if (!isSolid(mx, my + 1)) {
+				for (sy in my + 2...my + 5) {
+					if (isSolid(mx, sy)) break;
+					if (isSolid(mx, sy + 1) && !isSolid(mx, sy - 1)) {
+						spots.push(new ClipCorner(mx, sy, 1, new MineSpot(mx, my, Overhead)));
+						break;
+					}
+				}
+			}
+		}
+		return spots;
+	}
 
 	function cornerArea(corner:ClipCorner):ClipArea {
 		var minX = corner.dir == 1 ? corner.x - CROP_BACK : corner.x - CROP_PAST;
@@ -340,5 +490,17 @@ private class ScanLaunch {
 	public function new(hold:Int, superCharge:Int) {
 		this.hold = hold;
 		this.superCharge = superCharge;
+	}
+}
+
+private class MineMove {
+	public final label:String;
+	public final gap:Float;
+	public final inputs:Array<LocalPlayerInput>;
+
+	public function new(label:String, gap:Float, inputs:Array<LocalPlayerInput>) {
+		this.label = label;
+		this.gap = gap;
+		this.inputs = inputs;
 	}
 }

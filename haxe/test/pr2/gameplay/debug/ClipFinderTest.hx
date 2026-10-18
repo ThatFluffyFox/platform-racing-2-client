@@ -13,6 +13,7 @@ import pr2.gameplay.debug.ClipSimulator.ClipHats;
 import pr2.gameplay.debug.ClipFinderPanel.ScanStage;
 import pr2.gameplay.debug.ClipRoutePlanner.RouteSettings;
 import pr2.gameplay.debug.ClipScanner.ClipScanSettings;
+import pr2.gameplay.debug.ClipScanner.MineUse;
 import pr2.gameplay.debug.ClipScanOverlay.PortalKind;
 import pr2.level.BlockType;
 import pr2.level.Level.LevelBlock;
@@ -77,6 +78,8 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testLaserRecoilClipsThroughTheCorner", testLaserRecoilClipsThroughTheCorner);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteUsesLaserRecoilClip", testRouteUsesLaserRecoilClip);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSimulationsKeepTheRealItemUses", testSimulationsKeepTheRealItemUses);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanFindsMineSpots", testScanFindsMineSpots);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesEachStatSet", testScanTriesEachStatSet);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -90,6 +93,8 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPickingTargetBlockInRace", testPickingTargetBlockInRace);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanFromPanel", testScanFromPanel);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteFromPanel", testRouteFromPanel);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangesGiveStatSets", testStatRangesGiveStatSets);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayPutsBackBlownUpMines", testReplayPutsBackBlownUpMines);
 		course.remove();
 		course = null;
 		trace('ClipFinderTest passed $assertions assertions');
@@ -763,6 +768,92 @@ class ClipFinderTest {
 			return planner.route;
 		});
 		assertEquals(2.0, ClipSimulator.itemUses(), "the real item's uses are put back");
+	}
+
+	private static function testScanFindsMineSpots():Void {
+		var blocks:Array<LevelBlock> = [];
+		for (c in 0...20) blocks.push(new LevelBlock(c, 17, c == 10 ? BlockType.Mine : BlockType.Basic));
+		// A mine on the floor (5,16), one set into the floor (10,17) and one overhead (15,13).
+		blocks.push(new LevelBlock(5, 16, BlockType.Mine));
+		blocks.push(new LevelBlock(15, 13, BlockType.Mine));
+		var spots = ClipScanner.findMineSpots(blocks);
+		inline function count(use:pr2.gameplay.debug.ClipScanner.MineUse):Int return spots.filter(c -> c.mine.use == use).length;
+		assertEquals(2, count(Beside), "the floor mine can be reached from both sides");
+		assertEquals(2, count(InFloor), "the mine in the floor can be stepped onto from both sides");
+		assertEquals(1, count(Overhead), "the overhead mine can be jumped into from below");
+		var overhead = spots.filter(c -> c.mine.use == Overhead)[0];
+		assertEquals(16, overhead.y, "standing on the floor under it");
+		assertTrue(overhead.markX == 15 && overhead.markY == 13, "the overlay marks the mine itself");
+		var scanner = new ClipScanner(blocks, new ClipScanSettings(50, 50, 50, 1));
+		assertEquals(5, scanner.corners.filter(c -> c.mine != null).length, "the level scan tries every mine spot");
+		var settings = new ClipScanSettings(50, 50, 50, 1);
+		settings.mines = false;
+		assertEquals(0, new ClipScanner(blocks, settings).corners.filter(c -> c.mine != null).length, "unless mines are switched off");
+	}
+
+	private static function testScanTriesEachStatSet():Void {
+		var blocks = cornerBlocks();
+		for (col in 22...32) blocks.push(new LevelBlock(col, 25, BlockType.Basic));
+		var settings = scanSettings(50);
+		// Speed 50 can't clip this corner; 90 can.
+		settings.statSets = [[50, 50, 75], [90, 50, 75]];
+		var scanner = new ClipScanner(blocks, settings);
+		assertEquals(2, scanner.attemptsFor(scanner.corners[0]), "one attempt per stat set");
+		while (!scanner.done) scanner.step(10);
+		assertEquals(1, scanner.portals.length, "the corner clips with one of the sets");
+		assertEquals(90.0, scanner.portals[0].attempt.speed, "the speed 90 set");
+	}
+
+	private static function testStatRangesGiveStatSets():Void {
+		course.setKey(Keyboard.F9, true);
+		course.setKey(Keyboard.C, true);
+		course.setKey(Keyboard.D, true);
+		var session = course.clipFinder;
+		var own = course.localCharacter.stateSnapshot();
+		assertEquals(1, session.statSetsFromPanel(3).length, "fixed stats: just the player's own");
+		session.panel.speedRow.setRange(40, 100);
+		session.panel.jumpRow.setRange(0, 100);
+		var sets = session.statSetsFromPanel(3);
+		assertEquals(9, sets.length, "two ranged stats, three values each");
+		assertTrue(sets.filter(set -> set[0] == 40).length == 3 && sets.filter(set -> set[0] == 100).length == 3, "both ends of the range are used");
+		var nearest = Math.abs(sets[0][0] - own.speedStat) + Math.abs(sets[0][2] - own.jumpStat);
+		var farthest = Math.abs(sets[8][0] - own.speedStat) + Math.abs(sets[8][2] - own.jumpStat);
+		assertTrue(nearest <= farthest, "sets nearest the player's own stats come first");
+		session.close();
+		course.setKey(Keyboard.F9, false);
+		course.setKey(Keyboard.C, false);
+		course.setKey(Keyboard.D, false);
+	}
+
+	private static function testReplayPutsBackBlownUpMines():Void {
+		course.setKey(Keyboard.F9, true);
+		course.setKey(Keyboard.C, true);
+		course.setKey(Keyboard.D, true);
+		var session = course.clipFinder;
+		var controller = course.localCharacter.controller;
+		var before = course.localCharacter.stateSnapshot();
+		// A mine somewhere in the level when the replay starts.
+		var mine = new LevelBlock(ClipSimulator.tileOf(before.x) + 6, ClipSimulator.tileOf(before.y) - 4, BlockType.Mine);
+		assertTrue(controller.blockController.addBlock(mine), "test mine placed");
+		var attempt = new ClipAttempt(Math.round(before.x), Math.round(before.y), 50, 50, 50, course.level.gravity, 1, 0, 0, false, 10);
+		var area = ClipArea.around(course.level.blocks, attempt.startX, attempt.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP,
+			ClipFinder.AREA_DOWN);
+		session.clips = [new pr2.gameplay.debug.ClipFinder.FoundClip(attempt, ClipSimulator.run(area, attempt, true))];
+		session.panel.setClipCount(1);
+		session.showClip(0);
+		session.startReplay();
+		// The replay sets it off (as if the player had run into it).
+		controller.blockController.removeBlock(mine);
+		assertTrue(course.level.blocks.indexOf(mine) < 0, "blown up during the replay");
+		session.stopReplay();
+		assertTrue(course.level.blocks.indexOf(mine) >= 0, "and put back when the replay ends");
+		assertTrue(mine.collisionActive, "solid again");
+		assertTrue(session.panel.status.text.indexOf("put back 1 block") >= 0, 'the status says so: ${session.panel.status.text}');
+		controller.blockController.removeBlock(mine);
+		session.close();
+		course.setKey(Keyboard.F9, false);
+		course.setKey(Keyboard.C, false);
+		course.setKey(Keyboard.D, false);
 	}
 
 	private static function testRouteFromPanel():Void {
