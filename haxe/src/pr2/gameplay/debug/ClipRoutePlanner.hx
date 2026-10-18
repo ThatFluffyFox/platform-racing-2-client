@@ -3,6 +3,7 @@ package pr2.gameplay.debug;
 import pr2.gameplay.debug.ClipSimulator.ClipArea;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
+import pr2.gameplay.debug.ClipSimulator.ClipItems;
 import pr2.gameplay.debug.ClipSimulator.ClipRun;
 import pr2.gameplay.debug.ClipSimulator.GhostFrame;
 import pr2.gameplay.debug.ClipScanner.ClipCorner;
@@ -10,6 +11,9 @@ import pr2.gameplay.debug.ClipScanner.ClipScanSettings;
 import pr2.gameplay.player.LocalPlayerController;
 import pr2.gameplay.player.LocalPlayerInput;
 import pr2.level.BlockType;
+import pr2.gameplay.BlockController;
+import pr2.gameplay.Items;
+import pr2.level.Level;
 import pr2.level.Level.LevelBlock;
 
 class RouteSettings {
@@ -20,6 +24,8 @@ class RouteSettings {
 	public var jump:Float;
 	public var gravity:Float;
 	public var hats:Null<ClipHats> = null;
+	/** The item the player starts with and the level's allowed items (null = none / every item). **/
+	public var items:Null<ClipItems> = null;
 	/** The block to reach: touch it, stand on it, or end up inside it. **/
 	public var targetTileX:Int;
 	public var targetTileY:Int;
@@ -75,33 +81,49 @@ class RouteMove {
 /** A standing spot reached by a route: the whole input script from the start to it, at rest. **/
 class RouteSpot {
 	public final script:Array<LocalPlayerInput>;
+	/** The feet, in the level's own space. **/
 	public final x:Float;
 	public final y:Float;
 	public final steps:Array<String>;
 	public final clips:Int;
 	public final cost:Int;
-	/** Mines blown up on the way here (they don't come back, so they change what the next moves do). **/
-	public final minesGone:Int;
+	/** The state the spot was reached in (`RouteSim` at rest): tile, rotation, mines gone, item, water. **/
+	public final state:RouteSim;
 
-	public function new(script:Array<LocalPlayerInput>, x:Float, y:Float, steps:Array<String>, clips:Int, cost:Int, minesGone:Int = 0) {
+	public function new(script:Array<LocalPlayerInput>, steps:Array<String>, clips:Int, cost:Int, state:RouteSim) {
 		this.script = script;
-		this.x = x;
-		this.y = y;
+		this.x = state.restX;
+		this.y = state.restY;
 		this.steps = steps;
 		this.clips = clips;
 		this.cost = cost;
-		this.minesGone = minesGone;
+		this.state = state;
 	}
 
-	/** One spot per tile and number of mines gone. **/
+	/** One spot per tile, course rotation, number of mines gone and item held. **/
 	public var key(get, never):String;
-	inline function get_key():String return tileX + "," + tileY + "," + minesGone;
+	inline function get_key():String return state.restKey();
 
+	/** The tile the player stands in (level space). **/
 	public var tileX(get, never):Int;
-	inline function get_tileX():Int return ClipSimulator.tileOf(x);
+	inline function get_tileX():Int return state.restTileX;
 
 	public var tileY(get, never):Int;
-	inline function get_tileY():Int return ClipSimulator.tileOf(y - 1);
+	inline function get_tileY():Int return state.restTileY;
+
+	/** The course's rotation here (rotate blocks turn it by 90). **/
+	public var rotation(get, never):Int;
+	inline function get_rotation():Int return state.restRotation;
+
+	public var item(get, never):Null<Int>;
+	inline function get_item():Null<Int> return state.restItem;
+
+	public var inWater(get, never):Bool;
+	inline function get_inWater():Bool return state.restInWater;
+
+	/** Mines blown up on the way here (they don't come back, so they change what the next moves do). **/
+	public var minesGone(get, never):Int;
+	inline function get_minesGone():Int return state.minesHit;
 }
 
 /** A found route: the input script from the start to the frame the target is reached. **/
@@ -140,8 +162,35 @@ class RouteSim {
 	public var minesHit:Int = 0;
 	/** Mines blown up from `checkFrom` on (by this move). **/
 	public var minesHitByMove:Int = 0;
+	/** Where it ended, in the level's own space: the tile the player stands in and the course rotation. **/
+	public var restTileX:Int = 0;
+	public var restTileY:Int = 0;
+	public var restRotation:Int = 0;
+	/** The item held at the end, and the item held when the move started. **/
+	public var restItem:Null<Int> = null;
+	public var itemAtCheck:Null<Int> = null;
+	/** Ended in water (swim moves apply). **/
+	public var restInWater:Bool = false;
+	/** Rotate blocks hit by this move. **/
+	public var rotationsByMove:Int = 0;
 
 	public function new() {}
+
+	public function restKey():String {
+		return restTileX + "," + restTileY + "," + restRotation + "," + minesHit + "," + (restItem == null ? "-" : Std.string(restItem));
+	}
+
+	/** What the move changed, for its step name: mines, item, course rotation. **/
+	public function effects():String {
+		var parts:Array<String> = [];
+		if (minesHitByMove > 0) parts.push(minesHitByMove == 1 ? "hits a mine" : 'hits $minesHitByMove mines');
+		if (restItem != itemAtCheck) {
+			var gained = restItem;
+			parts.push(gained == null ? "uses up the item" : 'gets ${Items.getNameFromCode(gained)}');
+		}
+		if (rotationsByMove > 0) parts.push(rotationsByMove == 1 ? "turns the course" : 'turns the course $rotationsByMove times');
+		return parts.length == 0 ? "" : " (" + parts.join(", ") + ")";
+	}
 }
 
 /**
@@ -167,7 +216,18 @@ class RouteSim {
 	mines: walk to a set distance from the mine, stop, then walk, hop or jump
 	into it (or jump up into one overhead, or step onto one in the floor), so
 	the knockback can launch the player somewhere, even into a clip. A spot is
-	kept per tile and per number of mines gone. After a move the keys are
+	kept per tile and per number of mines gone.
+
+	Rotate blocks turn the whole course; positions are followed in the
+	level's own space, so a route may turn the course (and turn it back) and
+	the spot is kept per rotation too. Items: the player starts with the item
+	they hold, item blocks give items (rolled from a fixed seed so replays
+	match; the real game rolls at random), and a spot holding an item tries
+	using it (tap, while running, mid-jump, held for the jetpack). Water: the
+	player is given time to sink to rest, and swim moves are tried from spots
+	in water. Vanish blocks: a player on a fading vanish block is not at rest
+	(it drops through), and next to one the planner tries touching it,
+	waiting for it to fade, then going through. After a move the keys are
 	released until the player is at rest; that spot is where the next move
 	starts. Spots are searched cheapest first (a step through a block costs
 	`clipCost`), one spot per tile. Like the other searches it works a few
@@ -176,6 +236,8 @@ class RouteSim {
 class ClipRoutePlanner {
 	/** Idle frames allowed for the player to come to rest after a move. **/
 	static inline var SETTLE_FRAMES:Int = 90;
+	/** In water the player sinks slowly (about 3 px a frame), so it gets longer to reach the bottom. **/
+	static inline var WATER_SETTLE_FRAMES:Int = 360;
 	/** A jump this big between frames is the game returning the player to a safe spot. **/
 	static inline var RESPAWN_JUMP:Float = 60;
 	/** Most frames a clip move may take to walk to its pixel and play its recipe. **/
@@ -191,12 +253,32 @@ class ClipRoutePlanner {
 	public var route(default, null):Null<Route> = null;
 	public var spotsExplored(default, null):Int = 0;
 	public var simulations(default, null):Int = 0;
+	/** Why moves were dropped (for the "no route" status): sent back to a safe spot or off the map, never came to rest, ended inside a block, came to rest on a spot already found, couldn't walk to its starting pixel. **/
+	public var rejectedRespawn(default, null):Int = 0;
+	public var rejectedNoRest(default, null):Int = 0;
+	public var rejectedInSolid(default, null):Int = 0;
+	public var rejectedRevisit(default, null):Int = 0;
+	public var rejectedApproach(default, null):Int = 0;
+
+	/** One line on why the search ran out, for the status text. **/
+	public function rejectionSummary():String {
+		var parts:Array<String> = [];
+		if (rejectedRevisit > 0) parts.push('$rejectedRevisit back to known spots');
+		if (rejectedNoRest > 0) parts.push('$rejectedNoRest never settled');
+		if (rejectedRespawn > 0) parts.push('$rejectedRespawn sent back/fell out');
+		if (rejectedInSolid > 0) parts.push('$rejectedInSolid stuck in blocks');
+		if (rejectedApproach > 0) parts.push('$rejectedApproach could not line up');
+		return parts.join(", ");
+	}
+
 	/** True once a route is found or every reachable spot (within the limits) is explored. **/
 	public var done(default, null):Bool = false;
 
 	final area:ClipArea;
 	/** Every mine in the level (tile positions). **/
 	final mines:Array<LevelBlock>;
+	/** Every vanish block in the level. **/
+	final vanishes:Array<LevelBlock>;
 	/** Spots waiting to be expanded, cheapest first. **/
 	final open:Array<RouteSpot> = [];
 	final visited:Map<String, Bool> = new Map();
@@ -210,6 +292,7 @@ class ClipRoutePlanner {
 		blocksForScans = blocks;
 		corners = ClipScanner.findCorners(blocks, 1).concat(ClipScanner.findCorners(blocks, -1));
 		mines = [for (block in blocks) if (!block.isMarker() && block.type == BlockType.Mine) block];
+		vanishes = [for (block in blocks) if (!block.isMarker() && block.type == BlockType.Vanish) block];
 		area = ClipArea.around(blocks, settings.startX, settings.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP, ClipFinder.AREA_DOWN);
 		// The start itself: simulate standing still, in case the target is already touched.
 		var start = simulate([], 0, false);
@@ -218,7 +301,7 @@ class ClipRoutePlanner {
 			done = true;
 			return;
 		}
-		open.push(new RouteSpot([for (_ in 0...start.idleFrames) new LocalPlayerInput()], start.restX, start.restY, [], 0, 0, start.minesHit));
+		open.push(new RouteSpot([for (_ in 0...start.idleFrames) new LocalPlayerInput()], [], 0, 0, start));
 	}
 
 	/** Runs simulations until `maxRuns` have run or `deadline()` says time is up. Returns runs made. **/
@@ -277,8 +360,7 @@ class ClipRoutePlanner {
 	/** Records what a move did: the route if it reached the target, else the spot it came to rest on. **/
 	function finishMove(spot:RouteSpot, name:String, script:Array<LocalPlayerInput>, sim:RouteSim):Void {
 		var clipped = sim.clipped;
-		var stepName = name + (sim.minesHitByMove > 0 ? ' (hits ${sim.minesHitByMove == 1 ? "a mine" : sim.minesHitByMove + " mines"})' : "")
-			+ (clipped ? " (through a block)" : "");
+		var stepName = name + sim.effects() + (clipped ? " (through a block)" : "");
 		var clips = spot.clips + (clipped ? 1 : 0);
 		var cost = spot.cost + (clipped ? settings.clipCost : 1);
 		if (sim.reachFrame >= 0) {
@@ -289,12 +371,26 @@ class ClipRoutePlanner {
 			done = true;
 			return;
 		}
-		if (sim.respawned || !sim.atRest || sim.endInSolid) return;
-		var key = ClipSimulator.tileOf(sim.restX) + "," + ClipSimulator.tileOf(sim.restY - 1) + "," + sim.minesHit;
-		if (visited.exists(key)) return;
+		if (sim.respawned) {
+			rejectedRespawn++;
+			return;
+		}
+		if (!sim.atRest) {
+			rejectedNoRest++;
+			return;
+		}
+		if (sim.endInSolid) {
+			rejectedInSolid++;
+			return;
+		}
+		var key = sim.restKey();
+		if (visited.exists(key)) {
+			rejectedRevisit++;
+			return;
+		}
 		var rested = script.concat([for (_ in 0...sim.idleFrames) new LocalPlayerInput()]);
-		var landed = ' to ${ClipSimulator.tileOf(sim.restX)},${ClipSimulator.tileOf(sim.restY - 1)}';
-		insert(new RouteSpot(rested, sim.restX, sim.restY, spot.steps.concat([stepName + landed]), clips, cost, sim.minesHit));
+		var landed = ' to ${sim.restTileX},${sim.restTileY}' + (sim.restInWater ? " (in water)" : "");
+		insert(new RouteSpot(rested, spot.steps.concat([stepName + landed]), clips, cost, sim));
 	}
 
 	/** Keeps `open` sorted by cost (then fewer steps), so the cheapest spot is expanded next. **/
@@ -322,10 +418,12 @@ class ClipRoutePlanner {
 	function simulateOnce(script:Array<LocalPlayerInput>, checkFrom:Int, record:Bool, policy:Null<RoutePolicy>):Null<RouteSim> {
 		var s = settings;
 		var level = area.buildLevel(s.gravity);
-		var player = ClipSimulator.preparePlayer(area, level, s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity, s.hats);
+		var player = ClipSimulator.preparePlayer(area, level, s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity, s.hats, s.items);
 		var sim = new RouteSim();
 		if (record) sim.ghost = [GhostFrame.capture(player, ClipSimulator.bodyInSolid(level, player))];
-		var prevX = player.x, prevY = player.y;
+		// Positions are compared in the level's own space, which stays continuous when a rotate block turns the course.
+		var feet = ClipSimulator.toLevel(player.x, player.y, player.courseRotation);
+		var prevX = feet.x, prevY = feet.y;
 		var settled = 0;
 		var frame = 0;
 		var policyFrame = 0;
@@ -333,8 +431,18 @@ class ClipRoutePlanner {
 		// Blown-up mines leave the level's block list, so counting them tells how many were hit.
 		var minesAtStart = countMines(level);
 		var minesAtCheck = minesAtStart;
-		while (frame < script.length + MAX_POLICY_FRAMES + SETTLE_FRAMES) {
-			if (frame == checkFrom) minesAtCheck = countMines(level);
+		sim.itemAtCheck = player.itemId;
+		var rotationAtCheck = player.courseRotation;
+		var lastRotation = player.courseRotation;
+		var settleLimit = SETTLE_FRAMES;
+		while (true) {
+			if (frame == checkFrom) {
+				minesAtCheck = countMines(level);
+				sim.itemAtCheck = player.itemId;
+				rotationAtCheck = player.courseRotation;
+				sim.rotationsByMove = 0;
+			}
+			if (frame >= script.length + MAX_POLICY_FRAMES + settleLimit) break;
 			var input:LocalPlayerInput;
 			var idle = false;
 			if (frame < script.length) {
@@ -362,17 +470,25 @@ class ClipRoutePlanner {
 			player.step(input);
 			var inSolid = ClipSimulator.bodyInSolid(level, player);
 			if (sim.ghost != null) sim.ghost.push(GhostFrame.capture(player, inSolid));
-			if (!area.containsPixel(player.x, player.y)) {
-				if (area.growToInclude(player.x, player.y)) return null;
+			feet = ClipSimulator.toLevel(player.x, player.y, player.courseRotation);
+			if (!area.containsPixel(feet.x, feet.y)) {
+				if (area.growToInclude(feet.x, feet.y)) return null;
 				sim.respawned = true;
 				break;
 			}
-			if (Math.abs(player.x - prevX) > RESPAWN_JUMP || Math.abs(player.y - prevY) > RESPAWN_JUMP) {
+			// A big jump is the game sending the player back to its last safe spot,
+			// unless it landed somewhere else: a teleport block or the Teleport item.
+			if ((Math.abs(feet.x - prevX) > RESPAWN_JUMP || Math.abs(feet.y - prevY) > RESPAWN_JUMP)
+					&& player.x == player.lastSafeX && player.y == player.lastSafeY) {
 				sim.respawned = true;
 				break;
 			}
-			prevX = player.x;
-			prevY = player.y;
+			prevX = feet.x;
+			prevY = feet.y;
+			if (player.courseRotation != lastRotation) {
+				lastRotation = player.courseRotation;
+				if (frame >= checkFrom) sim.rotationsByMove++;
+			}
 			if (frame >= checkFrom) {
 				if (inSolid) sim.clipped = true;
 				if (touchesTarget(player)) {
@@ -382,7 +498,12 @@ class ClipRoutePlanner {
 			}
 			if (idle) {
 				sim.idleFrames++;
-				settled = player.grounded && Math.abs(player.vx) < 0.5 && Math.abs(player.vy) < 1 ? settled + 1 : 0;
+				// Sinking through water takes a while: give it time to reach the bottom.
+				if (player.mode == LocalPlayerController.MODE_WATER) settleLimit = WATER_SETTLE_FRAMES;
+				var still = player.grounded && Math.abs(player.vx) < 0.5 && Math.abs(player.vy) < 1;
+				// Standing on a vanish block isn't rest: it fades and drops the player.
+				if (still && onFadingFloor(level, player)) still = false;
+				settled = still ? settled + 1 : 0;
 				if (settled >= 10) {
 					sim.atRest = true;
 					break;
@@ -390,8 +511,15 @@ class ClipRoutePlanner {
 			}
 			frame++;
 		}
-		sim.restX = player.x;
-		sim.restY = player.y;
+		sim.restX = feet.x;
+		sim.restY = feet.y;
+		sim.restRotation = player.courseRotation;
+		// The tile the player stands in: just above the feet, along the course's own "up".
+		var standing = ClipSimulator.toLevel(player.x, player.y - 1, player.courseRotation);
+		sim.restTileX = ClipSimulator.tileOf(standing.x);
+		sim.restTileY = ClipSimulator.tileOf(standing.y);
+		sim.restItem = player.itemId;
+		sim.restInWater = inWater(level, player);
 		sim.endInSolid = ClipSimulator.bodyInSolid(level, player);
 		var minesAtEnd = countMines(level);
 		sim.minesHit = minesAtStart - minesAtEnd;
@@ -405,13 +533,46 @@ class ClipRoutePlanner {
 		return count;
 	}
 
-	/** The player's box (20 x 55 above the feet) touches or overlaps the target tile. **/
+	/**
+		The player's box (20 x 55 above the feet, along the course's "up", which
+		a rotate block turns) touches or overlaps the target tile.
+	**/
 	function touchesTarget(player:LocalPlayerController):Bool {
 		var t = ClipSimulator.TILE;
-		var left = settings.targetTileX * t - 1, top = settings.targetTileY * t - 1;
-		var right = left + t + 2, bottom = top + t + 2;
 		var half = LocalPlayerController.STANDING_WIDTH / 2;
-		return player.x + half > left && player.x - half < right && player.y > top && player.y - LocalPlayerController.STANDING_HEIGHT < bottom;
+		var r = player.courseRotation;
+		var a = ClipSimulator.toLevel(player.x - half, player.y, r);
+		var b = ClipSimulator.toLevel(player.x + half, player.y - LocalPlayerController.STANDING_HEIGHT, r);
+		var minX = Math.min(a.x, b.x), maxX = Math.max(a.x, b.x);
+		var minY = Math.min(a.y, b.y), maxY = Math.max(a.y, b.y);
+		// Overlap with the tile itself along each axis (negative = a gap). A face
+		// counts (standing on it, against it, or under it): the box shares at
+		// least 5 px of that face and is within 1 px of it. A corner graze doesn't.
+		var tileLeft = settings.targetTileX * t, tileTop = settings.targetTileY * t;
+		var overlapX = Math.min(maxX, tileLeft + t) - Math.max(minX, tileLeft);
+		var overlapY = Math.min(maxY, tileTop + t) - Math.max(minY, tileTop);
+		return (overlapX >= TOUCH_FACE && overlapY >= -1) || (overlapY >= TOUCH_FACE && overlapX >= -1);
+	}
+
+	/** Px of a target face the player's box must share to count as touching it. **/
+	static inline var TOUCH_FACE:Float = 5;
+
+	/** The block under the feet (along the course's "down") is a vanish block that hasn't gone yet. **/
+	static function onFadingFloor(level:Level, player:LocalPlayerController):Bool {
+		var below = ClipSimulator.toLevel(player.x, player.y + 1, player.courseRotation);
+		var block = level.blockAt(ClipSimulator.tileOf(below.x), ClipSimulator.tileOf(below.y));
+		return block != null && block.type == BlockType.Vanish && !player.blockController.isBlockRemoved(block);
+	}
+
+	/** The player's body (or feet) is in a water block. **/
+	static function inWater(level:Level, player:LocalPlayerController):Bool {
+		if (player.mode == LocalPlayerController.MODE_WATER) return true;
+		for (up in [5.0, 25.0]) {
+			var p = ClipSimulator.toLevel(player.x, player.y - up, player.courseRotation);
+			var block = level.blockAt(ClipSimulator.tileOf(p.x), ClipSimulator.tileOf(p.y));
+			if (block != null && block.type == BlockType.Water) return true;
+		}
+		return false;
 	}
 
 	/** The moves tried from a spot. **/
@@ -431,13 +592,88 @@ class ClipRoutePlanner {
 					moves.push(new RouteMove(run == 0 ? 'super jump' : 'super jump $side (run $run)', inputs));
 				}
 			}
-			var corner = cornerAhead(spot, dir);
+			// Clip and mine moves aim at level positions, so they run on an upright course.
+			var corner = spot.rotation == 0 ? cornerAhead(spot, dir) : null;
 			if (corner != null) {
 				moves.push(new RouteMove('clip through the wall at ${corner.wallTileX},${corner.y}', [], corner));
 			}
 		}
 		if (settings.normalMoves) moves.push(new RouteMove("jump in place", hold(0, 30, 0, 30, false)));
-		return moves.concat(mineMoves(spot));
+		moves = moves.concat(itemMoves(spot)).concat(swimMoves(spot));
+		if (spot.rotation != 0) return moves;
+		return moves.concat(vanishMoves(spot)).concat(mineMoves(spot));
+	}
+
+	/**
+		With an item in hand: use it standing, while running each way, at the top
+		of a jump each way, and held down (the jetpack flies while it is held).
+	**/
+	function itemMoves(spot:RouteSpot):Array<RouteMove> {
+		var item = spot.item;
+		if (item == null) return [];
+		var name = Items.getNameFromCode(item);
+		var moves = [new RouteMove('use $name', withItem(hold(0, 20, 0, 0, false), 0, 1))];
+		for (dir in [1, -1]) {
+			var side = dir == 1 ? "right" : "left";
+			moves.push(new RouteMove('use $name running $side', withItem(hold(dir, 40, 0, 0, false), 5, 1)));
+			moves.push(new RouteMove('use $name mid-jump $side', withItem(hold(dir, 40, 0, 30, false), 12, 1)));
+			moves.push(new RouteMove('hold $name going $side', withItem(hold(dir, 60, 0, 0, false), 0, 60)));
+		}
+		moves.push(new RouteMove('hold $name going up', withItem(hold(0, 60, 0, 30, false), 0, 60)));
+		return moves;
+	}
+
+	/** `inputs` with the item key held from `from` for `frames` frames. **/
+	static function withItem(inputs:Array<LocalPlayerInput>, from:Int, frames:Int):Array<LocalPlayerInput> {
+		while (inputs.length < from + frames) inputs.push(new LocalPlayerInput());
+		for (i in from...from + frames) inputs[i] = new LocalPlayerInput(inputs[i].left, inputs[i].right, inputs[i].jump, inputs[i].down, true);
+		return inputs;
+	}
+
+	/** In water: swim up (jump held) straight or to each side, and dive (down) to each side. **/
+	function swimMoves(spot:RouteSpot):Array<RouteMove> {
+		if (!spot.inWater) return [];
+		var moves = [new RouteMove("swim up", hold(0, 60, 0, 60, false))];
+		for (dir in [1, -1]) {
+			var side = dir == 1 ? "right" : "left";
+			for (frames in [40, 90]) moves.push(new RouteMove('swim up and $side ($frames)', hold(dir, frames, 0, frames, false)));
+			moves.push(new RouteMove('swim $side (90)', hold(dir, 90, 0, 0, false)));
+			moves.push(new RouteMove('dive $side', [for (_ in 0...40) new LocalPlayerInput(dir == -1, dir == 1, false, true)]));
+		}
+		return moves;
+	}
+
+	/**
+		Next to a vanish block: touch it (walk into it, or jump up into it), wait
+		for it to fade, then go through where it was before it comes back.
+	**/
+	function vanishMoves(spot:RouteSpot):Array<RouteMove> {
+		var moves:Array<RouteMove> = [];
+		var wait = BlockController.VANISH_FADE_FRAMES + 2;
+		for (block in vanishes) {
+			var dx = block.x - spot.tileX;
+			var dy = block.y - spot.tileY;
+			if (Math.abs(dx) > 2 || dy < -3 || dy > 0) continue;
+			var name = 'vanish block at ${block.x},${block.y}';
+			if (dx != 0) {
+				var dir = dx > 0 ? 1 : -1;
+				var side = dir == 1 ? "right" : "left";
+				// Walk into it, stand still while it fades, then walk through.
+				var inputs = hold(dir, 12 + Std.int(Math.abs(dx)) * 8, 0, 0, false);
+				for (_ in 0...wait) inputs.push(new LocalPlayerInput());
+				moves.push(new RouteMove('$name: push it, wait, walk $side', inputs.concat(hold(dir, 40, 0, 0, false))));
+			}
+			if (dy <= -2) {
+				// Overhead: jump up into it, wait for it to fade, then jump up through (and to each side).
+				for (dir in [0, 1, -1]) {
+					var inputs = hold(0, 10, 0, 10, false);
+					for (_ in 0...wait) inputs.push(new LocalPlayerInput());
+					var side = dir == 0 ? "up" : (dir == 1 ? "up and right" : "up and left");
+					moves.push(new RouteMove('$name: bump it, wait, jump $side', inputs.concat(hold(dir, 40, 0, 30, false))));
+				}
+			}
+		}
+		return moves;
 	}
 
 	/**
@@ -501,7 +737,10 @@ class ClipRoutePlanner {
 	function tryApproachMove(spot:RouteSpot, move:RouteMove):Void {
 		var inputs = move.inputs;
 		var sim = simulate(spot.script, spot.script.length, false, () -> walkThen(move.approachX, MINE_APPROACH_TOLERANCE, inputs.length, (i, _) -> inputs[i]));
-		if (sim.policyFailed) return;
+		if (sim.policyFailed) {
+			rejectedApproach++;
+			return;
+		}
 		finishMove(spot, move.name, spot.script.concat(sim.policyInputs), sim);
 	}
 
@@ -576,7 +815,10 @@ class ClipRoutePlanner {
 		var recipe = recipes.get(key);
 		if (recipe == null) return true;
 		var sim = simulate(spot.script, spot.script.length, false, () -> walkThenRecipe(recipe));
-		if (sim.policyFailed) return true;
+		if (sim.policyFailed) {
+			rejectedApproach++;
+			return true;
+		}
 		finishMove(spot, move.name, spot.script.concat(sim.policyInputs), sim);
 		return true;
 	}

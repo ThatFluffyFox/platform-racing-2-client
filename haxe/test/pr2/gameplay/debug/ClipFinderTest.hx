@@ -26,6 +26,7 @@ import pr2.net.ServerLevelData;
 @:access(pr2.gameplay.debug.ClipGhost)
 @:access(pr2.gameplay.debug.ClipFinderPanel)
 @:access(pr2.gameplay.debug.ClipScanner)
+@:access(pr2.gameplay.debug.ClipRoutePlanner)
 class ClipFinderTest {
 	private static var assertions:Int = 0;
 	private static var course:Null<Course> = null;
@@ -65,6 +66,13 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMinesAreNotClippableCorners", testMinesAreNotClippableCorners);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteUsesMineKnockback", testRouteUsesMineKnockback);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMineRouteReplaysExactly", testMineRouteReplaysExactly);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteTurnsTheCourseWithARotateBlock", testRouteTurnsTheCourseWithARotateBlock);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testItemBlockRollsAreRepeatable", testItemBlockRollsAreRepeatable);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteUsesTheHeldItem", testRouteUsesTheHeldItem);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testWaterGivesTimeToSinkAndSwimMoves", testWaterGivesTimeToSinkAndSwimMoves);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStandingOnVanishBlockIsNotRest", testStandingOnVanishBlockIsNotRest);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteGoesThroughAVanishWall", testRouteGoesThroughAVanishWall);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testNoRouteSaysWhy", testNoRouteSaysWhy);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -537,7 +545,7 @@ class ClipFinderTest {
 	private static function testRouteUsesMineKnockback():Void {
 		// Jump 25 can't get up 8 tiles; the mine's blast can.
 		// Start between the mine (col 14) and the ledge: walking back at the mine blasts the player up and right.
-		var settings = new RouteSettings(500, FLOOR_Y, 90, 50, 25, 1, 22, 9);
+		var settings = new RouteSettings(500, FLOOR_Y, 90, 50, 25, 1, 21, 9);
 		// Mine moves only (no walks, jumps or clips), so the blast is what gets there.
 		settings.normalMoves = false;
 		settings.clipWallRange = -1;
@@ -563,6 +571,120 @@ class ClipFinderTest {
 		var highest = highest(found.run.ghost);
 		assertTrue(highest - 55 <= 10 * 30 + 1, 'the knockback lifts the player up to the ledge (feet at y=$highest)');
 		assertTrue(highest < FLOOR_Y - 120, 'far higher than a jump-25 jump would (feet at y=$highest)');
+	}
+
+	/** A closed room: floor row 17, ceiling at `top`, walls at col 0 and `width - 1`. **/
+	private static function boxRoom(width:Int, top:Int):Array<LevelBlock> {
+		var blocks:Array<LevelBlock> = [];
+		for (c in 0...width) {
+			blocks.push(new LevelBlock(c, 17, BlockType.Basic));
+			blocks.push(new LevelBlock(c, top, BlockType.Basic));
+		}
+		for (r in top + 1...17) {
+			blocks.push(new LevelBlock(0, r, BlockType.Basic));
+			blocks.push(new LevelBlock(width - 1, r, BlockType.Basic));
+		}
+		return blocks;
+	}
+
+	/** Route settings for the small rooms (stats 50/50/50, no clip scans). **/
+	private static function roomRoute(startX:Float, startY:Float, targetX:Int, targetY:Int):RouteSettings {
+		var settings = new RouteSettings(startX, startY, 50, 50, 50, 1, targetX, targetY);
+		settings.clipWallRange = -1;
+		return settings;
+	}
+
+	private static function testRouteTurnsTheCourseWithARotateBlock():Void {
+		// A rotate block just over the start: any jump turns the course, and the
+		// player falls toward the right wall, which is now the floor.
+		var blocks = boxRoom(9, 8);
+		blocks.push(new LevelBlock(3, 14, BlockType.RotateRight));
+		var planner = new ClipRoutePlanner(blocks, roomRoute(105, FLOOR_Y, 8, 12));
+		while (!planner.done) planner.step(50);
+		var route = planner.route;
+		assertTrue(route != null, 'a route is found (${planner.spotsExplored} spots, ${planner.simulations} runs, ${planner.rejectionSummary()})');
+		assertTrue(route.steps[0].indexOf("(turns the course)") > 0, 'by turning the course: ${route.steps}');
+		var ghost = planner.foundClip().run.ghost;
+		assertEquals(route.reachFrame + 2, ghost.length, "the route replays to the same frame");
+		assertEquals(90, ghost[ghost.length - 1].rotation, "the ghost ends on the turned course");
+		var biggest = 0.0;
+		for (i in 1...ghost.length) biggest = Math.max(biggest, Math.abs(ghost[i].x - ghost[i - 1].x) + Math.abs(ghost[i].y - ghost[i - 1].y));
+		assertTrue(biggest < 40, 'the ghost moves smoothly in level space through the turn (largest step $biggest px)');
+	}
+
+	private static function testItemBlockRollsAreRepeatable():Void {
+		var blocks = boxRoom(9, 8);
+		// An item block with any item, right over the start.
+		blocks.push(new LevelBlock(3, 14, BlockType.Item));
+		var planner = new ClipRoutePlanner(blocks, roomRoute(105, FLOOR_Y, 8, 9));
+		var jump = [for (_ in 0...20) new pr2.gameplay.player.LocalPlayerInput(false, false, true, false)];
+		var first = planner.simulate(jump, 0, false);
+		var second = planner.simulate(jump, 0, false);
+		assertTrue(first.restItem != null, "hitting the item block gives an item");
+		assertEquals(first.restItem, second.restItem, "and the same one every time the script is replayed");
+		assertTrue(first.effects().indexOf("gets ") >= 0, 'the step says so: "${first.effects()}"');
+	}
+
+	private static function testRouteUsesTheHeldItem():Void {
+		var settings = roomRoute(225, FLOOR_Y, 8, 8);
+		// The player holds a jetpack; with plain moves off, only item moves are tried.
+		settings.items = new ClipSimulator.ClipItems(6);
+		settings.normalMoves = false;
+		var planner = new ClipRoutePlanner(boxRoom(9, 0), settings);
+		while (!planner.done) planner.step(50);
+		var route = planner.route;
+		assertTrue(route != null, 'a route is found (${planner.simulations} runs, ${planner.rejectionSummary()})');
+		assertTrue(route.steps[0].indexOf("Jet Pack") > 0, 'using the jetpack: ${route.steps}');
+	}
+
+	private static function testWaterGivesTimeToSinkAndSwimMoves():Void {
+		// A pool 14 tiles deep: sinking to the bottom takes longer than the usual settle time.
+		var blocks = boxRoom(9, 0);
+		for (c in 1...8) for (r in 3...17) blocks.push(new LevelBlock(c, r, BlockType.Water));
+		var settings = roomRoute(105, 150, 8, 1);
+		settings.normalMoves = false;
+		var planner = new ClipRoutePlanner(blocks, settings);
+		var start = planner.open[0];
+		assertEquals(16, start.tileY, "the start sinks to the bottom of the pool");
+		assertTrue(start.inWater, "and is in the water there");
+		assertTrue(planner.movesFrom(start).filter(m -> m.name.indexOf("swim up") == 0).length > 0, "so swim moves are tried");
+	}
+
+	private static function testStandingOnVanishBlockIsNotRest():Void {
+		// The start stands on a vanish block over a pit; the floor below is row 20.
+		var blocks = boxRoom(12, 8).filter(b -> !(b.y == 17 && b.x > 0 && b.x < 11));
+		blocks.push(new LevelBlock(3, 17, BlockType.Vanish));
+		for (c in 0...12) blocks.push(new LevelBlock(c, 20, BlockType.Basic));
+		for (r in 17...20) {
+			blocks.push(new LevelBlock(0, r, BlockType.Basic));
+			blocks.push(new LevelBlock(11, r, BlockType.Basic));
+		}
+		var planner = new ClipRoutePlanner(blocks, roomRoute(105, FLOOR_Y, 9, 9));
+		assertEquals(19, planner.open[0].tileY, "the vanish block fades and drops the player to the floor below");
+	}
+
+	private static function testRouteGoesThroughAVanishWall():Void {
+		// Two rooms split by a wall whose bottom two tiles are vanish blocks.
+		var blocks = boxRoom(12, 8);
+		for (r in 9...17) blocks.push(new LevelBlock(6, r, r >= 15 ? BlockType.Vanish : BlockType.Basic));
+		var planner = new ClipRoutePlanner(blocks, roomRoute(105, FLOOR_Y, 9, 17));
+		var vanishMoves = planner.movesFrom(planner.open[0]).filter(m -> m.name.indexOf("vanish block") == 0);
+		assertEquals(0, vanishMoves.length, "no vanish moves far from the wall");
+		while (!planner.done) planner.step(50);
+		assertTrue(planner.route != null, 'the right room is reached through the vanish blocks (${planner.rejectionSummary()})');
+	}
+
+	private static function testNoRouteSaysWhy():Void {
+		// The target is outside a closed box: nothing reaches it.
+		var settings = roomRoute(105, FLOOR_Y, 20, 16);
+		settings.normalMoves = false;
+		settings.items = new ClipSimulator.ClipItems(6);
+		// One spot's jetpack moves are enough to have dropped some.
+		settings.maxSpots = 1;
+		var planner = new ClipRoutePlanner(boxRoom(9, 8), settings);
+		while (!planner.done) planner.step(50);
+		assertEquals(null, planner.route, "no route");
+		assertTrue(planner.rejectionSummary().length > 0, 'and the planner says why moves were dropped: ${planner.rejectionSummary()}');
 	}
 
 	private static function testRouteFromPanel():Void {

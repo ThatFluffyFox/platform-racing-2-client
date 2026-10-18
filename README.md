@@ -429,7 +429,32 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     physics, so the finished route is one input script that plays back
     exactly. The route becomes the one clip in the list: the ghost plays it,
     the info text lists its steps, and **Replay on me** runs it on you. It
-    gives up after 300 spots or 8 steps.
+    gives up after 300 spots or 8 steps; then the info text says why moves
+    were dropped (back to known spots, never settled, sent back or fell out,
+    stuck in blocks, could not line up).
+
+    Other blocks and items it knows about:
+    - **Rotate blocks** turn the whole course. The planner follows the
+      player in the level's own space, so a route may turn the course and
+      carry on (or turn it back); the step says "(turns the course)" and the
+      ghost is drawn turned. Clip and mine moves are only tried while the
+      course is upright.
+    - **Items:** you start with the item you hold, and item blocks give
+      items. In the game an item block picks at random; the planner uses a
+      fixed sequence so its routes replay the same way, and a replay on you
+      may get a different item. From a spot holding an item it tries using
+      it standing, running, mid-jump and held down (the jetpack flies while
+      held). Steps say "(gets Jet Pack)" or "(uses up the item)". A teleport
+      (block or item) is not mistaken for being sent back.
+    - **Water:** a player sinking through water gets up to 360 frames to
+      reach the bottom before a move is dropped, and from a spot in water it
+      tries swimming up, up and to each side, sideways, and diving.
+    - **Vanish blocks:** standing on one isn't a resting spot (it fades and
+      drops you). Next to one it tries pushing into it or bumping it from
+      below, waiting for it to fade, then going through before it returns.
+    - The target counts as reached when you touch one of its faces (stand on
+      it, push against it, bump it, or end up inside it), not a corner
+      graze.
 - **Aim at target** runs the same clip tester as usual (grid, or random with
   **Any frame**), but only clips into the picked block count. Untick it to keep
   the block picked but count every clip.

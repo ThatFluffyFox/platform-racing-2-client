@@ -211,6 +211,9 @@ class ClipFinderPanel extends NativeView {
 		}
 	}
 
+	/** Free text in the info box (e.g. why a route search found nothing). **/
+	public function setInfo(text:String):Void clipInfo.text = text;
+
 	public function setClipInfo(index:Int, description:String):Void {
 		shownClip = index;
 		clipInfo.text = 'Clip ${index + 1}/$clipTotal: $description';

@@ -1,6 +1,7 @@
 package pr2.gameplay.debug;
 
 import pr2.character.CharacterState;
+import pr2.gameplay.RotationMath;
 import pr2.gameplay.player.LocalPlayerController;
 import pr2.gameplay.player.LocalPlayerInput;
 import pr2.level.BlockType;
@@ -20,8 +21,11 @@ import pr2.level.Level.TilePosition;
 	builds its own player, and its own blocks whenever they can break or move,
 	so one attempt never affects the next.
 **/
+@:access(pr2.gameplay.player.LocalPlayerController)
 class ClipSimulator {
 	public static inline var TILE:Int = 30;
+	/** Seed for item-block rolls in simulations, so a run that collects an item gets the same one every time. **/
+	public static inline var ITEM_SEED:Int = 20240611;
 
 	/** Frames a recorded run keeps after the clip, so a replay shows the player sinking through. **/
 	public static inline var GHOST_TAIL_FRAMES:Int = 20;
@@ -57,11 +61,19 @@ class ClipSimulator {
 		gravity and hats, the whole level's map edges, then one idle frame.
 	**/
 	public static function preparePlayer(area:ClipArea, level:Level, startX:Float, startY:Float, speed:Float, accel:Float, jump:Float,
-			gravity:Float, hats:Null<ClipHats>):LocalPlayerController {
+			gravity:Float, hats:Null<ClipHats>, ?items:ClipItems):LocalPlayerController {
 		var player = new LocalPlayerController(level);
 		player.setStartingStats(speed, accel, jump);
 		player.setGravity(gravity);
 		if (hats != null) hats.applyTo(player);
+		// Item blocks roll with Math.random in the game; a fixed sequence here keeps
+		// every replay of a script identical (the real roll may differ).
+		var seed = ITEM_SEED;
+		player.itemRandom = function():Float {
+			seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+			return seed / 2147483648.0;
+		};
+		if (items != null) items.applyTo(player);
 		// Clears the constructor's grounded state, then one idle frame lets the
 		// real collision pass decide it: floor starts stand, mid-air starts fall.
 		player.resetPreRacePosition(startX, startY);
@@ -126,8 +138,29 @@ class ClipSimulator {
 
 	/** True when the body midpoint (Flash's `bodyTouch` point) is inside a live solid block. **/
 	public static function bodyInSolid(level:Level, player:LocalPlayerController):Bool {
-		var block = level.blockAt(tileOf(player.x), tileOf(player.y - 15));
+		var body = toLevel(player.x, player.y - 15, player.courseRotation);
+		var block = level.blockAt(tileOf(body.x), tileOf(body.y));
 		return block != null && block.type.isSolid() && !player.blockController.isBlockRemoved(block);
+	}
+
+	/**
+		A point in the player's (course) space as a point in the level's own
+		space. After a rotate block turns the course, the controller keeps the
+		player in rotated coordinates; blocks, targets and the ghost use the
+		level's. Same mapping as RotationMath.rotatePoint, without truncation.
+	**/
+	public static function toLevel(x:Float, y:Float, rotation:Int):{x:Float, y:Float} {
+		return switch (RotationMath.normalizeDisplayRotation(rotation)) {
+			case 90: {x: y, y: -x};
+			case 180 | -180: {x: -x, y: -y};
+			case -90: {x: -y, y: x};
+			default: {x: x, y: y};
+		}
+	}
+
+	/** The inverse of `toLevel`: a level point in a course turned by `rotation`. **/
+	public static function toCourse(x:Float, y:Float, rotation:Int):{x:Float, y:Float} {
+		return toLevel(x, y, -rotation);
 	}
 
 	public static inline function tileOf(px:Float):Int {
@@ -336,24 +369,56 @@ class ClipRun {
 
 /** One recorded frame of a run, enough to pose a ghost character. **/
 class GhostFrame {
+	/** The feet, in the level's own space (the same as the player's while the course is upright). **/
 	public final x:Float;
 	public final y:Float;
 	public final state:CharacterState;
 	public final facing:Int;
 	public final inSolid:Bool;
 	public final grounded:Bool;
+	/** How far the simulated course was turned by rotate blocks (0, 90, 180 or -90). **/
+	public final rotation:Int;
 
-	public function new(x:Float, y:Float, state:CharacterState, facing:Int, inSolid:Bool, grounded:Bool = false) {
+	public function new(x:Float, y:Float, state:CharacterState, facing:Int, inSolid:Bool, grounded:Bool = false, rotation:Int = 0) {
 		this.x = x;
 		this.y = y;
 		this.state = state;
 		this.facing = facing;
 		this.inSolid = inSolid;
 		this.grounded = grounded;
+		this.rotation = rotation;
 	}
 
 	public static function capture(player:LocalPlayerController, inSolid:Bool):GhostFrame {
-		return new GhostFrame(player.x, player.y, player.stateSnapshot().characterState, player.facingScaleX, inSolid, player.grounded);
+		var feet = ClipSimulator.toLevel(player.x, player.y, player.courseRotation);
+		return new GhostFrame(feet.x, feet.y, player.stateSnapshot().characterState, player.facingScaleX, inSolid, player.grounded,
+			player.courseRotation);
+	}
+}
+
+/**
+	The item a simulated player starts with (normally the real player's), and
+	which items the level's item blocks may give.
+**/
+class ClipItems {
+	public var heldItem:Null<Int> = null;
+	public var allowedItems:Null<Array<Int>> = null;
+
+	public function new(?heldItem:Int, ?allowedItems:Array<Int>) {
+		this.heldItem = heldItem;
+		this.allowedItems = allowedItems;
+	}
+
+	/** From the real player: the item they hold and the level's allowed items. **/
+	@:access(pr2.gameplay.player.LocalPlayerController)
+	public static function from(player:LocalPlayerController):ClipItems {
+		return new ClipItems(player.itemId, player.allowedItems.copy());
+	}
+
+	public function applyTo(player:LocalPlayerController):Void {
+		if (allowedItems != null) player.setAllowedItems(allowedItems);
+		var item = heldItem;
+		if (item != null) player.grantItemForDebug(item);
 	}
 }
 

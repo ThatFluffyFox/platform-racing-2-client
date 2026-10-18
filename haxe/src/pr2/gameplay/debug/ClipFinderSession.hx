@@ -64,6 +64,7 @@ class ClipFinderSession {
 		panel.onRoute = startRoute;
 		panelLayer.addChild(panel);
 		ghost = new ClipGhost(player);
+		ghost.courseRotation = () -> player.controller.courseRotation;
 		ghostLayer.addChild(ghost.character);
 		var hats = ClipHats.from(player.controller).names();
 		if (player.hasHatFlag(Character.MOON)) hats.push("moon");
@@ -320,6 +321,7 @@ class ClipFinderSession {
 		var settings = new ClipRoutePlanner.RouteSettings(Math.round(state.x), Math.round(state.y), state.speedStat, state.accelerationStat,
 			state.jumpStat, gravity, tx, ty);
 		settings.hats = ClipHats.from(player.controller);
+		settings.items = ClipSimulator.ClipItems.from(player.controller);
 		planner = new ClipRoutePlanner(liveBlocks(), settings);
 		clips = [];
 		clipPortals = [];
@@ -368,6 +370,9 @@ class ClipFinderSession {
 			panel.setStatus('Route found: ${route.steps.length} steps, ${route.clips} clip${route.clips == 1 ? "" : "s"}');
 		} else if (plan.done) {
 			panel.setStatus('No route found (${plan.spotsExplored} spots tried).');
+			// Why the moves ran out, in the info box under the buttons.
+			var why = plan.rejectionSummary();
+			panel.setInfo('No route: ${plan.spotsExplored} spots, ${plan.simulations} moves tried.' + (why == "" ? "" : ' Moves dropped: $why.'));
 		} else {
 			panel.setStatus('${stopped ? "Stopped" : "Planning"}: ${plan.spotsExplored} spots, ${plan.simulations} runs');
 		}
