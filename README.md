@@ -408,7 +408,16 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     level), with a line from the run-up start to where you land. Found clips
     go into the Prev/Next list, so the ghost and **Replay on me** work on
     them. A mine is never the wall or floor of a corner: touching it blows it
-    up instead of letting you clip in. If you hold a **Laser Gun**, each
+    up instead of letting you clip in. Each corner is also tried with a
+    **hop back**: stand against the wall, jump (held 1-12 frames or fully),
+    hold away from the wall, then on a set frame (4-75) dive back holding
+    toward the wall and down. A clip needs you to land more than 10 px into
+    the floor while moving 10 px a frame or more into the wall, and in a
+    narrow shaft or off a bouncy floor that is the only way to get both. On
+    an up arrow by a wall (as on level 3460484), a one-frame tap jump, away
+    until frame 17, then the dive goes through. Once you are inside the
+    blocks they don't act on you, so the arrow only matters for the launch.
+    If you hold a **Laser Gun**, each
     corner is also tried with a laser recoil clip: stand against the wall,
     jump in place, and on the frame before landing in the corner turn away
     from the wall and fire. The recoil (15 px a frame into the wall) plus the
@@ -486,7 +495,9 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
       (block or item) is not mistaken for being sent back. Holding a Laser
       Gun, Sword, Super Jump or Speed Burst, its clip moves also try that
       item's clips; such steps say "(laser recoil)", "(sword lunge)",
-      "(super jump item)" or "(speed burst)". When a move takes an item from
+      "(super jump item)" or "(speed burst)". A hop-back clip says
+      "(hop back)". Against a wall it starts on the frame after you land, so
+      it works on a bouncing up arrow too. When a move takes an item from
       an item block, it also tries each other movement item that block could
       give (laser, teleport, super jump, jetpack, speed burst, sword), so a
       route can count on the one it needs; the route remembers its choice.

@@ -82,6 +82,8 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesEachStatSet", testScanTriesEachStatSet);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testItemBlocksCanGiveTheItemTheRouteNeeds", testItemBlocksCanGiveTheItemTheRouteNeeds);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testConveyorCountsAsASpot", testConveyorCountsAsASpot);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testHopBackClipsTheUpArrowCorner", testHopBackClipsTheUpArrowCorner);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteUsesHopBackClip", testRouteUsesHopBackClip);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesSwordSuperJumpAndSpeedBurst", testScanTriesSwordSuperJumpAndSpeedBurst);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
@@ -415,6 +417,7 @@ class ClipFinderTest {
 		settings.distances = [202];
 		settings.jumpHolds = [8];
 		settings.superCharges = [];
+		settings.hopHolds = [];
 		return settings;
 	}
 
@@ -489,6 +492,7 @@ class ClipFinderTest {
 		settings.recipeDistances = [202];
 		settings.recipeJumpHolds = [8];
 		settings.recipeSuperCharges = [];
+		settings.recipeHopHolds = [];
 		return settings;
 	}
 
@@ -723,6 +727,7 @@ class ClipFinderTest {
 		settings.laserGaps = [0];
 		settings.laserHolds = [8];
 		settings.laserFireFrames = [35, 36, 37, 38];
+		settings.hopHolds = [];
 		return settings;
 	}
 
@@ -752,6 +757,7 @@ class ClipFinderTest {
 		settings.recipeLaserGaps = [0];
 		settings.recipeLaserHolds = [8];
 		settings.recipeLaserFireFrames = [35, 36, 37, 38];
+		settings.recipeHopHolds = [];
 		var planner = new ClipRoutePlanner(sealedFloorBlocks(), settings);
 		while (!planner.done) planner.step(50);
 		var route = planner.route;
@@ -885,6 +891,54 @@ class ClipFinderTest {
 		var start = planner.simulate([], 0, false);
 		assertTrue(start.atRest, "riding the arrow blocks counts as a spot");
 		assertTrue(start.idleFrames < 40, 'soon (${start.idleFrames} frames)');
+	}
+
+	/**
+		A copy of level 3460484's up-arrow corner: a 3-wide shaft (cols 2-4)
+		whose floor ends in an up arrow (4,12) against the wall (col 5), with
+		an open pocket past the wall (cols 6-7) down to the floor (row 18).
+	**/
+	private static function arrowShaftBlocks():Array<LevelBlock> {
+		var blocks:Array<LevelBlock> = [];
+		for (row in 0...10) blocks.push(new LevelBlock(1, row, BlockType.Basic));
+		blocks.push(new LevelBlock(0, 9, BlockType.Basic));
+		for (col in 0...4) blocks.push(new LevelBlock(col, 12, BlockType.Basic));
+		blocks.push(new LevelBlock(4, 12, BlockType.ArrowUp));
+		for (row in 0...18) blocks.push(new LevelBlock(5, row, BlockType.Basic));
+		for (col in 0...5) for (row in 13...18) blocks.push(new LevelBlock(col, row, BlockType.Basic));
+		for (row in 13...16) blocks.push(new LevelBlock(8, row, BlockType.Basic));
+		for (col in 0...21) blocks.push(new LevelBlock(col, 18, BlockType.Basic));
+		for (row in 0...18) blocks.push(new LevelBlock(20, row, BlockType.Basic));
+		return blocks;
+	}
+
+	private static function testHopBackClipsTheUpArrowCorner():Void {
+		// Stats 100/45/40: no run-up fits the shaft, but a tap jump off the
+		// arrow, drifting away and diving back (toward the wall and down) does.
+		var settings = new ClipScanSettings(100, 45, 40, 1);
+		settings.distances = [];
+		settings.mines = false;
+		settings.hopHolds = [1];
+		settings.hopBackFrames = [16, 17, 18];
+		var scanner = new ClipScanner(arrowShaftBlocks(), settings, new pr2.gameplay.debug.ClipScanner.ClipCorner(4, 11, 1));
+		while (!scanner.done) scanner.step(10);
+		assertEquals(1, scanner.portals.length, "the hop back clips the arrow corner");
+		var portal = scanner.portals[0];
+		assertTrue(portal.attempt.describe().indexOf("hop back") >= 0, 'described as a hop back: ${portal.attempt.describe()}');
+		assertTrue(portal.passesThrough, 'and it comes out past the wall (${portal.exitX}, ${portal.exitY})');
+	}
+
+	private static function testRouteUsesHopBackClip():Void {
+		var settings = new RouteSettings(3 * 30 + 15, 12 * 30, 100, 45, 40, 1, 9, 18);
+		settings.normalMoves = false;
+		settings.recipeDistances = [];
+		settings.recipeHopHolds = [1];
+		settings.recipeHopBackFrames = [17];
+		var planner = new ClipRoutePlanner(arrowShaftBlocks(), settings);
+		while (!planner.done) planner.step(50);
+		var route = planner.route;
+		assertTrue(route != null, 'a route is found (${planner.simulations} runs, ${planner.rejectionSummary()})');
+		assertTrue(route.steps[route.steps.length - 1].indexOf("(hop back)") > 0, 'through the wall with a hop back: ${route.steps}');
 	}
 
 	private static function testScanTriesSwordSuperJumpAndSpeedBurst():Void {

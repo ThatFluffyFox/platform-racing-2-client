@@ -176,6 +176,15 @@ class ClipScanSettings {
 	public var laserHolds:Array<Int> = [3, 8, 30];
 	/** Frames the player turns away on (and fires the frame after). **/
 	public var laserFireFrames:Array<Int> = [for (f in 4...76) f];
+	/**
+		Hop-back clips: stand against the wall, jump (held `hopHolds` frames),
+		hold away from the wall until `hopBackFrames`, then dive back at it
+		holding toward it and down. In a narrow shaft, or off a bouncy floor
+		like an up arrow, that is the only way to land in the corner fast
+		with full speed into the wall.
+	**/
+	public var hopHolds:Array<Int> = [1, 2, 3, 4, 6, 8, 12, 999];
+	public var hopBackFrames:Array<Int> = [for (f in 4...76) f];
 	/** Also scan mines: blasts from beside, from the floor and from below that drive the player into blocks. **/
 	public var mines:Bool = true;
 	/**
@@ -245,12 +254,19 @@ class ClipScanner {
 
 	/** Attempts per inside corner when no clip is found, over all stat sets. **/
 	public var attemptsPerCorner(get, never):Int;
-	inline function get_attemptsPerCorner():Int return (runUpAttempts + laserAttempts + itemRunUpAttempts) * statSets.length;
+	inline function get_attemptsPerCorner():Int return cornerAttempts * statSets.length;
+
+	/** Attempts at one inside corner with one stat set. **/
+	var cornerAttempts(get, never):Int;
+	inline function get_cornerAttempts():Int return runUpAttempts + laserAttempts + itemRunUpAttempts + hopAttempts;
+
+	var hopAttempts(get, never):Int;
+	inline function get_hopAttempts():Int return settings.hopHolds.length * settings.hopBackFrames.length;
 
 	/** Attempts at one target with one stat set. **/
 	function attemptsPerSet(corner:ClipCorner):Int {
 		var mine = corner.mine;
-		return mine == null ? runUpAttempts + laserAttempts + itemRunUpAttempts : mineMoves(mine.use).length;
+		return mine == null ? cornerAttempts : mineMoves(mine.use).length;
 	}
 
 	public function attemptsFor(corner:ClipCorner):Int return attemptsPerSet(corner) * statSets.length;
@@ -339,6 +355,8 @@ class ClipScanner {
 		index = index % perSet;
 		var mine = corner.mine;
 		if (mine != null) return mineAttemptAt(corner, mine, index, stats);
+		var hopsFrom = runUpAttempts + laserAttempts + itemRunUpAttempts;
+		if (index >= hopsFrom) return hopAttemptAt(corner, index - hopsFrom, stats);
 		if (index >= runUpAttempts + laserAttempts) return itemRunUpAttemptAt(corner, index - runUpAttempts - laserAttempts, stats);
 		if (index >= runUpAttempts) return laserAttemptAt(corner, index - runUpAttempts, stats);
 		var launch = launches[index % launches.length];
@@ -378,6 +396,26 @@ class ClipScanner {
 		attempt.hats = s.hats;
 		attempt.label = (sword ? 'sword lunge (jump held $hold, slash on frame ${fireAt + 1}' : 'laser recoil (jump held $hold, fire on frame ${fireAt + 1}')
 			+ ', ${gap}px from the wall)';
+		return attempt;
+	}
+
+	/** A hop-back attempt: against the wall, jump, hold away until `back`, then toward the wall and down. **/
+	function hopAttemptAt(corner:ClipCorner, index:Int, stats:Array<Float>):ClipAttempt {
+		var s = settings;
+		var backs = s.hopBackFrames.length;
+		var back = s.hopBackFrames[index % backs];
+		var hold = s.hopHolds[Std.int(index / backs)];
+		var startX = corner.wallFace - corner.dir * 10;
+		var length = back + s.frames;
+		var away = -corner.dir;
+		var script = [for (f in 0...length) {
+			var dir = f < back ? away : corner.dir;
+			new LocalPlayerInput(dir == -1, dir == 1, f < hold, f >= back);
+		}];
+		var attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], s.gravity, corner.dir, 0, 0, false, length);
+		attempt.script = script;
+		attempt.hats = s.hats;
+		attempt.label = 'hop back (jump held ${hold >= 999 ? "all" : Std.string(hold)}, away until frame $back, then dive at the wall)';
 		return attempt;
 	}
 

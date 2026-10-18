@@ -59,6 +59,9 @@ class RouteSettings {
 	public var recipeLaserHolds:Null<Array<Int>> = null;
 	public var recipeLaserFireFrames:Null<Array<Int>> = null;
 	public var recipeLaserGaps:Null<Array<Float>> = null;
+	/** Hop-back attempts tried for a recipe (null = the scanner's defaults). **/
+	public var recipeHopHolds:Null<Array<Int>> = null;
+	public var recipeHopBackFrames:Null<Array<Int>> = null;
 
 	public function new(startX:Float, startY:Float, speed:Float, accel:Float, jump:Float, gravity:Float, targetTileX:Int, targetTileY:Int) {
 		this.startX = startX;
@@ -975,8 +978,9 @@ class ClipRoutePlanner {
 	var recipeKey:String = "";
 	final corners:Array<ClipCorner>;
 
-	/** How a recipe uses an item, for the step name. **/
+	/** How a recipe uses an item (or hops back at the wall), for the step name. **/
 	static function itemTag(recipe:ClipAttempt):String {
+		if (recipe.label != null && StringTools.startsWith(recipe.label, "hop back")) return " (hop back)";
 		var items = recipe.items;
 		if (items == null || items.heldItem == null) return "";
 		return switch (items.heldItem) {
@@ -1024,6 +1028,8 @@ class ClipRoutePlanner {
 			if (settings.recipeLaserHolds != null) scanSettings.laserHolds = settings.recipeLaserHolds;
 			if (settings.recipeLaserFireFrames != null) scanSettings.laserFireFrames = settings.recipeLaserFireFrames;
 			if (settings.recipeLaserGaps != null) scanSettings.laserGaps = settings.recipeLaserGaps;
+			if (settings.recipeHopHolds != null) scanSettings.hopHolds = settings.recipeHopHolds;
+			if (settings.recipeHopBackFrames != null) scanSettings.hopBackFrames = settings.recipeHopBackFrames;
 			recipeScan = new ClipScanner(blocksForScans, scanSettings, corner);
 			recipeKey = key;
 			return false;
@@ -1063,7 +1069,7 @@ class ClipRoutePlanner {
 				var i = frame - launchFrame;
 				return i < length ? inputAt(i, player.grounded) : null;
 			}
-			if (floorY == null) floorY = player.y;
+			if (floorY == null && player.grounded) floorY = player.y;
 			if (frame > MAX_APPROACH_FRAMES || (player.grounded && Math.abs(player.y - floorY) > 2)) return ABORT;
 			var err = targetX - player.x;
 			// Against a wall the exact pixel may be out of reach (the wall nudges the
@@ -1077,8 +1083,11 @@ class ClipRoutePlanner {
 			}
 			if (bestErr <= WALL_TOLERANCE && stale >= 30 && Math.abs(err) <= WALL_TOLERANCE && player.grounded && tap == 0) {
 				if (++idleAtWall >= 3) {
+					// Go on the frame right after a grounded one, as a scan starts:
+					// on a bouncy floor (an up arrow) the next frame is already airborne.
 					launching = true;
-					launchFrame = frame + 1;
+					launchFrame = frame;
+					return inputAt(0, player.grounded);
 				}
 				return new LocalPlayerInput();
 			}
