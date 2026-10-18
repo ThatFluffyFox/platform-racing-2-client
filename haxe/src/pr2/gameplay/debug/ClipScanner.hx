@@ -3,6 +3,8 @@ package pr2.gameplay.debug;
 import pr2.gameplay.debug.ClipSimulator.ClipArea;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
+import pr2.gameplay.debug.ClipSimulator.ClipItems;
+import pr2.gameplay.player.LocalPlayerInput;
 import pr2.gameplay.debug.ClipSimulator.ClipRun;
 import pr2.gameplay.debug.ClipSimulator.GhostFrame;
 import pr2.level.BlockType;
@@ -113,6 +115,20 @@ class ClipScanSettings {
 	public var followFrames:Int = 150;
 	/** Only accept a clip that comes out through the blocks (the route planner's recipes); others keep the corner scanning. **/
 	public var passThroughOnly:Bool = false;
+	/**
+		Also try laser recoil clips (the player holds a Laser Gun): stand
+		against the wall, jump in place, and on the frame before landing in the
+		corner turn away and fire; the recoil (15 px a frame toward the wall)
+		plus the landing speed can put the player through. The landing frame
+		depends on the stats, so every fire frame is tried.
+	**/
+	public var laser:Bool = false;
+	/** Px between the player's side and the wall at the start of a laser attempt. **/
+	public var laserGaps:Array<Float> = [0, 1, 2];
+	/** Frames jump is held for a laser attempt. **/
+	public var laserHolds:Array<Int> = [3, 8, 30];
+	/** Frames the player turns away on (and fires the frame after). **/
+	public var laserFireFrames:Array<Int> = [for (f in 4...76) f];
 
 	public function new(speed:Float, accel:Float, jump:Float, gravity:Float) {
 		this.speed = speed;
@@ -170,7 +186,15 @@ class ClipScanner {
 
 	/** Attempts per corner when no clip is found (the most a corner can cost). **/
 	public var attemptsPerCorner(get, never):Int;
-	inline function get_attemptsPerCorner():Int return settings.distances.length * launches.length;
+	inline function get_attemptsPerCorner():Int return runUpAttempts + laserAttempts;
+
+	var runUpAttempts(get, never):Int;
+	inline function get_runUpAttempts():Int return settings.distances.length * launches.length;
+
+	var laserAttempts(get, never):Int;
+	inline function get_laserAttempts():Int {
+		return settings.laser ? settings.laserGaps.length * settings.laserHolds.length * settings.laserFireFrames.length : 0;
+	}
 
 	/** Runs attempts until `maxRuns` have run or `deadline()` says time is up. Returns runs made. **/
 	public function step(maxRuns:Int, ?deadline:Void->Bool):Int {
@@ -222,8 +246,9 @@ class ClipScanner {
 		area = null;
 	}
 
-	/** Distance-major order, so the nearest run-ups are tried with every launch first. **/
+	/** Distance-major order, so the nearest run-ups are tried with every launch first; then the laser attempts. **/
 	public function attemptAt(corner:ClipCorner, index:Int):ClipAttempt {
+		if (index >= runUpAttempts) return laserAttemptAt(corner, index - runUpAttempts);
 		var launch = launches[index % launches.length];
 		var distance = settings.distances[Std.int(index / launches.length)];
 		var startX = corner.wallFace - corner.dir * (10 + distance);
@@ -233,6 +258,34 @@ class ClipScanner {
 		attempt.hats = settings.hats;
 		return attempt;
 	}
+
+	/**
+		A laser recoil attempt: start `gap` px from the wall, jump in place
+		(held `hold` frames), turn away from the wall on `fireAt` and fire on the
+		next frame, then let go.
+	**/
+	function laserAttemptAt(corner:ClipCorner, index:Int):ClipAttempt {
+		var s = settings;
+		var fires = s.laserFireFrames.length, holds = s.laserHolds.length;
+		var fireAt = s.laserFireFrames[index % fires];
+		var hold = s.laserHolds[Std.int(index / fires) % holds];
+		var gap = s.laserGaps[Std.int(index / (fires * holds))];
+		var startX = corner.wallFace - corner.dir * (10 + gap);
+		var length = fireAt + 2 + 60;
+		var script = [for (f in 0...length) {
+			var jumping = f < hold;
+			var turn = f == fireAt;
+			new LocalPlayerInput(turn && corner.dir == 1, turn && corner.dir == -1, jumping, false, f == fireAt + 1);
+		}];
+		var attempt = new ClipAttempt(startX, corner.floorY, s.speed, s.accel, s.jump, s.gravity, corner.dir, 0, 0, false, length);
+		attempt.script = script;
+		attempt.items = new ClipItems(LASER_GUN);
+		attempt.hats = s.hats;
+		attempt.label = 'laser recoil (jump held $hold, fire on frame ${fireAt + 1}, ${gap}px from the wall)';
+		return attempt;
+	}
+
+	static inline var LASER_GUN:Int = 1;
 
 	function cornerArea(corner:ClipCorner):ClipArea {
 		var minX = corner.dir == 1 ? corner.x - CROP_BACK : corner.x - CROP_PAST;

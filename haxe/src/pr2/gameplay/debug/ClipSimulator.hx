@@ -90,7 +90,7 @@ class ClipSimulator {
 			return ClipRun.blocked();
 		}
 		var player = preparePlayer(area, level, attempt.startX, attempt.startY, attempt.speed, attempt.accel, attempt.jump, attempt.gravity,
-			attempt.hats);
+			attempt.hats, attempt.items);
 
 		var ghost:Null<Array<GhostFrame>> = recordGhost ? [GhostFrame.capture(player, bodyInSolid(level, player))] : null;
 		var settledFrames = 0;
@@ -158,6 +158,33 @@ class ClipSimulator {
 		};
 	}
 
+	/**
+		Item uses (and reload time) live in one global store, as in Flash where
+		only the local player ever holds an item. Simulated items read and
+		write the same store, so every piece of simulation work runs inside
+		this: it puts the real player's numbers back afterwards.
+	**/
+	public static function keepRealItem<T>(work:Void->T):T {
+		var uses = itemUses();
+		var reload = com.jiggmin.data.SecureData.getNumber("reloadTime");
+		var result:T;
+		try {
+			result = work();
+		} catch (e:Dynamic) {
+			setItemUses(uses);
+			com.jiggmin.data.SecureData.setNumber("reloadTime", reload);
+			throw e;
+		}
+		setItemUses(uses);
+		com.jiggmin.data.SecureData.setNumber("reloadTime", reload);
+		return result;
+	}
+
+	/** Uses left on the held item (the global store the items share). **/
+	public static inline function itemUses():Float return com.jiggmin.data.SecureData.getNumber("uses");
+
+	public static inline function setItemUses(value:Float):Void com.jiggmin.data.SecureData.setNumber("uses", value);
+
 	/** Blocks the run adds (a placed mine, a returning crumble) join the indexed level's loose list. **/
 	public static function watchAddedBlocks(player:LocalPlayerController):Void {
 		if (Std.isOfType(player.level, ClipLevel)) {
@@ -209,6 +236,10 @@ class ClipAttempt {
 	public var script:Null<Array<LocalPlayerInput>> = null;
 	/** Physics-affecting hats worn by the simulated player (none when null). **/
 	public var hats:Null<ClipHats> = null;
+	/** The item the simulated player holds (the laser for recoil clips; none when null). **/
+	public var items:Null<ClipItems> = null;
+	/** Describes a scripted attempt (e.g. a laser recoil clip) instead of "random inputs". **/
+	public var label:Null<String> = null;
 	/** Frame the direction starts being held; before it the player stands or jumps in place. **/
 	public var moveStart:Int = 0;
 	/** Frame the held direction flips (an air turn), or -1 for never. **/
@@ -293,7 +324,7 @@ class ClipAttempt {
 
 	public function describe():String {
 		var stats = 'speed=$speed accel=$accel jump=$jump';
-		if (script != null) return '$stats random inputs';
+		if (script != null) return label != null ? '$stats $label' : '$stats random inputs';
 		var move = '${dir == 1 ? "right" : "left"}${moveStart > 0 ? ' from frame $moveStart' : ""}';
 		if (turnFrame >= 0) move += ', turn at $turnFrame';
 		var launch = superCharge > 0 ? 'super jump (charge $superCharge${superStart > 0 ? ' from frame $superStart' : ""})'
@@ -426,22 +457,29 @@ class GhostFrame {
 class ClipItems {
 	public var heldItem:Null<Int> = null;
 	public var allowedItems:Null<Array<Int>> = null;
+	/** Uses left on the held item (null = a fresh item's full count). **/
+	public var heldUses:Null<Float> = null;
 
-	public function new(?heldItem:Int, ?allowedItems:Array<Int>) {
+	public function new(?heldItem:Int, ?allowedItems:Array<Int>, ?heldUses:Float) {
 		this.heldItem = heldItem;
 		this.allowedItems = allowedItems;
+		this.heldUses = heldUses;
 	}
 
-	/** From the real player: the item they hold and the level's allowed items. **/
+	/** From the real player: the item they hold (with the uses it has left) and the level's allowed items. **/
 	@:access(pr2.gameplay.player.LocalPlayerController)
 	public static function from(player:LocalPlayerController):ClipItems {
-		return new ClipItems(player.itemId, player.allowedItems.copy());
+		return new ClipItems(player.itemId, player.allowedItems.copy(), player.itemId == null ? null : ClipSimulator.itemUses());
 	}
 
 	public function applyTo(player:LocalPlayerController):Void {
 		if (allowedItems != null) player.setAllowedItems(allowedItems);
 		var item = heldItem;
-		if (item != null) player.grantItemForDebug(item);
+		if (item != null) {
+			player.grantItemForDebug(item);
+			var uses = heldUses;
+			if (uses != null && uses > 0) ClipSimulator.setItemUses(uses);
+		}
 	}
 }
 

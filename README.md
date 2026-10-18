@@ -408,7 +408,13 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     level), with a line from the run-up start to where you land. Found clips
     go into the Prev/Next list, so the ghost and **Replay on me** work on
     them. A mine is never the wall or floor of a corner: touching it blows it
-    up instead of letting you clip in.
+    up instead of letting you clip in. If you hold a **Laser Gun**, each
+    corner is also tried with a laser recoil clip: stand against the wall,
+    jump in place, and on the frame before landing in the corner turn away
+    from the wall and fire. The recoil (15 px a frame into the wall) plus the
+    landing speed can put you through the floor. Only that exact frame
+    works, and it depends on your stats, so every fire frame from 4 to 75 is
+    tried (with three jump heights and 0-2 px from the wall).
   - **Stage 2: route to target** plans a way from where you stand to the
     picked target block with your stats, gravity and hats, and goes through
     walls and floors when that is the way there. It tries walks, jumps, super
@@ -459,7 +465,11 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
       may get a different item. From a spot holding an item it tries using
       it standing, running, mid-jump and held down (the jetpack flies while
       held). Steps say "(gets Jet Pack)" or "(uses up the item)". A teleport
-      (block or item) is not mistaken for being sent back.
+      (block or item) is not mistaken for being sent back. Holding a Laser
+      Gun, its clip moves also try the laser recoil clip; such steps say
+      "(laser recoil)". You start with the uses your item has left. Item uses
+      are kept in one global store in the game (as in Flash), so searches
+      put your real item's uses back after every slice of work.
     - **Water:** 10 frames of swimming count as a spot (a pool may have no
       bottom: sinking out of it drops you off the map and back into the
       water), and from a spot in water it tries swimming up, up and to each

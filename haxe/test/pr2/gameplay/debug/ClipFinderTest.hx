@@ -74,6 +74,9 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStandingOnVanishBlockIsNotRest", testStandingOnVanishBlockIsNotRest);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteGoesThroughAVanishWall", testRouteGoesThroughAVanishWall);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testNoRouteSaysWhy", testNoRouteSaysWhy);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testLaserRecoilClipsThroughTheCorner", testLaserRecoilClipsThroughTheCorner);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteUsesLaserRecoilClip", testRouteUsesLaserRecoilClip);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSimulationsKeepTheRealItemUses", testSimulationsKeepTheRealItemUses);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -701,6 +704,65 @@ class ClipFinderTest {
 		while (!planner.done) planner.step(50);
 		assertEquals(null, planner.route, "no route");
 		assertTrue(planner.rejectionSummary().length > 0, 'and the planner says why moves were dropped: ${planner.rejectionSummary()}');
+	}
+
+	/** Laser recoil only, narrowed to the frames around the landing (stats 50/50/50 land on frame 38). **/
+	private static function laserScan():ClipScanSettings {
+		var settings = new ClipScanSettings(50, 50, 50, 1);
+		settings.distances = [];
+		settings.laser = true;
+		settings.laserGaps = [0];
+		settings.laserHolds = [8];
+		settings.laserFireFrames = [35, 36, 37, 38];
+		return settings;
+	}
+
+	private static function testLaserRecoilClipsThroughTheCorner():Void {
+		// Speed 50 can't clip this corner by running at it; the laser's recoil can.
+		var scanner = new ClipScanner(sealedFloorBlocks(), laserScan(), new pr2.gameplay.debug.ClipScanner.ClipCorner(18, 16, 1));
+		while (!scanner.done) scanner.step(10);
+		assertEquals(1, scanner.portals.length, "jump against the wall, turn away and fire as you land: a clip");
+		var portal = scanner.portals[0];
+		assertTrue(portal.attempt.describe().indexOf("laser recoil") >= 0, 'described as a laser recoil clip: ${portal.attempt.describe()}');
+		assertTrue(portal.passesThrough, 'and it comes out below (${portal.exitX}, ${portal.exitY})');
+		var noLaser = laserScan();
+		noLaser.laser = false;
+		noLaser.distances = [202];
+		noLaser.jumpHolds = [8];
+		noLaser.superCharges = [];
+		var plain = new ClipScanner(sealedFloorBlocks(), noLaser, new pr2.gameplay.debug.ClipScanner.ClipCorner(18, 16, 1));
+		while (!plain.done) plain.step(10);
+		assertEquals(0, plain.portals.length, "without the laser, speed 50 doesn't clip it");
+	}
+
+	private static function testRouteUsesLaserRecoilClip():Void {
+		var settings = new RouteSettings(300, FLOOR_Y, 50, 50, 50, 1, 20, 24);
+		settings.items = new ClipSimulator.ClipItems(1);
+		settings.normalMoves = false;
+		settings.recipeDistances = [];
+		settings.recipeLaserGaps = [0];
+		settings.recipeLaserHolds = [8];
+		settings.recipeLaserFireFrames = [35, 36, 37, 38];
+		var planner = new ClipRoutePlanner(sealedFloorBlocks(), settings);
+		while (!planner.done) planner.step(50);
+		var route = planner.route;
+		assertTrue(route != null, 'a route is found (${planner.simulations} runs, ${planner.rejectionSummary()})');
+		assertTrue(route.steps[route.steps.length - 1].indexOf("(laser recoil)") > 0, 'through the floor with the laser: ${route.steps}');
+		assertEquals(route.reachFrame + 2, planner.foundClip().run.ghost.length, "and it replays to the same frame");
+	}
+
+	private static function testSimulationsKeepTheRealItemUses():Void {
+		// Item uses live in one global store; simulated items must not change the real player's.
+		ClipSimulator.setItemUses(2);
+		ClipSimulator.keepRealItem(() -> {
+			var settings = roomRoute(225, FLOOR_Y, 8, 8);
+			settings.items = new ClipSimulator.ClipItems(6);
+			settings.normalMoves = false;
+			var planner = new ClipRoutePlanner(boxRoom(9, 0), settings);
+			while (!planner.done) planner.step(50);
+			return planner.route;
+		});
+		assertEquals(2.0, ClipSimulator.itemUses(), "the real item's uses are put back");
 	}
 
 	private static function testRouteFromPanel():Void {

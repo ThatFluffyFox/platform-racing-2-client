@@ -9,6 +9,7 @@ import pr2.character.LocalCharacter;
 import pr2.gameplay.debug.ClipFinder.ClipFinderSettings;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
+import pr2.gameplay.Items;
 import pr2.level.Level;
 
 /**
@@ -125,7 +126,7 @@ class ClipFinderSession {
 			settings.targetTileY = targetTileY;
 		}
 		stopReplay();
-		finder = new ClipFinder(liveBlocks(), settings);
+		finder = ClipSimulator.keepRealItem(() -> new ClipFinder(liveBlocks(), settings));
 		clips = finder.clips;
 		clipPortals = [];
 		scanner = null;
@@ -157,8 +158,17 @@ class ClipFinderSession {
 	/** Called once per simulation frame by the course. **/
 	public function tick():Void {
 		if (closed) return;
-		tickScan();
-		tickRoute();
+		// Simulated items share the game's one item-uses store; keep the real player's.
+		ClipSimulator.keepRealItem(() -> {
+			tickScan();
+			tickRoute();
+			tickFinder();
+			return true;
+		});
+		ghost.tick();
+	}
+
+	function tickFinder():Void {
 		var search = finder;
 		if (search != null && !search.done) {
 			var deadline = haxe.Timer.stamp() + FRAME_BUDGET_SECONDS;
@@ -172,7 +182,6 @@ class ClipFinderSession {
 			updateStatus();
 			if (search.done) panel.setRunning(false);
 		}
-		ghost.tick();
 	}
 
 	function showClip(index:Int):Void {
@@ -217,6 +226,8 @@ class ClipFinderSession {
 		settings.hats = ClipHats.from(player.controller);
 		settings.originX = state.x;
 		settings.originY = state.y;
+		// Holding a Laser Gun: also try laser recoil clips at each corner.
+		settings.laser = player.controller.itemId == Items.LASER_GUN;
 		scanner = new ClipScanner(liveBlocks(), settings);
 		clips = [];
 		clipPortals = [];
@@ -322,7 +333,7 @@ class ClipFinderSession {
 			state.jumpStat, gravity, tx, ty);
 		settings.hats = ClipHats.from(player.controller);
 		settings.items = ClipSimulator.ClipItems.from(player.controller);
-		planner = new ClipRoutePlanner(liveBlocks(), settings);
+		planner = ClipSimulator.keepRealItem(() -> new ClipRoutePlanner(liveBlocks(), settings));
 		clips = [];
 		clipPortals = [];
 		routeText = null;

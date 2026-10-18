@@ -55,6 +55,10 @@ class RouteSettings {
 	/** Launches tried for a recipe (null = the scanner's defaults). **/
 	public var recipeJumpHolds:Null<Array<Int>> = null;
 	public var recipeSuperCharges:Null<Array<Int>> = null;
+	/** Laser recoil attempts tried for a recipe (null = the scanner's defaults). **/
+	public var recipeLaserHolds:Null<Array<Int>> = null;
+	public var recipeLaserFireFrames:Null<Array<Int>> = null;
+	public var recipeLaserGaps:Null<Array<Float>> = null;
 
 	public function new(startX:Float, startY:Float, speed:Float, accel:Float, jump:Float, gravity:Float, targetTileX:Int, targetTileY:Int) {
 		this.startX = startX;
@@ -261,6 +265,8 @@ class ClipRoutePlanner {
 	static inline var MAX_APPROACH_FRAMES:Int = 240;
 	/** Mine moves stop within this many px of their spot (a clip's run-up needs its exact pixel; a mine doesn't). **/
 	static inline var MINE_APPROACH_TOLERANCE:Float = 4;
+	/** How close counts when the exact pixel can't be reached (pressed against a wall). **/
+	static inline var WALL_TOLERANCE:Float = 1.5;
 	/** A live controller returns this to give the move up (it could not get where it needed to be). **/
 	static final ABORT:LocalPlayerInput = new LocalPlayerInput();
 
@@ -469,7 +475,7 @@ class ClipRoutePlanner {
 				}
 			}
 			if (grew) continue;
-			base = new SpotBase(player, frames, minesAtStart, current);
+			base = new SpotBase(player, frames, minesAtStart, current, ClipSimulator.itemUses());
 			return base;
 		}
 	}
@@ -481,6 +487,7 @@ class ClipRoutePlanner {
 		var minesAtStart:Int;
 		if (from != null) {
 			player = ClipSimulator.ClipSnapshot.copy(from.player);
+			ClipSimulator.setItemUses(from.itemUses);
 			frame = from.frame;
 			minesAtStart = from.minesAtStart;
 		} else {
@@ -850,6 +857,8 @@ class ClipRoutePlanner {
 	var recipeKey:String = "";
 	final corners:Array<ClipCorner>;
 
+	static inline var LASER_GUN:Int = 1;
+
 	static inline function cornerKey(corner:ClipCorner):String return corner.x + "," + corner.y + "," + corner.dir;
 
 	/** Advances a pending recipe scan by one attempt. Returns true while one is running. **/
@@ -872,14 +881,20 @@ class ClipRoutePlanner {
 	**/
 	function tryClipMove(spot:RouteSpot, move:RouteMove):Bool {
 		var corner = move.corner;
-		var key = cornerKey(corner);
+		// Holding a Laser Gun opens laser recoil clips too, which are a separate recipe.
+		var laser = spot.item == LASER_GUN;
+		var key = cornerKey(corner) + (laser ? "+laser" : "");
 		if (!recipes.exists(key)) {
 			var scanSettings = new ClipScanSettings(settings.speed, settings.accel, settings.jump, settings.gravity);
 			scanSettings.hats = settings.hats;
 			scanSettings.passThroughOnly = true;
+			scanSettings.laser = laser;
 			if (settings.recipeDistances != null) scanSettings.distances = settings.recipeDistances;
 			if (settings.recipeJumpHolds != null) scanSettings.jumpHolds = settings.recipeJumpHolds;
 			if (settings.recipeSuperCharges != null) scanSettings.superCharges = settings.recipeSuperCharges;
+			if (settings.recipeLaserHolds != null) scanSettings.laserHolds = settings.recipeLaserHolds;
+			if (settings.recipeLaserFireFrames != null) scanSettings.laserFireFrames = settings.recipeLaserFireFrames;
+			if (settings.recipeLaserGaps != null) scanSettings.laserGaps = settings.recipeLaserGaps;
 			recipeScan = new ClipScanner(blocksForScans, scanSettings, corner);
 			recipeKey = key;
 			return false;
@@ -891,7 +906,7 @@ class ClipRoutePlanner {
 			rejectedApproach++;
 			return true;
 		}
-		finishMove(spot, move.name, spot.script.concat(sim.policyInputs), sim);
+		finishMove(spot, move.name + (recipe.items != null ? " (laser recoil)" : ""), spot.script.concat(sim.policyInputs), sim);
 		return true;
 	}
 
@@ -915,6 +930,9 @@ class ClipRoutePlanner {
 		var tapDir = 0;
 		var still = 0;
 		var floorY:Null<Float> = null;
+		var bestErr = Math.POSITIVE_INFINITY;
+		var stale = 0;
+		var idleAtWall = 0;
 		return function(frame:Int, player:LocalPlayerController):Null<LocalPlayerInput> {
 			if (launching) {
 				var i = frame - launchFrame;
@@ -923,6 +941,22 @@ class ClipRoutePlanner {
 			if (floorY == null) floorY = player.y;
 			if (frame > MAX_APPROACH_FRAMES || (player.grounded && Math.abs(player.y - floorY) > 2)) return ABORT;
 			var err = targetX - player.x;
+			// Against a wall the exact pixel may be out of reach (the wall nudges the
+			// player back a fraction each tap): close enough and no longer getting
+			// closer counts, after a few idle frames (the physics decides the rest).
+			if (Math.abs(err) < bestErr - 0.05) {
+				bestErr = Math.abs(err);
+				stale = 0;
+			} else {
+				stale++;
+			}
+			if (bestErr <= WALL_TOLERANCE && stale >= 30 && Math.abs(err) <= WALL_TOLERANCE && player.grounded && tap == 0) {
+				if (++idleAtWall >= 3) {
+					launching = true;
+					launchFrame = frame + 1;
+				}
+				return new LocalPlayerInput();
+			}
 			var dir = err > 0 ? 1 : -1;
 			var moving = Math.abs(player.vx) > 0.02 || !player.grounded;
 			if (tap > 0) {
@@ -1007,12 +1041,15 @@ private class SpotBase {
 	public final minesAtStart:Int;
 	/** The spot it belongs to. **/
 	public final script:Null<RouteSpot>;
+	/** Uses left on the held item there (item uses live in a global store, not on the player). **/
+	public final itemUses:Float;
 
-	public function new(player:LocalPlayerController, frame:Int, minesAtStart:Int, script:Null<RouteSpot>) {
+	public function new(player:LocalPlayerController, frame:Int, minesAtStart:Int, script:Null<RouteSpot>, itemUses:Float) {
 		this.player = player;
 		this.frame = frame;
 		this.minesAtStart = minesAtStart;
 		this.script = script;
+		this.itemUses = itemUses;
 	}
 }
 /**
