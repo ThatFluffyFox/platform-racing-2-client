@@ -366,6 +366,17 @@ tools/clip_sweep.sh --levels test/output/levels/50815.txt --max-clips-per-corner
 
 It is a diagnostic tool, not part of `./test.sh`.
 
+### Input viewer (/ihud)
+
+Typing **/ihud** in the race chat turns on an input viewer in the bottom right
+corner, just above the mute button; typing it again turns it off. It stays on
+for later races until you turn it off. It lights each key the player is
+pressing every frame: **Left**, **Down** and **Right** in one row with
+**Space** (item) beside Right, and **Up** (jump) above Down. During the Clip
+Finder's **Replay on me** it shows the replay's keys instead of your keyboard,
+so you can see exactly what the clip presses. It is a debug addition with no
+Flash counterpart (`haxe/src/pr2/gameplay/InputViewer.hx`).
+
 ### In-game Clip Finder (F9+C+D)
 
 In a race, press **F9 + C + D** to open the Clip Finder panel: hold them

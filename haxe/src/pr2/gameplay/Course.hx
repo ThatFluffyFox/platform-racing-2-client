@@ -101,6 +101,8 @@ class Course extends Sprite {
 	public var localCharacter(default, null):LocalCharacter;
 	/** Debug-only Clip Finder (F9+C+D); not part of the Flash client. */
 	private var clipFinder:Null<ClipFinderSession> = null;
+	/** The `/ihud` input viewer, while it is switched on. **/
+	private var inputViewer:Null<InputViewer> = null;
 	/** Held state and last press time of F9, C and D (in that order) for the combo. */
 	private var clipComboHeld:Array<Bool> = [false, false, false];
 	private var clipComboPressedAt:Array<Float> = [Math.NEGATIVE_INFINITY, Math.NEGATIVE_INFINITY, Math.NEGATIVE_INFINITY];
@@ -570,6 +572,11 @@ class Course extends Sprite {
 			toggleClipFinder();
 			return true;
 		}
+		if (command == "/ihud") {
+			InputViewer.toggle();
+			syncInputViewer();
+			return true;
+		}
 		return onChatLine != null && onChatLine(message);
 	}
 
@@ -900,6 +907,8 @@ class Course extends Sprite {
 		stage.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
 		stage.addEventListener(Event.DEACTIVATE, resetInput);
 		stage.addEventListener(FocusEvent.FOCUS_OUT, resetInput);
+		// `/ihud` stays on across races: a new race shows it again.
+		if (InputViewer.enabled && inputViewer == null) syncInputViewer();
 	}
 
 	private function onRemovedFromStage(event:Event):Void {
@@ -969,12 +978,14 @@ class Course extends Sprite {
 				playerInput.down = false;
 			}
 			player.step(playerInput);
+			if (inputViewer != null) inputViewer.show(playerInput);
 			localPhysicsStepped = true;
 			player.maybeSquash(playerArray);
 			player.tickJellyfishSting(playerArray, Std.random(35) + 1);
 			physicsTraceFrame++;
 		} else {
 			player.controller.stopDetailedTrace();
+			if (inputViewer != null) inputViewer.show(input);
 		}
 		var state = player.stateSnapshot();
 		if (raceStarted && !localFinishHandled && state.lastItemEffect == "snake_start" && snakeManager != null) {
@@ -1804,6 +1815,30 @@ class Course extends Sprite {
 	private static function clipComboIndex(keyCode:UInt):Int {
 		return keyCode == Keyboard.F9 ? 0 : (keyCode == Keyboard.C ? 1 : (keyCode == Keyboard.D ? 2 : -1));
 	}
+
+	/** Adds or removes the input viewer to match `/ihud` (it stays on across races). **/
+	private function syncInputViewer():Void {
+		if (!InputViewer.enabled) {
+			if (inputViewer != null) {
+				if (inputViewer.parent != null) inputViewer.parent.removeChild(inputViewer);
+				inputViewer = null;
+			}
+			return;
+		}
+		if (inputViewer == null) {
+			inputViewer = new InputViewer();
+			// Its spot is given on the stage; place it there whatever this course's offset.
+			if (stage != null) {
+				var spot = globalToLocal(new Point(inputViewer.x, inputViewer.y));
+				inputViewer.x = spot.x;
+				inputViewer.y = spot.y;
+			}
+		}
+		addChild(inputViewer);
+	}
+
+	/** The `/ihud` input viewer in this race, or null while it is off (for tests). **/
+	public function inputViewerShown():Null<InputViewer> return inputViewer;
 
 	private function toggleClipFinder():Void {
 		if (clipFinder != null) {

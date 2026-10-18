@@ -4,6 +4,7 @@ import openfl.events.Event;
 import openfl.ui.Keyboard;
 import pr2.character.Character;
 import pr2.gameplay.Course;
+import pr2.gameplay.InputViewer;
 import pr2.gameplay.LevelConfig;
 import pr2.gameplay.debug.ClipFinder.ClipFinderSettings;
 import pr2.gameplay.debug.ClipFinder.StatRange;
@@ -102,6 +103,7 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangesGiveStatSets", testStatRangesGiveStatSets);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayPutsBackBlownUpMines", testReplayPutsBackBlownUpMines);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayGivesTheGhostsItem", testReplayGivesTheGhostsItem);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testInputViewerShowsKeysAndReplays", testInputViewerShowsKeysAndReplays);
 		course.remove();
 		course = null;
 		trace('ClipFinderTest passed $assertions assertions');
@@ -865,6 +867,56 @@ class ClipFinderTest {
 		course.setKey(Keyboard.F9, false);
 		course.setKey(Keyboard.C, false);
 		course.setKey(Keyboard.D, false);
+	}
+
+	private static function testInputViewerShowsKeysAndReplays():Void {
+		assertTrue(course.inputViewerShown() == null, "off until /ihud");
+		assertTrue(course.handleRaceChatLine("/ihud"), "/ihud is a local command (not sent to chat)");
+		var viewer = course.inputViewerShown();
+		assertTrue(viewer != null && viewer.parent == course, "/ihud shows the input viewer");
+		// Layout: Left, Down, Right in a row, Space beside Right, Up above Down.
+		var left = viewer.keyBox("Left"), down = viewer.keyBox("Down"), right = viewer.keyBox("Right");
+		var space = viewer.keyBox("Space"), up = viewer.keyBox("Up");
+		assertTrue(left.y == down.y && down.y == right.y && right.y == space.y, "Left, Down, Right and Space share a row");
+		assertTrue(left.x < down.x && down.x < right.x && right.x < space.x, "in that order");
+		assertTrue(up.x == down.x && up.y < down.y, "Up sits above Down");
+		// Bottom right, above the mute button (stage 504, 380).
+		assertTrue(viewer.x + InputViewer.totalWidth <= 550 && viewer.x > 400, 'at the right (${viewer.x})');
+		assertTrue(viewer.y + InputViewer.totalHeight <= 380 && viewer.y > 300, 'just above the mute button (${viewer.y})');
+		course.setKey(Keyboard.RIGHT, true);
+		course.setKey(Keyboard.UP, true);
+		course.onEnterFrame(new Event(Event.ENTER_FRAME));
+		assertEquals("Right,Up", viewer.pressedKeys().join(","), "held keys light up");
+		course.setKey(Keyboard.RIGHT, false);
+		course.setKey(Keyboard.UP, false);
+		course.onEnterFrame(new Event(Event.ENTER_FRAME));
+		assertEquals(0, viewer.pressedKeys().length, "and go dark when let go");
+		// Replay on me: the viewer shows the replay's keys, not the keyboard's.
+		course.setKey(Keyboard.F9, true);
+		course.setKey(Keyboard.C, true);
+		course.setKey(Keyboard.D, true);
+		var session = course.clipFinder;
+		var before = course.localCharacter.stateSnapshot();
+		var attempt = new ClipAttempt(Math.round(before.x), Math.round(before.y), 50, 50, 50, course.level.gravity, 1, 0, 8, false, 12);
+		var area = ClipArea.around(course.level.blocks, attempt.startX, attempt.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP,
+			ClipFinder.AREA_DOWN);
+		session.clips = [new pr2.gameplay.debug.ClipFinder.FoundClip(attempt, ClipSimulator.run(area, attempt, true))];
+		session.panel.setClipCount(1);
+		session.showClip(0);
+		session.startReplay();
+		course.setKey(Keyboard.LEFT, true);
+		course.onEnterFrame(new Event(Event.ENTER_FRAME));
+		assertEquals(0, viewer.pressedKeys().length, "the replay's idle settle frame holds nothing (not the held LEFT)");
+		course.onEnterFrame(new Event(Event.ENTER_FRAME));
+		assertEquals("Right,Up", viewer.pressedKeys().join(","), "then it runs right and jumps; the held LEFT isn't shown");
+		session.stopReplay();
+		course.setKey(Keyboard.LEFT, false);
+		session.close();
+		course.setKey(Keyboard.F9, false);
+		course.setKey(Keyboard.C, false);
+		course.setKey(Keyboard.D, false);
+		assertTrue(course.handleRaceChatLine("/ihud"), "/ihud again");
+		assertTrue(course.inputViewerShown() == null && viewer.parent == null, "turns it off");
 	}
 
 	private static function testItemBlocksCanGiveTheItemTheRouteNeeds():Void {
