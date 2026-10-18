@@ -7,8 +7,18 @@ import pr2.assets.NativeAssets;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.ui.controls.GameButton;
 import pr2.ui.controls.GameCheckBox;
+import pr2.ui.controls.GameSelect;
 import pr2.ui.controls.GameSlider;
+import pr2.ui.controls.SelectOption;
 import pr2.ui.view.NativeView;
+
+/** The stages in the panel's "Scan level" menu. **/
+enum abstract ScanStage(Int) {
+	/** Stage 1: every inside corner in the level, tried with your stats. **/
+	var MapScan = 0;
+	/** Stage 2: a route from where you stand to the target block. **/
+	var RouteToTarget = 1;
+}
 
 /**
 	Debug-only Clip Finder panel (opened in a race with F9+C+D). It sits in the
@@ -57,11 +67,13 @@ class ClipFinderPanel extends NativeView {
 	/** Pick (or clear) the one block clips must go into. **/
 	public final targetButton:GameButton;
 	public var onTarget:Null<Void->Void>;
-	/** Scans every corner in the level for clips with your stats (stage 1 of route planning). **/
-	public final scanButton:GameButton;
+	/**
+		"Scan level" menu with the two stages: Stage 1 scans every corner in the
+		level for clips with your stats; Stage 2 plans a route from where you
+		stand to the target block, clipping through blocks when needed.
+	**/
+	public final scanSelect:GameSelect<ScanStage>;
 	public var onScan:Null<Void->Void>;
-	/** Plans a route from where you stand to the target block, clipping through blocks when needed. **/
-	public final routeButton:GameButton;
 	public var onRoute:Null<Void->Void>;
 	final status:TextField;
 	final clipInfo:TextField;
@@ -82,18 +94,20 @@ class ClipFinderPanel extends NativeView {
 		close.y = 5;
 		close.onPress = function():Void if (onClose != null) onClose();
 		addChild(close);
-		scanButton = ownControl(new GameButton("Scan level"));
-		scanButton.setSize(80, 16);
-		scanButton.x = 10;
-		scanButton.y = 19;
-		scanButton.onPress = function():Void if (onScan != null) onScan();
-		addChild(scanButton);
-		routeButton = ownControl(new GameButton("Route to target"));
-		routeButton.setSize(100, 16);
-		routeButton.x = 96;
-		routeButton.y = 19;
-		routeButton.onPress = function():Void if (onRoute != null) onRoute();
-		addChild(routeButton);
+		// "Scan level" menu: picking a stage runs it, then the menu shows its title again.
+		scanSelect = ownControl(new GameSelect<ScanStage>());
+		scanSelect.setSize(176, 18);
+		scanSelect.x = 10;
+		scanSelect.y = 19;
+		scanSelect.prompt = "Scan level...";
+		scanSelect.addOption("Stage 1: map scan (every corner)", MapScan);
+		scanSelect.addOption("Stage 2: route to target", RouteToTarget);
+		scanSelect.rowCount = 2;
+		scanSelect.onChange = function(option:SelectOption<ScanStage>):Void {
+			scanSelect.selectedIndex = -1;
+			chooseScanStage(option.value);
+		};
+		addChild(scanSelect);
 
 		targetButton = ownControl(new GameButton("Target: any block"));
 		targetButton.setSize(140, 20);
@@ -170,12 +184,21 @@ class ClipFinderPanel extends NativeView {
 		for (row in [speedRow, accelRow, jumpRow]) row.setLocked(running);
 		for (box in [leftBox, rightBox, downBox, anyFrameBox, aimBox]) box.enabled = !running;
 		targetButton.enabled = !running;
-		scanButton.enabled = !running;
-		routeButton.enabled = !running;
+		scanSelect.enabled = !running;
 		for (row in rows) row.setLocked(running);
 	}
 
 	public function setStatus(value:String):Void status.text = value;
+
+	/** Runs a stage from the "Scan level" menu (also what a pick in the menu does). **/
+	public function chooseScanStage(stage:ScanStage):Void {
+		switch (stage) {
+			case MapScan:
+				if (onScan != null) onScan();
+			case RouteToTarget:
+				if (onRoute != null) onRoute();
+		}
+	}
 
 	public function setClipCount(count:Int):Void {
 		clipTotal = count;

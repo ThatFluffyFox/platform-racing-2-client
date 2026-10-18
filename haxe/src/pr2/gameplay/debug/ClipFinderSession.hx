@@ -124,7 +124,7 @@ class ClipFinderSession {
 			settings.targetTileY = targetTileY;
 		}
 		stopReplay();
-		finder = new ClipFinder(level.blocks, settings);
+		finder = new ClipFinder(liveBlocks(), settings);
 		clips = finder.clips;
 		clipPortals = [];
 		scanner = null;
@@ -216,7 +216,7 @@ class ClipFinderSession {
 		settings.hats = ClipHats.from(player.controller);
 		settings.originX = state.x;
 		settings.originY = state.y;
-		scanner = new ClipScanner(level.blocks, settings);
+		scanner = new ClipScanner(liveBlocks(), settings);
 		clips = [];
 		clipPortals = [];
 		shownClips = 0;
@@ -320,7 +320,7 @@ class ClipFinderSession {
 		var settings = new ClipRoutePlanner.RouteSettings(Math.round(state.x), Math.round(state.y), state.speedStat, state.accelerationStat,
 			state.jumpStat, gravity, tx, ty);
 		settings.hats = ClipHats.from(player.controller);
-		planner = new ClipRoutePlanner(level.blocks, settings);
+		planner = new ClipRoutePlanner(liveBlocks(), settings);
 		clips = [];
 		clipPortals = [];
 		routeText = null;
@@ -467,6 +467,16 @@ class ClipFinderSession {
 		marker.graphics.drawRect(tx * t, ty * t, t, t);
 		ghostLayer.addChild(marker);
 		targetMarker = marker;
+	}
+
+	/**
+		The race's blocks as they are now: mines (and bricks, crumbles...) that
+		were already blown up are gone from the live list, and mines placed with
+		the mine item are in it. It is copied so a search keeps seeing the level
+		as it was when the search started.
+	**/
+	function liveBlocks():Array<pr2.level.Level.LevelBlock> {
+		return level.blocks.copy();
 	}
 
 	/** Tests replace this to make "Any frame" searches reproducible. **/

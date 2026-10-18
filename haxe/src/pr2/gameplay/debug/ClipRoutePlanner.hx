@@ -9,6 +9,7 @@ import pr2.gameplay.debug.ClipScanner.ClipCorner;
 import pr2.gameplay.debug.ClipScanner.ClipScanSettings;
 import pr2.gameplay.player.LocalPlayerController;
 import pr2.gameplay.player.LocalPlayerInput;
+import pr2.level.BlockType;
 import pr2.level.Level.LevelBlock;
 
 class RouteSettings {
@@ -28,9 +29,13 @@ class RouteSettings {
 	public var maxSpots:Int = 300;
 	/** A step that goes through a block costs this many normal steps, so clips are only used when they pay off. **/
 	public var clipCost:Int = 4;
-	/** Clips are only tried toward a wall within this many tiles. **/
+	/** Clips are only tried toward a wall within this many tiles (negative = no clip moves). **/
 	public var clipWallRange:Int = 10;
-	/** False tries only clip moves (no walks, jumps or super jumps): to check what the clips alone reach. **/
+	/** Mine moves are tried at mines within this many tiles left or right of a spot. **/
+	public var mineRange:Int = 8;
+	/** The nearest this many mines get mine moves from each spot. **/
+	public var minesPerSpot:Int = 3;
+	/** False tries only clip and mine moves (no plain walks, jumps or super jumps): to check what they alone reach. **/
 	public var normalMoves:Bool = true;
 	/** Run-up distances tried when scanning a wall for its clip recipe (null = the scanner's full range). **/
 	public var recipeDistances:Null<Array<Int>> = null;
@@ -56,11 +61,14 @@ class RouteMove {
 	public final inputs:Array<LocalPlayerInput>;
 	/** For a clip move, the wall corner to clip (its inputs come from the corner's scanned recipe). **/
 	public final corner:Null<ClipCorner>;
+	/** For a mine move, the pixel x to walk to and stop on before playing `inputs` (null = play them at once). **/
+	public final approachX:Null<Float>;
 
-	public function new(name:String, inputs:Array<LocalPlayerInput>, ?corner:ClipCorner) {
+	public function new(name:String, inputs:Array<LocalPlayerInput>, ?corner:ClipCorner, ?approachX:Float) {
 		this.name = name;
 		this.inputs = inputs;
 		this.corner = corner;
+		this.approachX = approachX;
 	}
 }
 
@@ -72,15 +80,22 @@ class RouteSpot {
 	public final steps:Array<String>;
 	public final clips:Int;
 	public final cost:Int;
+	/** Mines blown up on the way here (they don't come back, so they change what the next moves do). **/
+	public final minesGone:Int;
 
-	public function new(script:Array<LocalPlayerInput>, x:Float, y:Float, steps:Array<String>, clips:Int, cost:Int) {
+	public function new(script:Array<LocalPlayerInput>, x:Float, y:Float, steps:Array<String>, clips:Int, cost:Int, minesGone:Int = 0) {
 		this.script = script;
 		this.x = x;
 		this.y = y;
 		this.steps = steps;
 		this.clips = clips;
 		this.cost = cost;
+		this.minesGone = minesGone;
 	}
+
+	/** One spot per tile and number of mines gone. **/
+	public var key(get, never):String;
+	inline function get_key():String return tileX + "," + tileY + "," + minesGone;
 
 	public var tileX(get, never):Int;
 	inline function get_tileX():Int return ClipSimulator.tileOf(x);
@@ -121,6 +136,10 @@ class RouteSim {
 	public var policyInputs:Array<LocalPlayerInput> = [];
 	/** The live controller never finished (could not stand on its pixel). **/
 	public var policyFailed:Bool = false;
+	/** Mines blown up from the start of the script to the end of the run (each one knocks the player back). **/
+	public var minesHit:Int = 0;
+	/** Mines blown up from `checkFrom` on (by this move). **/
+	public var minesHitByMove:Int = 0;
 
 	public function new() {}
 }
@@ -139,7 +158,16 @@ class RouteSim {
 	scanner first finds a recipe for that wall with these stats (a run-up
 	from an exact pixel and a launch); the move then walks to that pixel,
 	stops dead, and plays the recipe, and the inputs it used are recorded
-	into the route. After a move the keys are
+	into the route.
+
+	Mines: the real physics already blows them up and knocks the player away
+	from their centre (vx/vy += 50 along the angle, then 60 hurt frames), and
+	a blown-up mine stays gone for the rest of the route. On top of the moves
+	that hit mines by chance, the planner tries mine moves at the nearest
+	mines: walk to a set distance from the mine, stop, then walk, hop or jump
+	into it (or jump up into one overhead, or step onto one in the floor), so
+	the knockback can launch the player somewhere, even into a clip. A spot is
+	kept per tile and per number of mines gone. After a move the keys are
 	released until the player is at rest; that spot is where the next move
 	starts. Spots are searched cheapest first (a step through a block costs
 	`clipCost`), one spot per tile. Like the other searches it works a few
@@ -152,6 +180,12 @@ class ClipRoutePlanner {
 	static inline var RESPAWN_JUMP:Float = 60;
 	/** Most frames a clip move may take to walk to its pixel and play its recipe. **/
 	static inline var MAX_POLICY_FRAMES:Int = 400;
+	/** Frames a walk to a pixel may take before the move is given up. **/
+	static inline var MAX_APPROACH_FRAMES:Int = 240;
+	/** Mine moves stop within this many px of their spot (a clip's run-up needs its exact pixel; a mine doesn't). **/
+	static inline var MINE_APPROACH_TOLERANCE:Float = 4;
+	/** A live controller returns this to give the move up (it could not get where it needed to be). **/
+	static final ABORT:LocalPlayerInput = new LocalPlayerInput();
 
 	public final settings:RouteSettings;
 	public var route(default, null):Null<Route> = null;
@@ -161,7 +195,8 @@ class ClipRoutePlanner {
 	public var done(default, null):Bool = false;
 
 	final area:ClipArea;
-	final solid:Map<String, Bool> = new Map();
+	/** Every mine in the level (tile positions). **/
+	final mines:Array<LevelBlock>;
 	/** Spots waiting to be expanded, cheapest first. **/
 	final open:Array<RouteSpot> = [];
 	final visited:Map<String, Bool> = new Map();
@@ -174,9 +209,7 @@ class ClipRoutePlanner {
 		this.settings = settings;
 		blocksForScans = blocks;
 		corners = ClipScanner.findCorners(blocks, 1).concat(ClipScanner.findCorners(blocks, -1));
-		for (block in blocks) {
-			if (!block.isMarker() && block.type.isSolid()) solid.set(block.x + "," + block.y, true);
-		}
+		mines = [for (block in blocks) if (!block.isMarker() && block.type == BlockType.Mine) block];
 		area = ClipArea.around(blocks, settings.startX, settings.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP, ClipFinder.AREA_DOWN);
 		// The start itself: simulate standing still, in case the target is already touched.
 		var start = simulate([], 0, false);
@@ -185,7 +218,7 @@ class ClipRoutePlanner {
 			done = true;
 			return;
 		}
-		open.push(new RouteSpot([for (_ in 0...start.idleFrames) new LocalPlayerInput()], start.restX, start.restY, [], 0, 0));
+		open.push(new RouteSpot([for (_ in 0...start.idleFrames) new LocalPlayerInput()], start.restX, start.restY, [], 0, 0, start.minesHit));
 	}
 
 	/** Runs simulations until `maxRuns` have run or `deadline()` says time is up. Returns runs made. **/
@@ -210,6 +243,8 @@ class ClipRoutePlanner {
 			if (move.corner != null) {
 				// Waits for the wall's recipe scan, then tries the move again.
 				if (!tryClipMove(spot, move)) moveIndex--;
+			} else if (move.approachX != null) {
+				tryApproachMove(spot, move);
 			} else {
 				tryMove(spot, move);
 			}
@@ -220,7 +255,7 @@ class ClipRoutePlanner {
 	function nextSpot():Bool {
 		while (open.length > 0) {
 			var spot = open.shift();
-			var key = spot.tileX + "," + spot.tileY;
+			var key = spot.key;
 			if (visited.exists(key)) continue;
 			visited.set(key, true);
 			if (spotsExplored >= settings.maxSpots) return false;
@@ -242,7 +277,8 @@ class ClipRoutePlanner {
 	/** Records what a move did: the route if it reached the target, else the spot it came to rest on. **/
 	function finishMove(spot:RouteSpot, name:String, script:Array<LocalPlayerInput>, sim:RouteSim):Void {
 		var clipped = sim.clipped;
-		var stepName = name + (clipped ? " (through a block)" : "");
+		var stepName = name + (sim.minesHitByMove > 0 ? ' (hits ${sim.minesHitByMove == 1 ? "a mine" : sim.minesHitByMove + " mines"})' : "")
+			+ (clipped ? " (through a block)" : "");
 		var clips = spot.clips + (clipped ? 1 : 0);
 		var cost = spot.cost + (clipped ? settings.clipCost : 1);
 		if (sim.reachFrame >= 0) {
@@ -254,11 +290,11 @@ class ClipRoutePlanner {
 			return;
 		}
 		if (sim.respawned || !sim.atRest || sim.endInSolid) return;
-		var key = ClipSimulator.tileOf(sim.restX) + "," + ClipSimulator.tileOf(sim.restY - 1);
+		var key = ClipSimulator.tileOf(sim.restX) + "," + ClipSimulator.tileOf(sim.restY - 1) + "," + sim.minesHit;
 		if (visited.exists(key)) return;
 		var rested = script.concat([for (_ in 0...sim.idleFrames) new LocalPlayerInput()]);
 		var landed = ' to ${ClipSimulator.tileOf(sim.restX)},${ClipSimulator.tileOf(sim.restY - 1)}';
-		insert(new RouteSpot(rested, sim.restX, sim.restY, spot.steps.concat([stepName + landed]), clips, cost));
+		insert(new RouteSpot(rested, sim.restX, sim.restY, spot.steps.concat([stepName + landed]), clips, cost, sim.minesHit));
 	}
 
 	/** Keeps `open` sorted by cost (then fewer steps), so the cheapest spot is expanded next. **/
@@ -294,13 +330,21 @@ class ClipRoutePlanner {
 		var frame = 0;
 		var policyFrame = 0;
 		var policyDone = policy == null;
+		// Blown-up mines leave the level's block list, so counting them tells how many were hit.
+		var minesAtStart = countMines(level);
+		var minesAtCheck = minesAtStart;
 		while (frame < script.length + MAX_POLICY_FRAMES + SETTLE_FRAMES) {
+			if (frame == checkFrom) minesAtCheck = countMines(level);
 			var input:LocalPlayerInput;
 			var idle = false;
 			if (frame < script.length) {
 				input = script[frame];
 			} else if (!policyDone) {
 				var chosen = policy(policyFrame++, player);
+				if (chosen == ABORT) {
+					sim.policyFailed = true;
+					break;
+				}
 				if (chosen == null || policyFrame > MAX_POLICY_FRAMES) {
 					policyDone = true;
 					if (policyFrame > MAX_POLICY_FRAMES) sim.policyFailed = true;
@@ -349,7 +393,16 @@ class ClipRoutePlanner {
 		sim.restX = player.x;
 		sim.restY = player.y;
 		sim.endInSolid = ClipSimulator.bodyInSolid(level, player);
+		var minesAtEnd = countMines(level);
+		sim.minesHit = minesAtStart - minesAtEnd;
+		sim.minesHitByMove = minesAtCheck - minesAtEnd;
 		return sim;
+	}
+
+	static function countMines(level:pr2.level.Level):Int {
+		var count = 0;
+		for (block in level.blocks) if (block.type == BlockType.Mine) count++;
+		return count;
 	}
 
 	/** The player's box (20 x 55 above the feet) touches or overlaps the target tile. **/
@@ -384,7 +437,72 @@ class ClipRoutePlanner {
 			}
 		}
 		if (settings.normalMoves) moves.push(new RouteMove("jump in place", hold(0, 30, 0, 30, false)));
+		return moves.concat(mineMoves(spot));
+	}
+
+	/**
+		Moves that use a mine's knockback, at the nearest mines to the spot: walk
+		to a set gap from the mine and stop, then walk, hop or jump into it; jump
+		up into a mine overhead; or step onto a mine in the floor. Where the
+		player touches the mine sets the blast angle, so the gaps and jumps give
+		different launches.
+	**/
+	function mineMoves(spot:RouteSpot):Array<RouteMove> {
+		var t = ClipSimulator.TILE;
+		var half = LocalPlayerController.STANDING_WIDTH / 2;
+		var near = [for (mine in mines) {
+			var dx = mine.x - spot.tileX;
+			var dy = mine.y - spot.tileY;
+			// From the floor under the spot (dy = 1) up to three tiles above the head.
+			if (Math.abs(dx) <= settings.mineRange && dy <= 1 && dy >= -4) mine;
+		}];
+		near.sort((a, b) -> Reflect.compare(Math.abs(a.x - spot.tileX) + Math.abs(a.y - spot.tileY), Math.abs(b.x - spot.tileX) + Math.abs(b.y - spot.tileY)));
+		var moves:Array<RouteMove> = [];
+		for (i in 0...Std.int(Math.min(near.length, settings.minesPerSpot))) {
+			var mine = near[i];
+			var name = 'mine at ${mine.x},${mine.y}';
+			var centerX = (mine.x + 0.5) * t;
+			var dy = mine.y - spot.tileY;
+			var sides = mine.x > spot.tileX ? [1] : (mine.x < spot.tileX ? [-1] : [1, -1]);
+			if (dy <= -2) {
+				// Overhead: stand under it and jump up into it (blast pushes down and away).
+				for (offset in [0.0, 12.0]) {
+					moves.push(new RouteMove('$name: jump up into it (${offset == 0 ? "centre" : "off-centre"})', hold(0, 30, 0, 30, false), null,
+						centerX - offset));
+				}
+				continue;
+			}
+			for (dir in sides) {
+				// The mine's face on the near side; the player stops `gap` px short of it.
+				var face = dir == 1 ? mine.x * t : (mine.x + 1) * t;
+				if (dy == 1) {
+					// In the floor: the blast throws the player up. Step onto it, or run
+					// across it from further back and keep holding the direction in the
+					// air, so the launch also carries sideways.
+					for (gap in [4, 60]) {
+						var x = face - dir * (half + gap);
+						moves.push(new RouteMove('$name: step onto it from ${gap}px', hold(dir, 20 + gap, 0, 0, false), null, x));
+						moves.push(new RouteMove('$name: run across it from ${gap}px', hold(dir, 90, 0, 0, false), null, x));
+					}
+					continue;
+				}
+				for (gap in [2, 40]) {
+					var x = face - dir * (half + gap);
+					moves.push(new RouteMove('$name: walk at it from ${gap}px', hold(dir, 30, 0, 0, false), null, x));
+					moves.push(new RouteMove('$name: hop at it from ${gap}px', hold(dir, 30, 0, 3, false), null, x));
+					moves.push(new RouteMove('$name: jump at it from ${gap}px', hold(dir, 30, 0, 30, false), null, x));
+				}
+			}
+		}
 		return moves;
+	}
+
+	/** A mine move: walk to its pixel and stop, then play its inputs live (recorded into the route). **/
+	function tryApproachMove(spot:RouteSpot, move:RouteMove):Void {
+		var inputs = move.inputs;
+		var sim = simulate(spot.script, spot.script.length, false, () -> walkThen(move.approachX, MINE_APPROACH_TOLERANCE, inputs.length, (i, _) -> inputs[i]));
+		if (sim.policyFailed) return;
+		finishMove(spot, move.name, spot.script.concat(sim.policyInputs), sim);
 	}
 
 	/**
@@ -463,25 +581,33 @@ class ClipRoutePlanner {
 		return true;
 	}
 
-	/**
-		Live controller: walk toward the recipe's start x, brake, then nudge with
-		short taps until standing exactly there; then play the recipe. Returns
-		null when the recipe is over.
-	**/
+	/** Walk to the recipe's start x and stop, then play the recipe until the keys are let go after the clip. **/
 	static function walkThenRecipe(recipe:ClipAttempt):RoutePolicy {
-		var targetX = recipe.startX;
-		// Play until the keys are let go after the clip (or the whole recipe).
 		var length = recipe.releaseFrame >= 0 ? recipe.releaseFrame : recipe.frames;
+		return walkThen(recipe.startX, 0.5, length, recipe.inputAt);
+	}
+
+	/**
+		Live controller: walk toward `targetX`, brake, then nudge with short taps
+		until standing exactly there; then play `length` frames of `inputAt`
+		(frame, grounded). Returns null when they are over, or ABORT when the
+		walk goes wrong: it leaves the floor it started on (a fall, or a mine
+		on the way) or takes too long.
+	**/
+	static function walkThen(targetX:Float, tolerance:Float, length:Int, inputAt:(Int, Bool) -> LocalPlayerInput):RoutePolicy {
 		var launching = false;
 		var launchFrame = 0;
 		var tap = 0;
 		var tapDir = 0;
 		var still = 0;
+		var floorY:Null<Float> = null;
 		return function(frame:Int, player:LocalPlayerController):Null<LocalPlayerInput> {
 			if (launching) {
 				var i = frame - launchFrame;
-				return i < length ? recipe.inputAt(i, player.grounded) : null;
+				return i < length ? inputAt(i, player.grounded) : null;
 			}
+			if (floorY == null) floorY = player.y;
+			if (frame > MAX_APPROACH_FRAMES || (player.grounded && Math.abs(player.y - floorY) > 2)) return ABORT;
 			var err = targetX - player.x;
 			var dir = err > 0 ? 1 : -1;
 			var moving = Math.abs(player.vx) > 0.02 || !player.grounded;
@@ -496,7 +622,7 @@ class ClipRoutePlanner {
 				still = 0;
 				return walkOn ? new LocalPlayerInput(dir == -1, dir == 1, false, false) : new LocalPlayerInput();
 			}
-			if (Math.abs(err) < 0.5) {
+			if (Math.abs(err) < tolerance) {
 				// Stopped on the pixel: a few still frames, then go.
 				if (++still >= 3) {
 					launching = true;

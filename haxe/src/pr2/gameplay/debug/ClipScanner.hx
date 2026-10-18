@@ -5,6 +5,7 @@ import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
 import pr2.gameplay.debug.ClipSimulator.ClipRun;
 import pr2.gameplay.debug.ClipSimulator.GhostFrame;
+import pr2.level.BlockType;
 import pr2.level.Level.LevelBlock;
 
 /** An inside corner: the air tile in the crook, and which side the wall is on (1 = right). **/
@@ -247,25 +248,32 @@ class ClipScanner {
 	/**
 		Inside corners facing `dir` (1 = wall on the right): an air tile with air
 		above it (room to stand), a solid floor below, and a solid wall beside it.
-		The physics decides whether a corner can actually be clipped.
+		The physics decides whether a corner can actually be clipped. A mine is
+		never the floor or wall of a corner: touching it blows it up and knocks
+		the player away instead of letting them clip in (it still counts as
+		solid for the room-to-stand checks).
 	**/
 	public static function findCorners(blocks:Array<LevelBlock>, dir:Int):Array<ClipCorner> {
 		var solid:Map<String, Bool> = new Map();
+		var mine:Map<String, Bool> = new Map();
 		for (block in blocks) {
-			if (!block.isMarker() && block.type.isSolid()) solid.set(block.x + "," + block.y, true);
+			if (block.isMarker() || !block.type.isSolid()) continue;
+			solid.set(block.x + "," + block.y, true);
+			if (block.type == BlockType.Mine) mine.set(block.x + "," + block.y, true);
 		}
 		inline function isSolid(x:Int, y:Int):Bool return solid.exists(x + "," + y);
+		inline function isClippable(x:Int, y:Int):Bool return isSolid(x, y) && !mine.exists(x + "," + y);
 		var corners:Array<ClipCorner> = [];
 		var seen:Map<String, Bool> = new Map();
 		for (block in blocks) {
-			if (block.isMarker() || !block.type.isSolid()) continue;
+			if (block.isMarker() || !block.type.isSolid() || block.type == BlockType.Mine) continue;
 			// Every solid block is a potential floor tile under a corner.
 			var cx = block.x;
 			var cy = block.y - 1;
 			var key = cx + "," + cy;
 			if (seen.exists(key)) continue;
 			seen.set(key, true);
-			if (!isSolid(cx, cy) && !isSolid(cx, cy - 1) && isSolid(cx + dir, cy)) corners.push(new ClipCorner(cx, cy, dir));
+			if (!isSolid(cx, cy) && !isSolid(cx, cy - 1) && isClippable(cx + dir, cy)) corners.push(new ClipCorner(cx, cy, dir));
 		}
 		corners.sort((a, b) -> a.y != b.y ? a.y - b.y : a.x - b.x);
 		return corners;

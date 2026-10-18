@@ -397,26 +397,39 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
 - **Target** (next to the title): click it, then click a block in the level.
   The block gets a red outline and **Aim at target** is ticked. Click the
   button again to clear it.
-- **Scan level** (under the title) checks every inside corner in the level,
-  nearest first, with your own stats, gravity and hats: run-ups of 100-260 px
-  into a full jump, a short hop or a super jump, each into fast-fall. Each
-  corner's wall tile is marked: a grey cross if it can't be clipped, or a box
-  if it can (green = you pass through and land beyond it, yellow = you pop
-  back out on the same side, orange = you fall out of the level), with a
-  line from the run-up start to where you land. Found clips go into the
-  Prev/Next list, so the ghost and **Replay on me** work on them.
-- **Route to target** (next to Scan level) plans a way from where you stand to
-  the picked target block with your stats, gravity and hats, and goes through
-  walls and floors when that is the way there. It tries walks, jumps, super
-  jumps and a jump in place from each spot it can stand on, cheapest first.
-  A clip counts as 4 ordinary moves, so clips are only used when needed. For a
-  clip at a wall within 10 tiles, it first scans that wall for a run-up that
-  comes out on the other side. It then walks to that exact pixel, stops, and
-  plays the run-up. Each step is replayed from the start in the real physics,
-  so the finished route is one input script that plays back exactly. The
-  route becomes the one clip in the list: the ghost plays it, the info text
-  lists its steps, and **Replay on me** runs it on you. It gives up after 300
-  spots or 8 steps.
+- **Scan level...** (the menu under the title) has two stages; picking one
+  runs it:
+  - **Stage 1: map scan (every corner)** checks every inside corner in the
+    level, nearest first, with your own stats, gravity and hats: run-ups of
+    100-260 px into a full jump, a short hop or a super jump, each into
+    fast-fall. Each corner's wall tile is marked: a grey cross if it can't be
+    clipped, or a box if it can (green = you pass through and land beyond it,
+    yellow = you pop back out on the same side, orange = you fall out of the
+    level), with a line from the run-up start to where you land. Found clips
+    go into the Prev/Next list, so the ghost and **Replay on me** work on
+    them. A mine is never the wall or floor of a corner: touching it blows it
+    up instead of letting you clip in.
+  - **Stage 2: route to target** plans a way from where you stand to the
+    picked target block with your stats, gravity and hats, and goes through
+    walls and floors when that is the way there. It tries walks, jumps, super
+    jumps and a jump in place from each spot it can stand on, cheapest first.
+    A clip counts as 4 ordinary moves, so clips are only used when needed.
+    For a clip at a wall within 10 tiles, it first scans that wall for a
+    run-up that comes out on the other side, then walks to that exact pixel,
+    stops, and plays the run-up. It also uses mines: the real physics blows a
+    mine up when you touch it and adds 50 to your speed, pointing away from
+    the mine's centre, then gives 60 hurt frames. A blown-up mine stays gone
+    for the rest of the route. At the 3 nearest mines within 8 tiles it tries
+    walking, hopping and jumping at a mine from 2 px and 40 px away, jumping
+    up into a mine overhead, and stepping onto or running across a mine set
+    into the floor. That way a blast can launch you onto a ledge, or even
+    into a clip. Steps that set off a mine say "(hits a mine)". Mines already
+    blown up in the race (or placed with the mine item) are taken as they are
+    when the search starts. Each step is replayed from the start in the real
+    physics, so the finished route is one input script that plays back
+    exactly. The route becomes the one clip in the list: the ghost plays it,
+    the info text lists its steps, and **Replay on me** runs it on you. It
+    gives up after 300 spots or 8 steps.
 - **Aim at target** runs the same clip tester as usual (grid, or random with
   **Any frame**), but only clips into the picked block count. Untick it to keep
   the block picked but count every clip.

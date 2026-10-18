@@ -10,6 +10,7 @@ import pr2.gameplay.debug.ClipFinder.StatRange;
 import pr2.gameplay.debug.ClipSimulator.ClipArea;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
+import pr2.gameplay.debug.ClipFinderPanel.ScanStage;
 import pr2.gameplay.debug.ClipRoutePlanner.RouteSettings;
 import pr2.gameplay.debug.ClipScanner.ClipScanSettings;
 import pr2.gameplay.debug.ClipScanOverlay.PortalKind;
@@ -61,6 +62,9 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteClipsThroughToSealedFloor", testRouteClipsThroughToSealedFloor);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteReplaysAsAClip", testRouteReplaysAsAClip);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteWalksWhenNoClipIsNeeded", testRouteWalksWhenNoClipIsNeeded);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMinesAreNotClippableCorners", testMinesAreNotClippableCorners);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteUsesMineKnockback", testRouteUsesMineKnockback);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMineRouteReplaysExactly", testMineRouteReplaysExactly);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -505,19 +509,80 @@ class ClipFinderTest {
 		assertTrue(route.steps[0].indexOf("walk right") == 0, 'walks there: ${route.steps}');
 	}
 
+	private static function testMinesAreNotClippableCorners():Void {
+		var blocks = cornerBlocks();
+		// The floor tile in the crook and the wall tile beside it become mines.
+		for (block in blocks.copy()) if (block.y == 16 && block.x == 19) blocks.remove(block);
+		blocks.push(new LevelBlock(19, 16, BlockType.Mine));
+		assertEquals(0, ClipScanner.findCorners(blocks, 1).length, "a mine wall blows up instead of letting you clip in");
+		var floorMine = cornerBlocks();
+		for (block in floorMine.copy()) if (block.y == 17 && block.x == 18) floorMine.remove(block);
+		floorMine.push(new LevelBlock(18, 17, BlockType.Mine));
+		assertEquals(0, ClipScanner.findCorners(floorMine, 1).length, "nor does a corner standing on a mine");
+	}
+
+	/** A floor (rows 17-19) walled in at cols 0 and 40, a mine on the floor at col 14 and a ledge at row 9 (cols 18-25). **/
+	private static function mineLedgeBlocks():Array<LevelBlock> {
+		var blocks:Array<LevelBlock> = [];
+		for (col in 0...41) for (row in 17...20) blocks.push(new LevelBlock(col, row, BlockType.Basic));
+		for (row in 0...17) {
+			blocks.push(new LevelBlock(0, row, BlockType.Basic));
+			blocks.push(new LevelBlock(40, row, BlockType.Basic));
+		}
+		blocks.push(new LevelBlock(14, 16, BlockType.Mine));
+		for (col in 18...26) blocks.push(new LevelBlock(col, 9, BlockType.Basic));
+		return blocks;
+	}
+
+	private static function testRouteUsesMineKnockback():Void {
+		// Jump 25 can't get up 8 tiles; the mine's blast can.
+		// Start between the mine (col 14) and the ledge: walking back at the mine blasts the player up and right.
+		var settings = new RouteSettings(500, FLOOR_Y, 90, 50, 25, 1, 22, 9);
+		// Mine moves only (no walks, jumps or clips), so the blast is what gets there.
+		settings.normalMoves = false;
+		settings.clipWallRange = -1;
+		var planner = new ClipRoutePlanner(mineLedgeBlocks(), settings);
+		while (!planner.done) planner.step(50);
+		var route = planner.route;
+		assertTrue(route != null, 'a route is found (${planner.spotsExplored} spots, ${planner.simulations} runs)');
+		var last = route.steps[route.steps.length - 1];
+		assertTrue(last.indexOf("mine at 14,16") == 0 && last.indexOf("(hits a mine)") > 0, 'the blast gets there: ${route.steps}');
+		assertEquals(0, route.clips, "without a clip");
+		mineRoutePlanner = planner;
+	}
+
+	/** The route planned by the test above. **/
+	private static var mineRoutePlanner:Null<ClipRoutePlanner> = null;
+
+	private static function testMineRouteReplaysExactly():Void {
+		var planner = mineRoutePlanner;
+		var route = planner.route;
+		var found = planner.foundClip();
+		assertEquals(route.reachFrame + 2, found.run.ghost.length, "replaying reaches the ledge on the same frame");
+		// Touching the block counts, from below too: the head (55 px above the feet) reaches the ledge's underside.
+		var highest = highest(found.run.ghost);
+		assertTrue(highest - 55 <= 10 * 30 + 1, 'the knockback lifts the player up to the ledge (feet at y=$highest)');
+		assertTrue(highest < FLOOR_Y - 120, 'far higher than a jump-25 jump would (feet at y=$highest)');
+	}
+
 	private static function testRouteFromPanel():Void {
 		course.setKey(Keyboard.F9, true);
 		course.setKey(Keyboard.C, true);
 		course.setKey(Keyboard.D, true);
 		var session = course.clipFinder;
-		session.startRoute();
-		assertTrue(session.planner == null, "needs a target");
+		var menu = session.panel.scanSelect;
+		menu.selectFromUser(1);
+		assertEquals(-1, menu.selectedIndex, "the menu goes back to its title after a pick");
+		assertEquals("Scan level...", menu.labelField.text, "which reads Scan level");
+		assertTrue(session.planner == null, "Stage 2 needs a target");
 		assertTrue(session.panel.status.text.indexOf("Pick a target") == 0, 'asks for one: ${session.panel.status.text}');
 		// The block under the player's feet: already touching it.
 		var state = course.localCharacter.stateSnapshot();
 		session.setTarget(ClipSimulator.tileOf(state.x), ClipSimulator.tileOf(state.y));
-		session.startRoute();
-		assertTrue(session.planner != null, "Route to target starts planning");
+		menu.selectFromUser(1);
+		assertTrue(session.planner != null, "Stage 2 (route to target) starts planning");
+		assertTrue(session.scanner == null, "and not the map scan");
+		assertTrue(!menu.enabled, "the menu is locked while it runs");
 		for (_ in 0...200) {
 			if (session.planner == null) break;
 			course.onEnterFrame(new Event(Event.ENTER_FRAME));
@@ -538,8 +603,13 @@ class ClipFinderTest {
 		course.setKey(Keyboard.C, true);
 		course.setKey(Keyboard.D, true);
 		var session = course.clipFinder;
-		session.startScan();
-		assertTrue(session.scanner != null, "Scan level starts a scan");
+		var menu = session.panel.scanSelect;
+		assertEquals(2, menu.length, "the Scan level menu has the two stages");
+		assertEquals(ScanStage.MapScan, menu.itemAt(0), "stage 1 is the map scan");
+		assertEquals(ScanStage.RouteToTarget, menu.itemAt(1), "stage 2 is the route to the target");
+		menu.selectFromUser(0);
+		assertTrue(session.scanner != null, "Stage 1 starts the map scan");
+		assertTrue(session.planner == null, "and not a route");
 		assertTrue(session.overlay != null && session.overlay.parent == course.characterLayer, "the overlay is drawn in the level");
 		for (_ in 0...200) {
 			if (session.scanner == null) break;
