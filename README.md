@@ -427,7 +427,7 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     blown up in the race (or placed with the mine item) are taken as they are
     when the search starts. The route becomes the one clip in the list: the
     ghost plays it, the info text lists its steps, and **Replay on me** runs
-    it on you. It gives up after 3000 spots or 60 steps; then the info text
+    it on you. It gives up after 5000 spots or 200 steps; then the info text
     says why moves were dropped (back to known spots, never settled, sent
     back or fell out, stuck in blocks, could not line up).
 

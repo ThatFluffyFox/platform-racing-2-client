@@ -30,9 +30,9 @@ class RouteSettings {
 	public var targetTileX:Int;
 	public var targetTileY:Int;
 	/** Most steps (moves) in a route. **/
-	public var maxSteps:Int = 60;
+	public var maxSteps:Int = 200;
 	/** Most standing spots explored before giving up. **/
-	public var maxSpots:Int = 3000;
+	public var maxSpots:Int = 5000;
 	/**
 		How strongly the search heads for the target: a spot's priority is its
 		cost plus this times its distance to the target (through open tiles) in moves (about 4 tiles
