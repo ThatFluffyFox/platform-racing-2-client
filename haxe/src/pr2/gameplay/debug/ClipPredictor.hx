@@ -74,8 +74,12 @@ class ClipPredictor implements CornerScan {
 	public function new(blocks:Array<LevelBlock>, settings:ClipScanSettings) {
 		this.blocks = blocks;
 		this.settings = settings;
-		for (b in blocks) if (!b.isMarker() && b.type.isSolid()) solid.set(key(b.x, b.y), true);
-		corners = ClipScanner.findCorners(blocks, 1).concat(ClipScanner.findCorners(blocks, -1));
+		// Corners and standing spots as the player sees them on the turned course.
+		var seen = ClipSimulator.layoutFor(blocks, settings.courseRotation);
+		for (b in seen) if (!b.isMarker() && b.type.isSolid()) solid.set(key(b.x, b.y), true);
+		corners = ClipScanner.findCorners(seen, 1).concat(ClipScanner.findCorners(seen, -1));
+		// Mine spots have no landing to predict; they go straight to Stage 1's mine moves.
+		if (settings.mines && settings.predictFallback) corners = corners.concat(ClipScanner.findMineSpots(seen));
 		var ox = settings.originX, oy = settings.originY;
 		corners.sort((a, b) -> Reflect.compare(distanceSq(a, ox, oy), distanceSq(b, ox, oy)));
 		var statSets = settings.statSets != null && settings.statSets.length > 0 ? settings.statSets : [[settings.speed, settings.accel, settings.jump]];
@@ -91,10 +95,13 @@ class ClipPredictor implements CornerScan {
 	public function progressText(stopped:Bool):String {
 		if (predicting) return 'Predicting launches ${launchesFlown}/${launchCount}...';
 		var total = corners.length;
-		return '${stopped ? "Stopped at" : "Checking"} ${Std.int(Math.min(cornerIndex + 1, total))}/$total corners, ${portals.length} predicted clip';
+		var stage = fallback != null ? " (Stage 1 moves)" : "";
+		return '${stopped ? "Stopped at" : "Checking"} ${Std.int(Math.min(cornerIndex + 1, total))}/$total corners/mines$stage, ${portals.length} clip';
 	}
 
-	public function doneText():String return 'Prediction done: ${portals.length} of ${corners.length} corners clip (${launchesFlown} launches)';
+	public function doneText():String {
+		return 'Prediction done: ${portals.length} of ${corners.length} corners/mines clip (${portals.length - fallbackFound} predicted, ${launchesFlown} launches)';
+	}
 
 	/** True while launches are still being flown (before any corner is checked). **/
 	public var predicting(get, never):Bool;
@@ -117,12 +124,30 @@ class ClipPredictor implements CornerScan {
 		while (!done && !out()) {
 			var corner = corners[cornerIndex];
 			if (candidates == null) {
-				candidates = candidatesFor(corner);
+				candidates = corner.mine != null ? [] : candidatesFor(corner);
 				candidateIndex = 0;
 			}
 			if (candidateIndex >= candidates.length) {
-				solidCorners.push(corner);
-				nextCorner();
+				// Nothing predicted clips it: Stage 1's own attempts at this corner
+				// (hop-backs, run-ups, item moves, mines) before giving up on it.
+				if (!settings.predictFallback) {
+					solidCorners.push(corner);
+					nextCorner();
+					continue;
+				}
+				var scan = fallback;
+				if (scan == null) fallback = scan = new ClipScanner(blocks, settings, corner);
+				var made = scan.step(maxRuns - runs, deadline);
+				runs += made;
+				tested += made;
+				if (scan.portals.length > 0) {
+					portals.push(scan.portals[0]);
+					fallbackFound++;
+					nextCorner();
+				} else if (scan.done) {
+					solidCorners.push(corner);
+					nextCorner();
+				}
 				continue;
 			}
 			var attempt = candidates[candidateIndex++];
@@ -143,7 +168,13 @@ class ClipPredictor implements CornerScan {
 	function nextCorner():Void {
 		cornerIndex++;
 		candidates = null;
+		fallback = null;
 	}
+
+	/** Stage 1's attempts at the current corner, once nothing predicted clips it. **/
+	var fallback:Null<ClipScanner> = null;
+	/** Clips found by those (the rest were predicted). **/
+	public var fallbackFound(default, null):Int = 0;
 
 	// ---- Launches ----------------------------------------------------------------
 
@@ -302,13 +333,18 @@ class ClipPredictor implements CornerScan {
 					if (!standable(col, row)) continue;
 					var x0 = Math.max(a, col * t + 0.5), x1 = Math.min(b, col * t + t - 0.5);
 					if (x1 < x0) continue;
-					var x = Math.round((x0 + x1) / 2 * 4) / 4;
-					var id = launch.id + ":" + x + ":" + row;
-					if (seen.exists(id)) continue;
-					seen.set(id, true);
-					var attempt = launch.placed(x, row * t);
-					attempt.label = '${launch.label}, from ${Math.round(Math.abs(face - x)) - 10}px (predicted)';
-					list.push(attempt);
+					var mid = Math.round((x0 + x1) / 2 * 4) / 4;
+					// A turned course puts block edges 1 px further along a flipped axis: try either side too.
+					var xs = settings.courseRotation == 0 ? [mid] : [mid, mid - 1, mid + 1];
+					for (x in xs) {
+						var id = launch.id + ":" + x + ":" + row;
+						if (seen.exists(id)) continue;
+						seen.set(id, true);
+						var attempt = launch.placed(x, row * t);
+						attempt.courseRotation = settings.courseRotation;
+						attempt.label = '${launch.label}, from ${Math.round(Math.abs(face - x)) - 10}px (predicted)';
+						list.push(attempt);
+					}
 				}
 			}
 		}
@@ -331,8 +367,8 @@ class ClipPredictor implements CornerScan {
 
 	function areaFor(corner:ClipCorner, attempt:ClipAttempt):ClipArea {
 		var sx = ClipSimulator.tileOf(attempt.startX), sy = ClipSimulator.tileOf(attempt.startY);
-		return new ClipArea(blocks, Std.int(Math.min(sx, corner.x)) - 8, Std.int(Math.min(sy, corner.y)) - 16, Std.int(Math.max(sx, corner.x)) + 8,
-			Std.int(Math.max(sy, corner.y)) + 6);
+		return ClipArea.forCourse(blocks, Std.int(Math.min(sx, corner.x)) - 8, Std.int(Math.min(sy, corner.y)) - 16,
+			Std.int(Math.max(sx, corner.x)) + 8, Std.int(Math.max(sy, corner.y)) + 6, settings.courseRotation);
 	}
 
 	static inline function key(x:Int, y:Int):Int return (x + 20000) * 40000 + (y + 20000);

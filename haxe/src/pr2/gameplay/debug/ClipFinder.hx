@@ -52,6 +52,8 @@ class ClipFinderSettings {
 	public var frames:Int = 120;
 	/** Hats the simulated player wears (copied from the real player in game). **/
 	public var hats:Null<ClipSimulator.ClipHats> = null;
+	/** The course turn the search starts in (the start and target are in its course coordinates). **/
+	public var courseRotation:Int = 0;
 	/** Search stops collecting after this many clips (the search itself keeps counting). **/
 	public var maxStoredClips:Int = 100;
 	/**
@@ -118,7 +120,7 @@ class ClipFinder {
 
 	public function new(blocks:Array<LevelBlock>, settings:ClipFinderSettings) {
 		this.settings = settings;
-		area = ClipArea.around(blocks, settings.startX, settings.startY, AREA_RADIUS_X, AREA_UP, AREA_DOWN);
+		area = ClipArea.aroundCourse(blocks, settings.startX, settings.startY, AREA_RADIUS_X, AREA_UP, AREA_DOWN, settings.courseRotation);
 		speeds = settings.speed.values();
 		accels = settings.accel.values();
 		jumps = settings.jump.values();
@@ -180,6 +182,7 @@ class ClipFinder {
 		}
 		var attempt = new ClipAttempt(settings.startX, settings.startY, rng.pick(speeds), rng.pick(accels), rng.pick(jumps), settings.gravity,
 			rng.pick(settings.dirs), jumpFrame, hold, rng.pick(settings.downModes), frames);
+		attempt.courseRotation = settings.courseRotation;
 		if (launch.superCharge > 0) {
 			attempt.superCharge = rng.pick(settings.superCharges);
 			attempt.superStart = rng.int(Std.int(Math.max(1, frames - attempt.superCharge)));
@@ -221,6 +224,7 @@ class ClipFinder {
 		var speed = speeds[i % speeds.length];
 		var attempt = new ClipAttempt(settings.startX, settings.startY, speed, accel, jump, settings.gravity, dir, launch.jumpFrame, launch.hold,
 			down, settings.frames);
+		attempt.courseRotation = settings.courseRotation;
 		attempt.superCharge = launch.superCharge;
 		attempt.moveStart = moveStart;
 		attempt.turnFrame = turnFrame;

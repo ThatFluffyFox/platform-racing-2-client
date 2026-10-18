@@ -70,15 +70,14 @@ class ClipFinderSession {
 		ghostLayer.addChild(ghost.character);
 		var hats = ClipHats.from(player.controller).names();
 		if (player.hasHatFlag(Character.MOON)) hats.push("moon");
-		panel.setStatus(state.courseRotation != 0 ? "Course is rotated." : (hats.length == 0 ? "Ready." : 'Ready (hats: ${hats.join(", ")})'));
+		var turned = state.courseRotation != 0 ? 'Course turned ${state.courseRotation}. ' : "";
+		panel.setStatus(turned + (hats.length == 0 ? "Ready." : 'Ready (hats: ${hats.join(", ")})'));
 	}
 
 	function start():Void {
 		var state = player.stateSnapshot();
-		if (state.courseRotation != 0) {
-			panel.setStatus("Only works while the course is upright.");
-			return;
-		}
+		// On a turned course the search runs on the level as the player sees it (`liveBlocks`).
+		searchRotation = state.courseRotation;
 		var dirs:Array<Int> = [];
 		if (panel.rightBox.selected) dirs.push(1);
 		if (panel.leftBox.selected) dirs.push(-1);
@@ -92,6 +91,7 @@ class ClipFinderSession {
 		var settings = new ClipFinderSettings(Math.round(state.x), Math.round(state.y), gravity, panel.speedRow.range(),
 			panel.accelRow.range(), panel.jumpRow.range());
 		settings.hats = ClipHats.from(player.controller);
+		settings.courseRotation = searchRotation;
 		settings.dirs = dirs;
 		settings.downModes = panel.downBox.selected ? [false, true] : [false];
 		settings.normalJumps = panel.normalJumpRow.enabled;
@@ -123,8 +123,9 @@ class ClipFinderSession {
 				panel.setStatus("Pick a target block first (Target button).");
 				return;
 			}
-			settings.targetTileX = targetTileX;
-			settings.targetTileY = targetTileY;
+			var aim = ClipSimulator.layoutTile(targetTileX, targetTileY, searchRotation);
+			settings.targetTileX = aim.x;
+			settings.targetTileY = aim.y;
 		}
 		stopReplay();
 		finder = ClipSimulator.keepRealItem(() -> new ClipFinder(liveBlocks(), settings));
@@ -167,6 +168,8 @@ class ClipFinderSession {
 			return true;
 		});
 		ghost.tick();
+		// The overlay turns with the course: redraw it for the course's turn now.
+		if (overlay != null) overlay.setViewRotation(player.controller.courseRotation);
 	}
 
 	function tickFinder():Void {
@@ -175,6 +178,7 @@ class ClipFinderSession {
 			var deadline = haxe.Timer.stamp() + FRAME_BUDGET_SECONDS;
 			search.step(1000, () -> haxe.Timer.stamp() > deadline);
 			if (search.clips.length != shownClips) {
+				for (i in shownClips...search.clips.length) search.clips[i].attempt.courseRotation = searchRotation;
 				shownClips = search.clips.length;
 				panel.setClipCount(shownClips);
 				// Start the ghost on the first clip; later clips are a Next click away.
@@ -196,7 +200,11 @@ class ClipFinderSession {
 		if (routeText != null) {
 			panel.setClipInfo(index, 'Route: $routeText');
 		} else if (portal != null) {
-			var where = portal.corner.mine != null ? 'Mine at ${portal.corner.mine.x},${portal.corner.mine.y}' : 'Corner ${portal.corner.x},${portal.corner.y}';
+			// Corners are in the scan's course turn: show them as level tiles.
+			var turn = found.attempt.courseRotation;
+			var tile = portal.corner.mine != null ? ClipSimulator.layoutTile(portal.corner.mine.x, portal.corner.mine.y, -turn)
+				: ClipSimulator.layoutTile(portal.corner.x, portal.corner.y, -turn);
+			var where = portal.corner.mine != null ? 'Mine at ${tile.x},${tile.y}' : 'Corner ${tile.x},${tile.y}';
 			panel.setClipInfo(index, '$where: ${portalOutcome(portal)}. ${found.attempt.describe()}.');
 		} else {
 			panel.setClipInfo(index, '${found.attempt.describe()}, clips on frame ${found.run.clipFrame + 1}. Replaying on a loop.');
@@ -220,10 +228,8 @@ class ClipFinderSession {
 	**/
 	function startScan(predict:Bool = false):Void {
 		var state = player.stateSnapshot();
-		if (state.courseRotation != 0) {
-			panel.setStatus("Only works while the course is upright.");
-			return;
-		}
+		// On a turned course the search runs on the level as the player sees it (`liveBlocks`).
+		searchRotation = state.courseRotation;
 		stopReplay();
 		finder = null;
 		planner = null;
@@ -233,6 +239,7 @@ class ClipFinderSession {
 		settings.hats = ClipHats.from(player.controller);
 		settings.originX = state.x;
 		settings.originY = state.y;
+		settings.courseRotation = searchRotation;
 		// A held Laser Gun, Sword, Super Jump or Speed Burst adds its own clip attempts at each corner,
 		// and so does every one of those the level's item blocks can give.
 		settings.heldItem = player.controller.itemId;
@@ -248,6 +255,8 @@ class ClipFinderSession {
 		drawnSolid = 0;
 		ghost.stop();
 		if (overlay == null) overlay = new ClipScanOverlay();
+		overlay.scanRotation = searchRotation;
+		overlay.setViewRotation(searchRotation);
 		overlay.redraw([], []);
 		ghostLayer.addChild(overlay);
 		panel.setClipCount(0);
@@ -271,6 +280,7 @@ class ClipFinderSession {
 		}
 		while (clips.length < scan.portals.length) {
 			var portal = scan.portals[clips.length];
+			portal.attempt.courseRotation = searchRotation;
 			clips.push(new ClipFinder.FoundClip(portal.attempt, portal.run));
 			clipPortals.push(portal);
 		}
@@ -344,10 +354,8 @@ class ClipFinderSession {
 	**/
 	function startRoute():Void {
 		var state = player.stateSnapshot();
-		if (state.courseRotation != 0) {
-			panel.setStatus("Only works while the course is upright.");
-			return;
-		}
+		// On a turned course the search runs on the level as the player sees it (`liveBlocks`).
+		searchRotation = state.courseRotation;
 		var tx = targetTileX, ty = targetTileY;
 		if (tx == null || ty == null) {
 			panel.setStatus("Pick a target block first (Target button).");
@@ -363,6 +371,7 @@ class ClipFinderSession {
 		routeBlocks = liveBlocks();
 		routeTemplate = new ClipRoutePlanner.RouteSettings(Math.round(state.x), Math.round(state.y), state.speedStat, state.accelerationStat,
 			state.jumpStat, gravity, tx, ty);
+		routeTemplate.startRotation = searchRotation;
 		routeTemplate.hats = ClipHats.from(player.controller);
 		routeTemplate.items = ClipSimulator.ClipItems.from(player.controller);
 		planner = plannerFor(routeSets[0]);
@@ -395,6 +404,7 @@ class ClipFinderSession {
 		var settings = new ClipRoutePlanner.RouteSettings(t.startX, t.startY, stats[0], stats[1], stats[2], t.gravity, t.targetTileX, t.targetTileY);
 		settings.hats = t.hats;
 		settings.items = t.items;
+		settings.startRotation = t.startRotation;
 		return ClipSimulator.keepRealItem(() -> new ClipRoutePlanner(routeBlocks, settings));
 	}
 
@@ -418,6 +428,7 @@ class ClipFinderSession {
 		planner = null;
 		var found = plan.foundClip();
 		if (found == null) return;
+		found.attempt.courseRotation = searchRotation;
 		routeText = plan.describeRoute();
 		clips = [found];
 		clipPortals = [null];
@@ -550,6 +561,14 @@ class ClipFinderSession {
 		return level.blocks.copy();
 	}
 
+	/**
+		The course turn the current search started in. Its corners, starts and
+		clips are in that turn's course coordinates (the player's own); runs
+		start the simulated course turned the same way, and "Replay on me"
+		turns the real course to a clip's turn.
+	**/
+	var searchRotation:Int = 0;
+
 	/** Tests replace this to make "Any frame" searches reproducible. **/
 	public static var randomSeed:Void->Int = () -> 1 + Std.random(0x3fffffff);
 
@@ -603,7 +622,8 @@ class ClipFinderSession {
 		panel.replayButton.label = "Stop replay";
 		// Restart the ghost so it runs alongside the real player. Its first pose is
 		// after the settle frame, which the player plays on the next game frame.
-		if (found.run.ghost != null) ghost.play(found.run.ghost, 1);
+		var recorded = found.run.ghost;
+		if (recorded != null) ghost.play(recorded, 1);
 	}
 
 	/**

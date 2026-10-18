@@ -266,6 +266,33 @@ class LocalPlayerController implements ItemRuntimeOwner {
 	}
 
 	/**
+		Debug-only (Clip Finder "Replay on me", not in Flash): turns the course
+		at once to the turn a clip was found in, before `placeForClipReplay`
+		puts the player at its start (whose position is in that turn's course
+		coordinates). Any rotation in progress is dropped; the safe spot turns
+		with the course, and other players are told as after a rotate block.
+	**/
+	public function setCourseRotationForClipReplay(rotation:Int):Void {
+		var turn = RotationMath.normalizeDisplayRotation(rotation);
+		rotateFramesRemaining = 0;
+		rotateDirection = 0;
+		courseTweenRotation = 0;
+		characterRotation = 0;
+		if (mode == MODE_PHYSICS_PAUSE) setMode(MODE_LAND);
+		if (turn == courseRotation) return;
+		// The safe spot is in course coordinates too: move it with the turn.
+		var safeLevel = RotationMath.rotatePoint(lastSafeX, lastSafeY, courseRotation);
+		var safe = RotationMath.rotatePoint(safeLevel.x, safeLevel.y, -turn);
+		lastSafeX = safe.x;
+		lastSafeY = safe.y;
+		courseRotation = turn;
+		markMovementDiscontinuity();
+		if (onCourseRotationCommitted != null) {
+			onCourseRotationCommitted(courseRotation);
+		}
+	}
+
+	/**
 		Debug-only (Clip Finder): the clip search simulates a cropped copy of the
 		level, so it hands over the whole level's block extent to keep the
 		fall-off-the-map return (500 px past the extent) where the real game has it.

@@ -1862,6 +1862,8 @@ class Course extends Sprite {
 		if (player == null || !raceStarted || localFinishHandled) {
 			return false;
 		}
+		// A clip found on a turned course is in that turn's coordinates: turn the course to it first.
+		player.controller.setCourseRotationForClipReplay(attempt.courseRotation);
 		player.controller.placeForClipReplay(attempt.startX, attempt.startY);
 		player.x = attempt.startX;
 		player.y = attempt.startY;

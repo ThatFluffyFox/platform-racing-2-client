@@ -483,8 +483,12 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     finding the Speed Burst super jump from on top of the item block at
     526,382 into the stepped blocks at 568,378, 1,269 px away, which Stage
     1's run-ups (up to 260 px) can't reach. It only predicts landing clips
-    at floor-meets-wall corners; hop-backs, mines and other clips are Stage
-    1's.
+    at floor-meets-wall corners, so a corner none of its starts clip (and
+    every mine) then gets Stage 1's own attempts: hop-backs, run-ups, item
+    moves and mine moves. So it finds everything Stage 1 does, plus the far
+    clips: on level 3460484 without items it clips 102 corners to Stage 1's
+    99 (24 of them predicted), in a little less time. The status says how
+    many were predicted.
   - **Stage 2: route to target** (with Range ticked on stat rows, it plans
     with each sampled set of stats in turn, up to 3 values per ranged stat
     and your own stats first, until one finds a route; the status shows which
@@ -530,8 +534,9 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     - **Rotate blocks** turn the whole course. The planner follows the
       player in the level's own space, so a route may turn the course and
       carry on (or turn it back); the step says "(turns the course)" and the
-      ghost is drawn turned. Clip and mine moves are only tried while the
-      course is upright.
+      ghost is drawn turned. Clip moves are tried on a turned course too (at
+      the corners as the player sees them in that turn); mine moves only
+      while upright.
     - **Items:** you start with the item you hold, and item blocks give
       items. In the game an item block picks at random; the planner uses a
       fixed sequence so its routes replay the same way, and a replay on you
@@ -587,7 +592,16 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
 - A translucent ghost of your character replays the selected clip, holds for a
   moment, then resets and plays it again. **Prev/Next** switch between clips.
 
-It only works while the course is upright (not mid-rotation).
+**Turned courses:** every stage works while the course is turned by a
+rotate block. Corners, starts and spots are found as you see the course
+(your own course coordinates), and the physics runs in the real level with
+the course turned the same way, so it matches the game exactly. That
+matters: the game rounds turned coordinates toward zero, which puts block
+edges 1 px further along a flipped axis, so some clips only work in some
+turns (for example the test corner clips turned 90 but not 180 or -90).
+Each clip remembers the turn it was found in; **Replay on me** turns the
+course to that turn at once before putting you at the start, and the
+overlay and ghost are redrawn when the course turns.
 
 ### Archival Flash side-by-side workflow
 

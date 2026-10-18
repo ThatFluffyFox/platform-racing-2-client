@@ -99,8 +99,11 @@ class ClipPortal {
 	/** True when the player came to rest past the wall or below the floor (through the blocks, not back out). **/
 	public var passesThrough(get, never):Bool;
 	function get_passesThrough():Bool {
-		var x = exitX, y = exitY;
-		if (x == null || y == null) return false;
+		var ex = exitX, ey = exitY;
+		if (ex == null || ey == null) return false;
+		// The exit is in level space; the corner and start are in the attempt's course coordinates.
+		var exit = ClipSimulator.toCourse(ex, ey, attempt.courseRotation);
+		var x = exit.x, y = exit.y;
 		if (corner.mine != null) {
 			// A mine blast that went into blocks: it leads somewhere when it comes to rest away from where it started.
 			var t = ClipSimulator.TILE;
@@ -191,6 +194,17 @@ class ClipScanSettings {
 	**/
 	public var hopHolds:Array<Int> = [1, 2, 3, 4, 6, 8, 12, 999];
 	public var hopBackFrames:Array<Int> = [for (f in 4...76) f];
+	/**
+		The course turn to scan in: corners and starts are in that turn's course
+		coordinates (the player's own), and runs start the course turned.
+	**/
+	public var courseRotation:Int = 0;
+	/**
+		Stage 1.5: a corner no predicted start clips is then tried with Stage 1's
+		own attempts (hop-backs and the rest), so it finds everything Stage 1
+		does as well as the far clips.
+	**/
+	public var predictFallback:Bool = true;
 	/** Stage 1.5 (predicted clips): frames run before the jump, jump holds and super jump charges flown. **/
 	public var predictRunFrames:Array<Int> = [0, 5, 10, 20, 30];
 	public var predictHolds:Array<Int> = [999, 12, 8, 4, 2];
@@ -249,8 +263,10 @@ class ClipScanner implements CornerScan {
 		this.settings = settings;
 		launches = [for (hold in settings.jumpHolds) new ScanLaunch(hold, 0)];
 		for (charge in settings.superCharges) if (charge > 0) launches.push(new ScanLaunch(0, charge));
-		corners = onlyCorner != null ? [onlyCorner] : findCorners(blocks, 1).concat(findCorners(blocks, -1));
-		if (onlyCorner == null && settings.mines) corners = corners.concat(findMineSpots(blocks));
+		// Corners as the player sees them on the turned course.
+		var seen = ClipSimulator.layoutFor(blocks, settings.courseRotation);
+		corners = onlyCorner != null ? [onlyCorner] : findCorners(seen, 1).concat(findCorners(seen, -1));
+		if (onlyCorner == null && settings.mines) corners = corners.concat(findMineSpots(seen));
 		statSets = settings.statSets != null && settings.statSets.length > 0 ? settings.statSets : [[settings.speed, settings.accel, settings.jump]];
 		variants = [settings.heldItem];
 		for (extra in settings.extraItems) {
@@ -414,6 +430,12 @@ class ClipScanner implements CornerScan {
 		first; then the laser attempts; a mine spot has its own moves.
 	**/
 	public function attemptAt(corner:ClipCorner, index:Int):ClipAttempt {
+		var attempt = buildAttemptAt(corner, index);
+		attempt.courseRotation = settings.courseRotation;
+		return attempt;
+	}
+
+	function buildAttemptAt(corner:ClipCorner, index:Int):ClipAttempt {
 		var perSet = attemptsPerSet(corner);
 		var stats = statSets[Std.int(index / perSet)];
 		index = index % perSet;
@@ -647,7 +669,7 @@ class ClipScanner implements CornerScan {
 	function cornerArea(corner:ClipCorner):ClipArea {
 		var minX = corner.dir == 1 ? corner.x - CROP_BACK : corner.x - CROP_PAST;
 		var maxX = corner.dir == 1 ? corner.x + CROP_PAST : corner.x + CROP_BACK;
-		return new ClipArea(blocks, minX, corner.y - CROP_UP, maxX, corner.y + CROP_DOWN);
+		return ClipArea.forCourse(blocks, minX, corner.y - CROP_UP, maxX, corner.y + CROP_DOWN, settings.courseRotation);
 	}
 
 	static function distanceSq(corner:ClipCorner, x:Float, y:Float):Float {

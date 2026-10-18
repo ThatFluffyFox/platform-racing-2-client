@@ -61,7 +61,7 @@ class ClipSimulator {
 		gravity and hats, the whole level's map edges, then one idle frame.
 	**/
 	public static function preparePlayer(area:ClipArea, level:Level, startX:Float, startY:Float, speed:Float, accel:Float, jump:Float,
-			gravity:Float, hats:Null<ClipHats>, ?items:ClipItems):LocalPlayerController {
+			gravity:Float, hats:Null<ClipHats>, ?items:ClipItems, rotation:Int = 0):LocalPlayerController {
 		// Our own block controller: its clock counts frames, so move blocks and
 		// freezes run the same way in every replay (the game's runs on the wall clock).
 		var blocks = new ClipBlockController(level);
@@ -72,6 +72,8 @@ class ClipSimulator {
 		if (hats != null) hats.applyTo(player);
 		rollItemsFromState(player);
 		if (items != null) items.applyTo(player);
+		// On a turned course the start is in that turn's course coordinates.
+		if (rotation != 0) player.setCourseRotationForClipReplay(rotation);
 		// Clears the constructor's grounded state, then one idle frame lets the
 		// real collision pass decide it: floor starts stand, mid-air starts fall.
 		player.resetPreRacePosition(startX, startY);
@@ -86,11 +88,11 @@ class ClipSimulator {
 	static function runOnce(area:ClipArea, attempt:ClipAttempt, recordGhost:Bool,
 			onFrame:Null<Int->LocalPlayerInput->LocalPlayerController->Bool->Void>, tailFrames:Int):Null<ClipRun> {
 		var level = area.buildLevel(attempt.gravity);
-		if (area.overlapsSolid(level, attempt.startX, attempt.startY)) {
+		if (area.overlapsSolid(level, attempt.startX, attempt.startY, attempt.courseRotation)) {
 			return ClipRun.blocked();
 		}
 		var player = preparePlayer(area, level, attempt.startX, attempt.startY, attempt.speed, attempt.accel, attempt.jump, attempt.gravity,
-			attempt.hats, attempt.items);
+			attempt.hats, attempt.items, attempt.courseRotation);
 
 		var ghost:Null<Array<GhostFrame>> = recordGhost ? [GhostFrame.capture(player, bodyInSolid(level, player))] : null;
 		var settledFrames = 0;
@@ -120,8 +122,9 @@ class ClipSimulator {
 			if (onFrame == null) {
 				// Left the crop: grow it and start over, or stop if the player is
 				// past the level's edge (nothing out there to clip into).
-				if (!area.containsPixel(player.x, player.y)) {
-					if (area.growToInclude(player.x, player.y)) return null;
+				var feet = toLevel(player.x, player.y, player.courseRotation);
+				if (!area.containsPixel(feet.x, feet.y)) {
+					if (area.growToInclude(feet.x, feet.y)) return null;
 					if (clipFrame < 0) break;
 				}
 				// Over once the scripted jump is done and the player has stood still for a while.
@@ -218,6 +221,49 @@ class ClipSimulator {
 		return toLevel(x, y, -rotation);
 	}
 
+	/**
+		The level as the player sees it with the course turned by `rotation`:
+		every block moved to its tile in the turned course (arrows swapped for
+		the arrow that pushes the same way upright). Searches on a turned course
+		find corners and spots in this layout, in the player's own course
+		coordinates, but run the physics in the real level with the course
+		turned: the game rounds turned coordinates toward zero, which puts block
+		edges 1 px further along a flipped axis than an upright copy would.
+	**/
+	public static function layoutFor(blocks:Array<LevelBlock>, rotation:Int):Array<LevelBlock> {
+		var turn = RotationMath.normalizeDisplayRotation(rotation);
+		if (turn == 0) return blocks;
+		return [for (b in blocks) {
+			var tile = layoutTile(b.x, b.y, turn);
+			var type = arrowFor(b.type, turn);
+			type == b.type ? new LevelBlock(tile.x, tile.y, type, b.options, b.code) : new LevelBlock(tile.x, tile.y, type, b.options);
+		}];
+	}
+
+	/** A level tile's tile in the course turned by `rotation` (see `layoutFor`). **/
+	public static function layoutTile(tileX:Int, tileY:Int, rotation:Int):{x:Int, y:Int} {
+		var p = toCourse(tileX * TILE + TILE / 2, tileY * TILE + TILE / 2, rotation);
+		return {x: tileOf(p.x), y: tileOf(p.y)};
+	}
+
+	/** The arrow type that pushes, on an upright course, the way `type` pushes with the course turned by `rotation`. **/
+	static function arrowFor(type:BlockType, rotation:Int):BlockType {
+		var base = switch (type) {
+			case ArrowUp: 0;
+			case ArrowDown: 180;
+			case ArrowLeft: -90;
+			case ArrowRight: 90;
+			default: return type;
+		}
+		return switch (RotationMath.normalizeDisplayRotation(base + rotation)) {
+			case 90: ArrowRight;
+			case -90: ArrowLeft;
+			case 180 | -180: ArrowDown;
+			default: ArrowUp;
+		}
+	}
+
+
 	public static inline function tileOf(px:Float):Int {
 		return Std.int(Math.floor(px / TILE));
 	}
@@ -253,6 +299,12 @@ class ClipAttempt {
 	public var moveStart:Int = 0;
 	/** Frame the held direction flips (an air turn), or -1 for never. **/
 	public var turnFrame:Int = -1;
+	/**
+		The course turn the attempt starts in; its positions are that turn's
+		course coordinates. Runs start the simulated course turned, and
+		"Replay on me" turns the real course to it first.
+	**/
+	public var courseRotation:Int = 0;
 	/**
 		Super jump instead of a normal jump: hold down for this many frames, then
 		release. LocalPlayerController charges 2 per grounded frame and launches
@@ -571,6 +623,22 @@ class ClipArea {
 	}
 
 	/**
+		The crop of the level covering a rectangle of tiles in the course turned
+		by `rotation` (course tiles, as `ClipSimulator.layoutFor` places them).
+	**/
+	public static function forCourse(blocks:Array<LevelBlock>, minX:Int, minY:Int, maxX:Int, maxY:Int, rotation:Int):ClipArea {
+		if (RotationMath.normalizeDisplayRotation(rotation) == 0) return new ClipArea(blocks, minX, minY, maxX, maxY);
+		var a = ClipSimulator.layoutTile(minX, minY, -rotation), b = ClipSimulator.layoutTile(maxX, maxY, -rotation);
+		return new ClipArea(blocks, Std.int(Math.min(a.x, b.x)), Std.int(Math.min(a.y, b.y)), Std.int(Math.max(a.x, b.x)), Std.int(Math.max(a.y, b.y)));
+	}
+
+	/** `around` for a position in the course turned by `rotation`. **/
+	public static function aroundCourse(blocks:Array<LevelBlock>, x:Float, y:Float, radiusX:Int, up:Int, down:Int, rotation:Int):ClipArea {
+		var tx = ClipSimulator.tileOf(x), ty = ClipSimulator.tileOf(y);
+		return forCourse(blocks, tx - radiusX, ty - up, tx + radiusX, ty + down, rotation);
+	}
+
+	/**
 		Widens the crop to take in the world pixel (plus GROW_MARGIN tiles), but
 		not past the level's extent plus EDGE_MARGIN. Returns false when the
 		crop cannot grow any further toward that point.
@@ -625,10 +693,11 @@ class ClipArea {
 		return level;
 	}
 
-	/** A start position is unusable if the standing player would overlap a block. **/
-	public function overlapsSolid(level:Level, x:Float, y:Float):Bool {
+	/** A start position (course coordinates for a course turned by `rotation`) is unusable if the standing player would overlap a block. **/
+	public function overlapsSolid(level:Level, x:Float, y:Float, rotation:Int = 0):Bool {
 		for (point in [[x - 9, y - 1], [x + 9, y - 1], [x, y - 15], [x, y - 30], [x - 9, y - 50], [x + 9, y - 50]]) {
-			var block = level.blockAt(ClipSimulator.tileOf(point[0]), ClipSimulator.tileOf(point[1]));
+			var p = ClipSimulator.toLevel(point[0], point[1], rotation);
+			var block = level.blockAt(ClipSimulator.tileOf(p.x), ClipSimulator.tileOf(p.y));
 			if (block != null && block.type.isSolid()) return true;
 		}
 		return false;

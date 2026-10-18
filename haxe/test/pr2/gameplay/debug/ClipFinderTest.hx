@@ -87,6 +87,7 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteUsesHopBackClip", testRouteUsesHopBackClip);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSpeedBurstWhileChargingASuperJump", testSpeedBurstWhileChargingASuperJump);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesSwordSuperJumpAndSpeedBurst", testScanTriesSwordSuperJumpAndSpeedBurst);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScansWorkOnATurnedCourse", testScansWorkOnATurnedCourse);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testLevelItemsFromItemBlocks", testLevelItemsFromItemBlocks);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesTheLevelsItems", testScanTriesTheLevelsItems);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPredictorFindsTheClipFromTheLanding", testPredictorFindsTheClipFromTheLanding);
@@ -106,6 +107,7 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangesGiveStatSets", testStatRangesGiveStatSets);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayPutsBackBlownUpMines", testReplayPutsBackBlownUpMines);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayGivesTheGhostsItem", testReplayGivesTheGhostsItem);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayTurnsTheCourseToTheClipsTurn", testReplayTurnsTheCourseToTheClipsTurn);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testInputViewerShowsKeysAndReplays", testInputViewerShowsKeysAndReplays);
 		course.remove();
 		course = null;
@@ -1035,6 +1037,43 @@ class ClipFinderTest {
 		assertTrue(burst.vx > 18, 'with it the super jump carries about double (${burst.vx})');
 	}
 
+	/**
+		Scans on a turned course: corners as the player sees them, physics in the
+		real level with the course turned (exact, rounding included).
+	**/
+	private static function testScansWorkOnATurnedCourse():Void {
+		var upright = cornerBlocks();
+		for (col in 22...32) upright.push(new LevelBlock(col, 25, BlockType.Basic));
+		var arrowed = upright.concat([new LevelBlock(5, 17, BlockType.ArrowRight)]).filter(b -> !(b.x == 5 && b.y == 17 && b.type == BlockType.Basic));
+		for (turn in [90, 180, -90]) {
+			// The level that, turned by `turn`, looks like `upright` to the player.
+			var levelBlocks = ClipSimulator.layoutFor(upright, -turn);
+			var seen = [for (b in ClipSimulator.layoutFor(ClipSimulator.layoutFor(arrowed, -turn), turn)) b.x + "," + b.y + ":" + b.type].join(" ");
+			assertEquals([for (b in arrowed) b.x + "," + b.y + ":" + b.type].join(" "), seen, 'turn $turn: the layout is the course as the player sees it');
+			var settings = scanSettings(90);
+			settings.distances = [for (d in 198...207) d];
+			settings.courseRotation = turn;
+			var scanner = new ClipScanner(levelBlocks, settings);
+			assertEquals(1, scanner.corners.length, 'turn $turn: the one corner, as the player sees it');
+			assertTrue(scanner.corners[0].x == 18 && scanner.corners[0].y == 16, 'turn $turn: at its course tile');
+			assertEquals(turn, scanner.attemptAt(scanner.corners[0], 0).courseRotation, 'turn $turn: attempts start on the turned course');
+			// The game rounds turned coordinates toward zero, so a flipped "down" (180 and -90) puts
+			// the floor edge 1 px the other way: this corner only clips at 90 (and upright).
+			if (turn != 90) continue;
+			while (!scanner.done) scanner.step(20);
+			assertEquals(1, scanner.portals.length, 'turn $turn: Stage 1 clips it on the turned course');
+			var portal = scanner.portals[0];
+			assertEquals(turn, portal.attempt.courseRotation, 'turn $turn: the clip starts on the turned course');
+			assertTrue(portal.run.clipFrame >= 0, 'turn $turn: it clips in (where it comes out depends on the turn: inside blocks the game rounds turned coordinates)');
+			var predict = predictSettings(90);
+			predict.courseRotation = turn;
+			var predictor = new ClipPredictor(levelBlocks, predict);
+			while (!predictor.done) predictor.step(20);
+			assertEquals(1, predictor.portals.length, 'turn $turn: Stage 1.5 too');
+			assertEquals(turn, predictor.portals[0].attempt.courseRotation, 'turn $turn: on the turned course');
+		}
+	}
+
 	private static function testLevelItemsFromItemBlocks():Void {
 		var blocks = [
 			new LevelBlock(1, 1, BlockType.Item, "5-7"),
@@ -1071,6 +1110,11 @@ class ClipFinderTest {
 		settings.predictHolds = [8];
 		settings.predictCharges = [];
 		settings.mines = false;
+		// Stage 1's fallback attempts narrowed like `scanSettings` (one run-up that speed 50 can't clip).
+		settings.distances = [202];
+		settings.jumpHolds = [8];
+		settings.superCharges = [];
+		settings.hopHolds = [];
 		return settings;
 	}
 
@@ -1089,6 +1133,18 @@ class ClipFinderTest {
 		while (!slow.done) slow.step(20);
 		assertEquals(0, slow.portals.length, "speed 50 never lands fast enough");
 		assertEquals(1, slow.solidCorners.length, "so the corner is marked as not clippable");
+		// A corner nothing predicted clips still gets Stage 1's attempts.
+		var hop = predictSettings(90);
+		hop.predictHolds = [];
+		hop.predictCharges = [];
+		hop.predictRunFrames = [];
+		hop.distances = [202];
+		hop.jumpHolds = [8];
+		var fallback = new ClipPredictor(blocks, hop);
+		while (!fallback.done) fallback.step(20);
+		assertEquals(1, fallback.portals.length, "with nothing to predict, Stage 1's run-up clips it");
+		assertEquals(1, fallback.fallbackFound, "and says so");
+		assertTrue(fallback.doneText().indexOf("0 predicted") > 0, fallback.doneText());
 	}
 
 	private static function testScanTriesSwordSuperJumpAndSpeedBurst():Void {
@@ -1108,6 +1164,37 @@ class ClipFinderTest {
 		settings.heldItem = 5;
 		var jump = new ClipScanner(cornerBlocks(), settings).attemptAt(corner, 1);
 		assertTrue(jump.inputAt(0, true).item && !jump.inputAt(0, true).jump, "the super jump item launches with the item key, not jump");
+	}
+
+	private static function testReplayTurnsTheCourseToTheClipsTurn():Void {
+		course.setKey(Keyboard.F9, true);
+		course.setKey(Keyboard.C, true);
+		course.setKey(Keyboard.D, true);
+		var session = course.clipFinder;
+		var controller = course.localCharacter.controller;
+		var before = course.localCharacter.stateSnapshot();
+		assertEquals(0, before.courseRotation, "the race starts upright");
+		// A clip found while the course was turned 90: its start is in that turn's coordinates.
+		var start = ClipSimulator.toCourse(before.x, before.y, 90);
+		var attempt = new ClipAttempt(start.x, start.y, 50, 50, 50, course.level.gravity, 1, 0, 0, false, 10);
+		attempt.courseRotation = 90;
+		var area = ClipArea.around(course.level.blocks, before.x, before.y, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP, ClipFinder.AREA_DOWN);
+		session.clips = [new pr2.gameplay.debug.ClipFinder.FoundClip(attempt, ClipSimulator.run(area, new ClipAttempt(before.x, before.y, 50, 50, 50,
+			course.level.gravity, 1, 0, 0, false, 10), true))];
+		session.panel.setClipCount(1);
+		session.showClip(0);
+		session.startReplay();
+		var state = course.localCharacter.stateSnapshot();
+		assertEquals(90, state.courseRotation, "Replay on me turns the course to the clip's turn");
+		assertTrue(Math.abs(state.x - start.x) < 0.01 && Math.abs(state.y - start.y) < 0.01, 'and puts the player at its start (${state.x}, ${state.y})');
+		session.stopReplay();
+		controller.setCourseRotationForClipReplay(0);
+		controller.placeForClipReplay(before.x, before.y);
+		assertEquals(0, course.localCharacter.stateSnapshot().courseRotation, "turned back for the other tests");
+		session.close();
+		course.setKey(Keyboard.F9, false);
+		course.setKey(Keyboard.C, false);
+		course.setKey(Keyboard.D, false);
 	}
 
 	private static function testReplayGivesTheGhostsItem():Void {

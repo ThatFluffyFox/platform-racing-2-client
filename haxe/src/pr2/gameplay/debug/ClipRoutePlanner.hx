@@ -24,6 +24,8 @@ class RouteSettings {
 	public var jump:Float;
 	public var gravity:Float;
 	public var hats:Null<ClipHats> = null;
+	/** The course turn the player starts in (the start is in its course coordinates; the target stays a level tile). **/
+	public var startRotation:Int = 0;
 	/** The item the player starts with and the level's allowed items (null = none / every item). **/
 	public var items:Null<ClipItems> = null;
 	/** The block to reach: touch it, stand on it, or end up inside it. **/
@@ -344,7 +346,8 @@ class ClipRoutePlanner {
 		vanishes = [for (block in blocks) if (!block.isMarker() && block.type == BlockType.Vanish) block];
 		itemBlocks = [for (block in blocks) if (block.type == BlockType.Item || block.type == BlockType.InfiniteItem) block];
 		field = new TargetField(blocks, settings.targetTileX, settings.targetTileY);
-		area = ClipArea.around(blocks, settings.startX, settings.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP, ClipFinder.AREA_DOWN);
+		area = ClipArea.aroundCourse(blocks, settings.startX, settings.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP, ClipFinder.AREA_DOWN,
+			settings.startRotation);
 		// The start itself: simulate standing still, in case the target is already touched.
 		var start = simulate([], 0, false);
 		if (start.reachFrame >= 0) {
@@ -535,7 +538,8 @@ class ClipRoutePlanner {
 		while (true) {
 			var s = settings;
 			var level = area.buildLevel(s.gravity);
-			var player = ClipSimulator.preparePlayer(area, level, s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity, s.hats, s.items);
+			var player = ClipSimulator.preparePlayer(area, level, s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity, s.hats, s.items,
+				s.startRotation);
 			var minesAtStart = countMines(level);
 			var grew = false;
 			var spotPicks = current == null ? [] : current.state.picks;
@@ -581,7 +585,7 @@ class ClipRoutePlanner {
 			minesAtStart = from.minesAtStart;
 		} else {
 			player = ClipSimulator.preparePlayer(area, area.buildLevel(s.gravity), s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity, s.hats,
-				s.items);
+				s.items, s.startRotation);
 			minesAtStart = -1;
 		}
 		var level = player.level;
@@ -794,8 +798,8 @@ class ClipRoutePlanner {
 					moves.push(new RouteMove(run == 0 ? 'super jump' : 'super jump $side (run $run)', inputs));
 				}
 			}
-			// Clip and mine moves aim at level positions, so they run on an upright course.
-			var corner = spot.rotation == 0 ? cornerAhead(spot, dir) : null;
+			// Clip moves aim at the corners as the player sees them in the spot's course turn.
+			var corner = cornerAhead(spot, dir);
 			if (corner != null) {
 				moves.push(new RouteMove('clip through the wall at ${corner.wallTileX},${corner.y}', [], corner));
 			}
@@ -960,9 +964,11 @@ class ClipRoutePlanner {
 	/** The nearest inside corner facing `dir` on the spot's own row, within `clipWallRange` tiles. **/
 	function cornerAhead(spot:RouteSpot, dir:Int):Null<ClipCorner> {
 		var best:Null<ClipCorner> = null;
-		for (corner in corners) {
-			if (corner.dir != dir || corner.y != spot.tileY) continue;
-			var ahead = dir * (corner.x - spot.tileX);
+		// The spot's tile and the corners, in its course turn's tiles.
+		var tile = ClipSimulator.layoutTile(spot.tileX, spot.tileY, spot.rotation);
+		for (corner in cornersFor(spot.rotation)) {
+			if (corner.dir != dir || corner.y != tile.y) continue;
+			var ahead = dir * (corner.x - tile.x);
 			if (ahead < 0 || ahead > settings.clipWallRange) continue;
 			if (best == null || dir * (corner.x - best.x) < 0) best = corner;
 		}
@@ -977,6 +983,20 @@ class ClipRoutePlanner {
 	var recipeScan:Null<ClipScanner> = null;
 	var recipeKey:String = "";
 	final corners:Array<ClipCorner>;
+	/** Corners per course turn (the upright ones are `corners`). **/
+	final turnedCorners:Map<Int, Array<ClipCorner>> = new Map();
+
+	function cornersFor(rotation:Int):Array<ClipCorner> {
+		var turn = pr2.gameplay.RotationMath.normalizeDisplayRotation(rotation);
+		if (turn == 0) return corners;
+		var list = turnedCorners.get(turn);
+		if (list == null) {
+			var seen = ClipSimulator.layoutFor(blocksForScans, turn);
+			list = ClipScanner.findCorners(seen, 1).concat(ClipScanner.findCorners(seen, -1));
+			turnedCorners.set(turn, list);
+		}
+		return list;
+	}
 
 	/** How a recipe uses an item (or hops back at the wall), for the step name. **/
 	static function itemTag(recipe:ClipAttempt):String {
@@ -1016,10 +1036,11 @@ class ClipRoutePlanner {
 		var corner = move.corner;
 		// A held item (laser, sword, super jump, speed burst) opens its own clips: a separate recipe per item.
 		var item = spot.item;
-		var key = cornerKey(corner) + (item != null ? '+item$item' : "");
+		var key = cornerKey(corner) + (item != null ? '+item$item' : "") + (spot.rotation != 0 ? '@${spot.rotation}' : "");
 		if (!recipes.exists(key)) {
 			var scanSettings = new ClipScanSettings(settings.speed, settings.accel, settings.jump, settings.gravity);
 			scanSettings.hats = settings.hats;
+			scanSettings.courseRotation = spot.rotation;
 			scanSettings.passThroughOnly = true;
 			scanSettings.heldItem = item;
 			if (settings.recipeDistances != null) scanSettings.distances = settings.recipeDistances;
@@ -1140,6 +1161,7 @@ class ClipRoutePlanner {
 		if (found == null || sim == null) return null;
 		var s = settings;
 		var attempt = new ClipAttempt(s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity, 1, 0, 0, false, found.script.length);
+		attempt.courseRotation = s.startRotation;
 		attempt.script = found.script;
 		attempt.hats = s.hats;
 		var ghost = sim.ghost;
