@@ -142,8 +142,8 @@ class ClipScanSettings {
 	/** Corners are scanned nearest-first from here (normally the player). **/
 	public var originX:Float = 0;
 	public var originY:Float = 0;
-	/** Run-up distances tried at each corner: px from the player's leading edge to the wall. **/
-	public var distances:Array<Int> = [for (d in 100...261) d];
+	/** Run-up distances tried at each corner: px from the player's leading edge to the wall (short ones fit narrow shafts). **/
+	public var distances:Array<Int> = [for (d in 0...261) d];
 	/** Super jump charges tried as well as the normal jumps (0 = none). **/
 	public var superCharges:Array<Int> = [20, 35, 50];
 	/** Normal jumps tried at each distance: frames jump is held (999 = a full jump, 8 = a short hop). **/

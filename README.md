@@ -401,7 +401,7 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
   runs it:
   - **Stage 1: map scan (every corner)** checks every inside corner in the
     level, nearest first, with your own stats, gravity and hats: run-ups of
-    100-260 px into a full jump, a short hop or a super jump, each into
+    0-260 px (short ones fit narrow shafts) into a full jump, a short hop or a super jump, each into
     fast-fall. Each corner's wall tile is marked: a grey cross if it can't be
     clipped, or a box if it can (green = you pass through and land beyond it,
     yellow = you pop back out on the same side, orange = you fall out of the
