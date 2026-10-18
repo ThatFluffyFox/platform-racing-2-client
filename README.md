@@ -428,7 +428,12 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     wall (its lunge adds 8 px a frame forward), the **Super Jump** item
     run-ups that launch with it (25 up) into fast-fall, and **Speed Burst**
     run-ups that burst first (double speed and acceleration) then jump or
-    hop into fast-fall. In testing on a plain corner only the laser opened it
+    hop into fast-fall. With a Speed Burst it also tries the burst super
+    jump: hold down to charge a super jump, use the burst while charging,
+    then let go of down holding toward the wall, so the super jump carries
+    twice your top speed. It tries each charge, bursting early or late in
+    the charge, both running in and standing still until the release (with
+    100 speed and the item on level 3460484 it found 42 corners this way). In testing on a plain corner only the laser opened it
     (the sword's 8 is about half the laser's 15), but every corner is tried
     with whatever you hold.
     It also scans **mines**: a mine on the floor with room to stand beside

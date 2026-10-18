@@ -84,6 +84,7 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testConveyorCountsAsASpot", testConveyorCountsAsASpot);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testHopBackClipsTheUpArrowCorner", testHopBackClipsTheUpArrowCorner);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteUsesHopBackClip", testRouteUsesHopBackClip);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSpeedBurstWhileChargingASuperJump", testSpeedBurstWhileChargingASuperJump);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesSwordSuperJumpAndSpeedBurst", testScanTriesSwordSuperJumpAndSpeedBurst);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
@@ -939,6 +940,44 @@ class ClipFinderTest {
 		var route = planner.route;
 		assertTrue(route != null, 'a route is found (${planner.simulations} runs, ${planner.rejectionSummary()})');
 		assertTrue(route.steps[route.steps.length - 1].indexOf("(hop back)") > 0, 'through the wall with a hop back: ${route.steps}');
+	}
+
+	private static function testSpeedBurstWhileChargingASuperJump():Void {
+		// A long flat floor (row 17) and a corner far to the right, just for the attempt's start.
+		var blocks = [for (col in 0...60) new LevelBlock(col, 17, BlockType.Basic)];
+		var settings = new ClipScanSettings(100, 45, 40, 1);
+		settings.distances = [300];
+		settings.jumpHolds = [];
+		settings.superCharges = [35];
+		settings.hopHolds = [];
+		settings.heldItem = 7;
+		var corner = new pr2.gameplay.debug.ClipScanner.ClipCorner(50, 16, 1);
+		var scanner = new ClipScanner(blocks, settings, corner);
+		assertEquals(5, scanner.attemptsFor(corner), "one super jump run-up plus four speed burst super jumps");
+		// Stand still, burst early in the charge, then let go of down holding right.
+		var attempt = scanner.attemptAt(corner, 3);
+		assertTrue(attempt.describe().indexOf("while charging a super jump") >= 0, 'described: ${attempt.describe()}');
+		assertTrue(attempt.inputAt(1, true).down && attempt.inputAt(1, true).item, "the burst is used while down is held");
+		assertTrue(!attempt.inputAt(35, true).down && attempt.inputAt(35, true).right, "down is let go holding toward the wall");
+		var area = new ClipArea(blocks, 0, 0, 59, 17);
+		function fastest(items:ClipSimulator.ClipItems):{vx:Float, top:Float} {
+			return ClipSimulator.keepRealItem(() -> {
+				var level = area.buildLevel(1);
+				var player = ClipSimulator.preparePlayer(area, level, attempt.startX, attempt.startY, 100, 45, 40, 1, null, items);
+				var vx = 0.0, top = player.y;
+				for (f in 0...70) {
+					player.step(attempt.inputAt(f, player.grounded));
+					vx = Math.max(vx, player.vx);
+					top = Math.min(top, player.y);
+				}
+				return {vx: vx, top: top};
+			});
+		}
+		var burst = fastest(attempt.items);
+		var plain = fastest(new ClipSimulator.ClipItems(null, []));
+		assertTrue(burst.top < FLOOR_Y - 90 && plain.top < FLOOR_Y - 90, 'both super jump (tops ${burst.top}, ${plain.top})');
+		assertTrue(plain.vx <= 12.01, 'without the burst, speed 100 tops out at 12 (${plain.vx})');
+		assertTrue(burst.vx > 18, 'with it the super jump carries about double (${burst.vx})');
 	}
 
 	private static function testScanTriesSwordSuperJumpAndSpeedBurst():Void {

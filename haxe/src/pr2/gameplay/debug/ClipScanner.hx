@@ -288,7 +288,19 @@ class ClipScanner {
 	/** Item launches per run-up distance: the Super Jump item, or a Speed Burst before each jump hold. **/
 	var itemLaunches(get, never):Int;
 	inline function get_itemLaunches():Int {
-		return settings.heldItem == SUPER_JUMP ? 1 : (settings.heldItem == SPEED_BURST ? settings.jumpHolds.length : 0);
+		return settings.heldItem == SUPER_JUMP ? 1 : (settings.heldItem == SPEED_BURST ? settings.jumpHolds.length + burstSuperLaunches : 0);
+	}
+
+	/**
+		Speed Burst super jumps per run-up distance: each charge, bursting
+		early or late in the charge, and holding the direction all along or
+		only from the release.
+	**/
+	var burstSuperLaunches(get, never):Int;
+	inline function get_burstSuperLaunches():Int {
+		var charges = 0;
+		for (c in settings.superCharges) if (c > 0) charges++;
+		return charges * 4;
 	}
 
 	var itemRunUpAttempts(get, never):Int;
@@ -431,6 +443,10 @@ class ClipScanner {
 			attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], s.gravity, corner.dir, 0, 0, true, s.frames);
 			attempt.jumpWithItem = true;
 			attempt.label = 'super jump item from ${distance}px, then fast-fall';
+		} else if (launch >= s.jumpHolds.length) {
+			attempt = burstSuperJump(startX, corner, launch - s.jumpHolds.length, stats);
+			attempt.label = 'speed burst while charging a super jump (charge ${attempt.superCharge}, burst on frame ${attempt.itemAt}), '
+				+ (attempt.moveStart > 0 ? 'stand ${distance}px from the wall, release holding toward it' : 'run from ${distance}px') + ', fast-fall';
 		} else {
 			var hold = s.jumpHolds[launch];
 			attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], s.gravity, corner.dir, 1, hold, true, s.frames);
@@ -439,6 +455,25 @@ class ClipScanner {
 		}
 		attempt.items = new ClipItems(s.heldItem);
 		attempt.hats = s.hats;
+		return attempt;
+	}
+
+	/**
+		Hold down to charge a super jump, use the Speed Burst while charging
+		(double speed and acceleration), then let go of down holding toward
+		the wall: the launch carries twice the normal top speed.
+	**/
+	function burstSuperJump(startX:Float, corner:ClipCorner, index:Int, stats:Array<Float>):ClipAttempt {
+		var charges = [for (c in settings.superCharges) if (c > 0) c];
+		var charge = charges[Std.int(index / 4)];
+		var late = index % 2 == 1;
+		var holdFromRelease = index % 4 >= 2;
+		var attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], settings.gravity, corner.dir, 0, 0, true,
+			settings.frames + charge);
+		attempt.superCharge = charge;
+		// An item press needs a released frame first, so the earliest is frame 1.
+		attempt.itemAt = late ? Std.int(Math.max(1, charge - 2)) : 1;
+		if (holdFromRelease) attempt.moveStart = charge;
 		return attempt;
 	}
 
