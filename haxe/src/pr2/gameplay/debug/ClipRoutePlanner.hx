@@ -147,12 +147,26 @@ class Route {
 	public final clips:Int;
 	/** Frame (index into `script`) the player reaches the target. **/
 	public final reachFrame:Int;
+	/** Items the route takes from item blocks (which roll at random in the game). **/
+	public final picks:Array<ItemPick>;
 
-	public function new(script:Array<LocalPlayerInput>, steps:Array<String>, clips:Int, reachFrame:Int) {
+	public function new(script:Array<LocalPlayerInput>, steps:Array<String>, clips:Int, reachFrame:Int, ?picks:Array<ItemPick>) {
 		this.script = script;
 		this.steps = steps;
 		this.clips = clips;
 		this.reachFrame = reachFrame;
+		this.picks = picks == null ? [] : picks;
+	}
+}
+
+/** The item an item block gives on a frame of the route (the game rolls it; the route chooses it). **/
+class ItemPick {
+	public final frame:Int;
+	public final item:Int;
+
+	public function new(frame:Int, item:Int) {
+		this.frame = frame;
+		this.item = item;
 	}
 }
 
@@ -187,6 +201,13 @@ class RouteSim {
 	public var restInWater:Bool = false;
 	/** Rotate blocks hit by this move. **/
 	public var rotationsByMove:Int = 0;
+	/** Item picks in force for this run (from the start). **/
+	public var picks:Array<ItemPick> = [];
+	/** Frame this move took an item from a block (-1 = none), the item, and where. **/
+	public var gainFrame:Int = -1;
+	public var gainItem:Int = 0;
+	public var gainX:Float = 0;
+	public var gainY:Float = 0;
 
 	public function new() {}
 
@@ -302,6 +323,8 @@ class ClipRoutePlanner {
 	final mines:Array<LevelBlock>;
 	/** Every vanish block in the level. **/
 	final vanishes:Array<LevelBlock>;
+	/** Every item block (for the items each can give). **/
+	final itemBlocks:Array<LevelBlock>;
 	/** Spots waiting to be expanded, cheapest first. **/
 	final open:Array<RouteSpot> = [];
 	final visited:Map<String, Bool> = new Map();
@@ -316,6 +339,7 @@ class ClipRoutePlanner {
 		corners = ClipScanner.findCorners(blocks, 1).concat(ClipScanner.findCorners(blocks, -1));
 		mines = [for (block in blocks) if (!block.isMarker() && block.type == BlockType.Mine) block];
 		vanishes = [for (block in blocks) if (!block.isMarker() && block.type == BlockType.Vanish) block];
+		itemBlocks = [for (block in blocks) if (block.type == BlockType.Item || block.type == BlockType.InfiniteItem) block];
 		field = new TargetField(blocks, settings.targetTileX, settings.targetTileY);
 		area = ClipArea.around(blocks, settings.startX, settings.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP, ClipFinder.AREA_DOWN);
 		// The start itself: simulate standing still, in case the target is already touched.
@@ -378,7 +402,52 @@ class ClipRoutePlanner {
 
 	function tryMove(spot:RouteSpot, move:RouteMove):Void {
 		var script = spot.script.concat(move.inputs);
-		finishMove(spot, move.name, script, simulate(script, spot.script.length, false, null, true));
+		runMove(spot, move.name, picks -> simulate(script, spot.script.length, false, null, true, picks), _ -> script);
+	}
+
+	/**
+		Simulates a move and records it; if it took an item from a block, also
+		tries it with each other useful item that block could give (the game
+		rolls it at random), so a route can count on the one it needs.
+	**/
+	function runMove(spot:RouteSpot, name:String, run:Array<ItemPick>->RouteSim, scriptOf:RouteSim->Array<LocalPlayerInput>):Void {
+		var sim = run(spot.state.picks);
+		if (sim.policyFailed) {
+			rejectedApproach++;
+			return;
+		}
+		finishMove(spot, name, scriptOf(sim), sim);
+		if (done || sim.gainFrame < 0) return;
+		for (item in otherItems(sim)) {
+			var other = run(spot.state.picks.concat([new ItemPick(sim.gainFrame, item)]));
+			if (other.policyFailed) continue;
+			finishMove(spot, name, scriptOf(other), other);
+			if (done) return;
+		}
+	}
+
+	/** Items that help movement (laser, teleport, super jump, jetpack, speed burst, sword). **/
+	static final MOVEMENT_ITEMS:Array<Int> = [1, 4, 5, 6, 7, 8];
+
+	/** The other movement items the block the move took an item from could have given. **/
+	function otherItems(sim:RouteSim):Array<Int> {
+		var allowed = settings.items != null && settings.items.allowedItems != null ? settings.items.allowedItems : Items.getAllCodes();
+		var block:Null<LevelBlock> = null;
+		var best = Math.POSITIVE_INFINITY;
+		var t = ClipSimulator.TILE;
+		for (b in itemBlocks) {
+			var dx = (b.x + 0.5) * t - sim.gainX, dy = (b.y + 0.5) * t - sim.gainY;
+			var d = dx * dx + dy * dy;
+			if (d < best) {
+				best = d;
+				block = b;
+			}
+		}
+		var candidates = allowed;
+		if (block != null && best < (3 * t) * (3 * t) && block.options != "") {
+			candidates = block.options == "none" ? [] : [for (id in block.options.split("-")) if (Std.parseInt(id) != null) Std.parseInt(id)];
+		}
+		return [for (item in MOVEMENT_ITEMS) if (item != sim.gainItem && candidates.indexOf(item) >= 0) item];
 	}
 
 	/** Records what a move did: the route if it reached the target, else the spot it came to rest on. **/
@@ -391,7 +460,7 @@ class ClipRoutePlanner {
 			// Reached while letting go after the move: the idle frames are part of the route.
 			var reached = script.slice(0, sim.reachFrame + 1);
 			while (reached.length <= sim.reachFrame) reached.push(new LocalPlayerInput());
-			route = new Route(reached, spot.steps.concat([stepName]), clips, sim.reachFrame);
+			route = new Route(reached, spot.steps.concat([stepName]), clips, sim.reachFrame, sim.picks);
 			done = true;
 			return;
 		}
@@ -439,13 +508,15 @@ class ClipRoutePlanner {
 		from `checkFrom` on. The controller's inputs are returned in
 		`policyInputs`, so the route script reproduces the run exactly.
 	**/
-	public function simulate(script:Array<LocalPlayerInput>, checkFrom:Int, record:Bool, ?makePolicy:Void->RoutePolicy, fromSpot:Bool = false):RouteSim {
+	public function simulate(script:Array<LocalPlayerInput>, checkFrom:Int, record:Bool, ?makePolicy:Void->RoutePolicy, fromSpot:Bool = false,
+			?picks:Array<ItemPick>):RouteSim {
 		simulations++;
+		if (picks == null) picks = [];
 		while (true) {
 			// A move from the spot being expanded starts from a copy of the player
 			// standing there, instead of replaying the whole route from the start.
 			var from = fromSpot && !record ? spotBase(script, checkFrom) : null;
-			var sim = simulateOnce(script, checkFrom, record, makePolicy == null ? null : makePolicy(), from);
+			var sim = simulateOnce(script, checkFrom, record, makePolicy == null ? null : makePolicy(), from, picks);
 			if (sim != null) return sim;
 			// The area grew: copies of the old area are stale.
 			base = null;
@@ -464,8 +535,10 @@ class ClipRoutePlanner {
 			var player = ClipSimulator.preparePlayer(area, level, s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity, s.hats, s.items);
 			var minesAtStart = countMines(level);
 			var grew = false;
+			var spotPicks = current == null ? [] : current.state.picks;
 			for (frame in 0...frames) {
 				player.step(script[frame]);
+				applyPick(spotPicks, frame, player);
 				var feet = ClipSimulator.toLevel(player.x, player.y, player.courseRotation);
 				if (!area.containsPixel(feet.x, feet.y)) {
 					if (area.growToInclude(feet.x, feet.y)) {
@@ -480,7 +553,20 @@ class ClipRoutePlanner {
 		}
 	}
 
-	function simulateOnce(script:Array<LocalPlayerInput>, checkFrom:Int, record:Bool, policy:Null<RoutePolicy>, ?from:SpotBase):Null<RouteSim> {
+	/** Gives the player the route's chosen item on the frame an item block gave one. Returns true if it did. **/
+	static function applyPick(picks:Array<ItemPick>, frame:Int, player:LocalPlayerController):Bool {
+		for (pick in picks) {
+			if (pick.frame == frame) {
+				if (player.itemId != pick.item) player.grantItemForDebug(pick.item);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function simulateOnce(script:Array<LocalPlayerInput>, checkFrom:Int, record:Bool, policy:Null<RoutePolicy>, ?from:SpotBase,
+			?picks:Array<ItemPick>):Null<RouteSim> {
+		if (picks == null) picks = [];
 		var s = settings;
 		var player:LocalPlayerController;
 		var frame = 0;
@@ -512,6 +598,7 @@ class ClipRoutePlanner {
 		var lastRotation = player.courseRotation;
 		var settleLimit = SETTLE_FRAMES;
 		var swimming = 0;
+		var onGround = 0;
 		while (true) {
 			if (frame == checkFrom) {
 				minesAtCheck = countMines(level);
@@ -544,7 +631,17 @@ class ClipRoutePlanner {
 				idle = true;
 				input = new LocalPlayerInput();
 			}
+			var itemBefore = player.itemId;
 			player.step(input);
+			var picked = applyPick(picks, frame, player);
+			// An item from a block during this move: remember when and where, so other items it could give can be tried.
+			if (!picked && frame >= checkFrom && player.itemId != null && player.itemId != itemBefore && sim.gainFrame < 0) {
+				sim.gainFrame = frame;
+				sim.gainItem = player.itemId;
+				var at = ClipSimulator.toLevel(player.x, player.y - 27, player.courseRotation);
+				sim.gainX = at.x;
+				sim.gainY = at.y;
+			}
 			var inSolid = ClipSimulator.bodyInSolid(level, player);
 			if (sim.ghost != null) sim.ghost.push(GhostFrame.capture(player, inSolid));
 			feet = ClipSimulator.toLevel(player.x, player.y, player.courseRotation);
@@ -575,10 +672,16 @@ class ClipRoutePlanner {
 			}
 			if (idle) {
 				sim.idleFrames++;
-				var still = player.grounded && Math.abs(player.vx) < 0.5 && Math.abs(player.vy) < 1;
+				var floor = player.grounded ? floorType(level, player) : null;
+				// Arrow blocks keep pushing and ice keeps sliding, so a player riding them
+				// never stops: standing on them counts as a spot (so does a long time on the ground).
+				var riding = floor != null && isConveyorOrIce(floor);
+				var still = player.grounded && Math.abs(player.vy) < 1 && (Math.abs(player.vx) < 0.5 || riding);
 				// Standing on a vanish block isn't rest: it fades and drops the player.
-				if (still && onFadingFloor(level, player)) still = false;
+				if (still && floor == BlockType.Vanish && onFadingFloor(level, player)) still = false;
 				settled = still ? settled + 1 : 0;
+				onGround = player.grounded && floor != BlockType.Vanish ? onGround + 1 : 0;
+				if (onGround >= LONG_GROUNDED) settled = 10;
 				// Swimming counts as a spot too: water is slow and fully steerable, and a
 				// pool may have no bottom to sink to (the player would drop out of it).
 				swimming = player.mode == LocalPlayerController.MODE_WATER ? swimming + 1 : 0;
@@ -597,6 +700,7 @@ class ClipRoutePlanner {
 		sim.restTileX = ClipSimulator.tileOf(standing.x);
 		sim.restTileY = ClipSimulator.tileOf(standing.y);
 		sim.restItem = player.itemId;
+		sim.picks = picks;
 		sim.restInWater = inWater(level, player);
 		sim.endInSolid = ClipSimulator.bodyInSolid(level, player);
 		var minesAtEnd = countMines(level);
@@ -634,6 +738,23 @@ class ClipRoutePlanner {
 
 	/** Px of a target face the player's box must share to count as touching it. **/
 	static inline var TOUCH_FACE:Float = 5;
+
+	/** Frames on the ground (any floor) that count as a spot even while still moving. **/
+	static inline var LONG_GROUNDED:Int = 45;
+
+	/** The type of the block under the feet (along the course's "down"), or null. **/
+	static function floorType(level:Level, player:LocalPlayerController):Null<BlockType> {
+		var below = ClipSimulator.toLevel(player.x, player.y + 1, player.courseRotation);
+		var block = level.blockAt(ClipSimulator.tileOf(below.x), ClipSimulator.tileOf(below.y));
+		return block == null || player.blockController.isBlockRemoved(block) ? null : block.type;
+	}
+
+	static function isConveyorOrIce(type:BlockType):Bool {
+		return switch (type) {
+			case BlockType.ArrowLeft | BlockType.ArrowRight | BlockType.ArrowUp | BlockType.ArrowDown | BlockType.Ice: true;
+			default: false;
+		}
+	}
 
 	/** The block under the feet (along the course's "down") is a vanish block that hasn't gone yet. **/
 	static function onFadingFloor(level:Level, player:LocalPlayerController):Bool {
@@ -814,13 +935,10 @@ class ClipRoutePlanner {
 	/** A mine move: walk to its pixel and stop, then play its inputs live (recorded into the route). **/
 	function tryApproachMove(spot:RouteSpot, move:RouteMove):Void {
 		var inputs = move.inputs;
-		var sim = simulate(spot.script, spot.script.length, false, () -> walkThen(move.approachX, MINE_APPROACH_TOLERANCE, inputs.length, (i, _) -> inputs[i]),
-			true);
-		if (sim.policyFailed) {
-			rejectedApproach++;
-			return;
-		}
-		finishMove(spot, move.name, spot.script.concat(sim.policyInputs), sim);
+		runMove(spot, move.name,
+			picks -> simulate(spot.script, spot.script.length, false, () -> walkThen(move.approachX, MINE_APPROACH_TOLERANCE, inputs.length, (i, _) -> inputs[i]),
+				true, picks),
+			sim -> spot.script.concat(sim.policyInputs));
 	}
 
 	/**
@@ -857,7 +975,18 @@ class ClipRoutePlanner {
 	var recipeKey:String = "";
 	final corners:Array<ClipCorner>;
 
-	static inline var LASER_GUN:Int = 1;
+	/** How a recipe uses an item, for the step name. **/
+	static function itemTag(recipe:ClipAttempt):String {
+		var items = recipe.items;
+		if (items == null || items.heldItem == null) return "";
+		return switch (items.heldItem) {
+			case 1: " (laser recoil)";
+			case 8: " (sword lunge)";
+			case 5: " (super jump item)";
+			case 7: " (speed burst)";
+			default: "";
+		}
+	}
 
 	static inline function cornerKey(corner:ClipCorner):String return corner.x + "," + corner.y + "," + corner.dir;
 
@@ -881,14 +1010,14 @@ class ClipRoutePlanner {
 	**/
 	function tryClipMove(spot:RouteSpot, move:RouteMove):Bool {
 		var corner = move.corner;
-		// Holding a Laser Gun opens laser recoil clips too, which are a separate recipe.
-		var laser = spot.item == LASER_GUN;
-		var key = cornerKey(corner) + (laser ? "+laser" : "");
+		// A held item (laser, sword, super jump, speed burst) opens its own clips: a separate recipe per item.
+		var item = spot.item;
+		var key = cornerKey(corner) + (item != null ? '+item$item' : "");
 		if (!recipes.exists(key)) {
 			var scanSettings = new ClipScanSettings(settings.speed, settings.accel, settings.jump, settings.gravity);
 			scanSettings.hats = settings.hats;
 			scanSettings.passThroughOnly = true;
-			scanSettings.laser = laser;
+			scanSettings.heldItem = item;
 			if (settings.recipeDistances != null) scanSettings.distances = settings.recipeDistances;
 			if (settings.recipeJumpHolds != null) scanSettings.jumpHolds = settings.recipeJumpHolds;
 			if (settings.recipeSuperCharges != null) scanSettings.superCharges = settings.recipeSuperCharges;
@@ -901,12 +1030,8 @@ class ClipRoutePlanner {
 		}
 		var recipe = recipes.get(key);
 		if (recipe == null) return true;
-		var sim = simulate(spot.script, spot.script.length, false, () -> walkThenRecipe(recipe), true);
-		if (sim.policyFailed) {
-			rejectedApproach++;
-			return true;
-		}
-		finishMove(spot, move.name + (recipe.items != null ? " (laser recoil)" : ""), spot.script.concat(sim.policyInputs), sim);
+		runMove(spot, move.name + itemTag(recipe), picks -> simulate(spot.script, spot.script.length, false, () -> walkThenRecipe(recipe), true, picks),
+			sim -> spot.script.concat(sim.policyInputs));
 		return true;
 	}
 
@@ -993,7 +1118,7 @@ class ClipRoutePlanner {
 	public function recordRoute():Null<RouteSim> {
 		var found = route;
 		if (found == null) return null;
-		return simulate(found.script, 0, true);
+		return simulate(found.script, 0, true, null, false, found.picks);
 	}
 
 	/**

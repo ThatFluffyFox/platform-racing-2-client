@@ -227,8 +227,8 @@ class ClipFinderSession {
 		settings.hats = ClipHats.from(player.controller);
 		settings.originX = state.x;
 		settings.originY = state.y;
-		// Holding a Laser Gun: also try laser recoil clips at each corner.
-		settings.laser = player.controller.itemId == Items.LASER_GUN;
+		// A held Laser Gun, Sword, Super Jump or Speed Burst adds its own clip attempts at each corner.
+		settings.heldItem = player.controller.itemId;
 		// The stat rows: each corner and mine is tried with every sampled set (your own stats first).
 		settings.statSets = statSetsFromPanel(SCAN_SAMPLES);
 		scanner = new ClipScanner(liveBlocks(), settings);
@@ -587,6 +587,12 @@ class ClipFinderSession {
 			return;
 		}
 		applyStats(found.attempt.speed, found.attempt.accel, found.attempt.jump);
+		// The real player gets the item the ghost starts with (and gets back their own afterwards).
+		savedItem = player.controller.itemId;
+		savedItemUses = ClipSimulator.itemUses();
+		replayGhost = found.run.ghost;
+		var ghostFrames = replayGhost;
+		if (ghostFrames != null && ghostFrames.length > 0) giveItem(ghostFrames[0]);
 		// Mines and bricks the replay destroys are put back when it ends.
 		replayBreakables = level.blocks.filter(b -> b.type == pr2.level.BlockType.Mine || b.type == pr2.level.BlockType.Brick);
 		replay = found.attempt;
@@ -610,9 +616,35 @@ class ClipFinderSession {
 			stopReplay();
 			return null;
 		}
+		syncItem(replayFrame - 1);
 		var input = replayFrame == 0 ? new pr2.gameplay.player.LocalPlayerInput() : attempt.inputAt(replayFrame - 1, grounded);
 		replayFrame++;
 		return input;
+	}
+
+	/** The ghost the replay follows, for its items. **/
+	var replayGhost:Null<Array<ClipSimulator.GhostFrame>> = null;
+	var savedItem:Null<Int> = null;
+	var savedItemUses:Float = 0;
+
+	/**
+		The player's pose now matches ghost frame `index`. Where the ghost
+		picked up an item there (item blocks roll at random in the game; the
+		search used a fixed roll), the real player is given the same one.
+	**/
+	function syncItem(index:Int):Void {
+		var frames = replayGhost;
+		if (frames == null || index < 1 || index >= frames.length) return;
+		var now = frames[index], before = frames[index - 1];
+		if (now.item != null && now.item != before.item) giveItem(now);
+	}
+
+	/** Gives the real player the ghost frame's item with its uses left (if they don't already hold it). **/
+	function giveItem(frame:ClipSimulator.GhostFrame):Void {
+		var item = frame.item;
+		if (item == null) return;
+		if (player.controller.itemId != item) player.controller.grantItemForDebug(item);
+		if (frame.itemUses > 0) ClipSimulator.setItemUses(frame.itemUses);
 	}
 
 	/** Mines and bricks in the level when the replay started. **/
@@ -622,6 +654,17 @@ class ClipFinderSession {
 		if (replay == null) return;
 		replay = null;
 		applyStats(savedSpeed, savedAccel, savedJump);
+		// The player's own item back, as it was before the replay.
+		if (replayGhost != null && replayGhost.length > 0 && (replayGhost[0].item != null || replayGhost[replayGhost.length - 1].item != savedItem)) {
+			var own = savedItem;
+			if (own != null) {
+				player.controller.grantItemForDebug(own);
+				ClipSimulator.setItemUses(savedItemUses);
+			} else if (player.controller.itemId != null) {
+				ClipSimulator.clearItem(player.controller);
+			}
+		}
+		replayGhost = null;
 		// Put back what the replay blew up or broke (the game draws them again; other players still saw them go).
 		var restored = 0;
 		for (block in replayBreakables) {

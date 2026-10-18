@@ -161,6 +161,15 @@ class ClipScanSettings {
 		depends on the stats, so every fire frame is tried.
 	**/
 	public var laser:Bool = false;
+	/**
+		The item the player holds (its code), which adds its own attempts:
+		Laser Gun (1) the laser recoil clips above; Sword (8) the same grid but
+		facing the wall, since its lunge adds 8 px a frame forward; Super Jump
+		(5) run-ups that launch with the item (25 up, far above a jump) into
+		fast-fall; Speed Burst (7) run-ups that burst first (double speed and
+		acceleration) then jump or hop into fast-fall.
+	**/
+	public var heldItem:Null<Int> = null;
 	/** Px between the player's side and the wall at the start of a laser attempt. **/
 	public var laserGaps:Array<Float> = [0, 1, 2];
 	/** Frames jump is held for a laser attempt. **/
@@ -236,12 +245,12 @@ class ClipScanner {
 
 	/** Attempts per inside corner when no clip is found, over all stat sets. **/
 	public var attemptsPerCorner(get, never):Int;
-	inline function get_attemptsPerCorner():Int return (runUpAttempts + laserAttempts) * statSets.length;
+	inline function get_attemptsPerCorner():Int return (runUpAttempts + laserAttempts + itemRunUpAttempts) * statSets.length;
 
 	/** Attempts at one target with one stat set. **/
 	function attemptsPerSet(corner:ClipCorner):Int {
 		var mine = corner.mine;
-		return mine == null ? runUpAttempts + laserAttempts : mineMoves(mine.use).length;
+		return mine == null ? runUpAttempts + laserAttempts + itemRunUpAttempts : mineMoves(mine.use).length;
 	}
 
 	public function attemptsFor(corner:ClipCorner):Int return attemptsPerSet(corner) * statSets.length;
@@ -249,10 +258,25 @@ class ClipScanner {
 	var runUpAttempts(get, never):Int;
 	inline function get_runUpAttempts():Int return settings.distances.length * launches.length;
 
+	/** Recoil-style attempts: the laser (turn away and fire) or the sword (face the wall and slash). **/
+	var recoilItem(get, never):Null<Int>;
+	inline function get_recoilItem():Null<Int> {
+		return settings.laser || settings.heldItem == LASER_GUN ? LASER_GUN : (settings.heldItem == SWORD ? SWORD : null);
+	}
+
 	var laserAttempts(get, never):Int;
 	inline function get_laserAttempts():Int {
-		return settings.laser ? settings.laserGaps.length * settings.laserHolds.length * settings.laserFireFrames.length : 0;
+		return recoilItem != null ? settings.laserGaps.length * settings.laserHolds.length * settings.laserFireFrames.length : 0;
 	}
+
+	/** Item launches per run-up distance: the Super Jump item, or a Speed Burst before each jump hold. **/
+	var itemLaunches(get, never):Int;
+	inline function get_itemLaunches():Int {
+		return settings.heldItem == SUPER_JUMP ? 1 : (settings.heldItem == SPEED_BURST ? settings.jumpHolds.length : 0);
+	}
+
+	var itemRunUpAttempts(get, never):Int;
+	inline function get_itemRunUpAttempts():Int return settings.distances.length * itemLaunches;
 
 	/** Runs attempts until `maxRuns` have run or `deadline()` says time is up. Returns runs made. **/
 	public function step(maxRuns:Int, ?deadline:Void->Bool):Int {
@@ -315,6 +339,7 @@ class ClipScanner {
 		index = index % perSet;
 		var mine = corner.mine;
 		if (mine != null) return mineAttemptAt(corner, mine, index, stats);
+		if (index >= runUpAttempts + laserAttempts) return itemRunUpAttemptAt(corner, index - runUpAttempts - laserAttempts, stats);
 		if (index >= runUpAttempts) return laserAttemptAt(corner, index - runUpAttempts, stats);
 		var launch = launches[index % launches.length];
 		var distance = settings.distances[Std.int(index / launches.length)];
@@ -339,18 +364,49 @@ class ClipScanner {
 		var gap = s.laserGaps[Std.int(index / (fires * holds))];
 		var startX = corner.wallFace - corner.dir * (10 + gap);
 		var length = fireAt + 2 + 60;
+		var sword = recoilItem == SWORD;
+		// The laser kicks back, so turn away from the wall; the sword lunges forward, so face it.
+		var turnDir = sword ? corner.dir : -corner.dir;
 		var script = [for (f in 0...length) {
 			var jumping = f < hold;
 			var turn = f == fireAt;
-			new LocalPlayerInput(turn && corner.dir == 1, turn && corner.dir == -1, jumping, false, f == fireAt + 1);
+			new LocalPlayerInput(turn && turnDir == -1, turn && turnDir == 1, jumping, false, f == fireAt + 1);
 		}];
 		var attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], s.gravity, corner.dir, 0, 0, false, length);
 		attempt.script = script;
-		attempt.items = new ClipItems(LASER_GUN);
+		attempt.items = new ClipItems(sword ? SWORD : LASER_GUN);
 		attempt.hats = s.hats;
-		attempt.label = 'laser recoil (jump held $hold, fire on frame ${fireAt + 1}, ${gap}px from the wall)';
+		attempt.label = (sword ? 'sword lunge (jump held $hold, slash on frame ${fireAt + 1}' : 'laser recoil (jump held $hold, fire on frame ${fireAt + 1}')
+			+ ', ${gap}px from the wall)';
 		return attempt;
 	}
+
+	/** A run-up launched with the Super Jump item, or a Speed Burst run-up then a jump; both into fast-fall. **/
+	function itemRunUpAttemptAt(corner:ClipCorner, index:Int, stats:Array<Float>):ClipAttempt {
+		var s = settings;
+		var launches = itemLaunches;
+		var launch = index % launches;
+		var distance = s.distances[Std.int(index / launches)];
+		var startX = corner.wallFace - corner.dir * (10 + distance);
+		var attempt:ClipAttempt;
+		if (s.heldItem == SUPER_JUMP) {
+			attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], s.gravity, corner.dir, 0, 0, true, s.frames);
+			attempt.jumpWithItem = true;
+			attempt.label = 'super jump item from ${distance}px, then fast-fall';
+		} else {
+			var hold = s.jumpHolds[launch];
+			attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], s.gravity, corner.dir, 1, hold, true, s.frames);
+			attempt.itemAt = 0;
+			attempt.label = 'speed burst, run from ${distance}px, jump held ${hold >= 999 ? "all" : Std.string(hold)}, fast-fall';
+		}
+		attempt.items = new ClipItems(s.heldItem);
+		attempt.hats = s.hats;
+		return attempt;
+	}
+
+	static inline var SWORD:Int = 8;
+	static inline var SUPER_JUMP:Int = 5;
+	static inline var SPEED_BURST:Int = 7;
 
 	static inline var LASER_GUN:Int = 1;
 

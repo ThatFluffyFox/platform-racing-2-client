@@ -80,6 +80,9 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSimulationsKeepTheRealItemUses", testSimulationsKeepTheRealItemUses);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanFindsMineSpots", testScanFindsMineSpots);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesEachStatSet", testScanTriesEachStatSet);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testItemBlocksCanGiveTheItemTheRouteNeeds", testItemBlocksCanGiveTheItemTheRouteNeeds);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testConveyorCountsAsASpot", testConveyorCountsAsASpot);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesSwordSuperJumpAndSpeedBurst", testScanTriesSwordSuperJumpAndSpeedBurst);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -95,6 +98,7 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteFromPanel", testRouteFromPanel);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangesGiveStatSets", testStatRangesGiveStatSets);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayPutsBackBlownUpMines", testReplayPutsBackBlownUpMines);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayGivesTheGhostsItem", testReplayGivesTheGhostsItem);
 		course.remove();
 		course = null;
 		trace('ClipFinderTest passed $assertions assertions');
@@ -850,6 +854,80 @@ class ClipFinderTest {
 		assertTrue(mine.collisionActive, "solid again");
 		assertTrue(session.panel.status.text.indexOf("put back 1 block") >= 0, 'the status says so: ${session.panel.status.text}');
 		controller.blockController.removeBlock(mine);
+		session.close();
+		course.setKey(Keyboard.F9, false);
+		course.setKey(Keyboard.C, false);
+		course.setKey(Keyboard.D, false);
+	}
+
+	private static function testItemBlocksCanGiveTheItemTheRouteNeeds():Void {
+		var blocks = boxRoom(9, 8);
+		// An item block that gives a Mine or a Super Jump, right over the start.
+		blocks.push(new LevelBlock(3, 14, BlockType.Item, "2-5"));
+		var planner = new ClipRoutePlanner(blocks, roomRoute(105, FLOOR_Y, 8, 9));
+		var jump = [for (_ in 0...20) new pr2.gameplay.player.LocalPlayerInput(false, false, true, false)];
+		var sim = planner.simulate(jump, 0, false);
+		assertTrue(sim.gainFrame >= 0, "the jump takes an item from the block");
+		var others = planner.otherItems(sim);
+		if (sim.gainItem == 2) {
+			assertEquals("5", others.join(","), "it got the Mine; the Super Jump is the other movement item it could give");
+		} else {
+			assertEquals(0, others.length, "it got the Super Jump; a Mine doesn't help movement");
+		}
+		var picked = planner.simulate(jump, 0, false, null, false, [new pr2.gameplay.debug.ClipRoutePlanner.ItemPick(sim.gainFrame, 5)]);
+		assertEquals(5, picked.restItem, "a pick makes the block give that item");
+	}
+
+	private static function testConveyorCountsAsASpot():Void {
+		// A long floor of right-arrow blocks: the player is pushed along and never stops.
+		var blocks = [for (c in 0...60) new LevelBlock(c, 17, BlockType.ArrowRight)];
+		var planner = new ClipRoutePlanner(blocks, roomRoute(150, FLOOR_Y, 50, 10));
+		var start = planner.simulate([], 0, false);
+		assertTrue(start.atRest, "riding the arrow blocks counts as a spot");
+		assertTrue(start.idleFrames < 40, 'soon (${start.idleFrames} frames)');
+	}
+
+	private static function testScanTriesSwordSuperJumpAndSpeedBurst():Void {
+		var corner = ClipScanner.findCorners(cornerBlocks(), 1)[0];
+		for (item in [8, 5, 7]) {
+			var settings = scanSettings(50);
+			settings.heldItem = item;
+			var scanner = new ClipScanner(cornerBlocks(), settings);
+			var plain = 1; // one distance, one launch
+			assertTrue(scanner.attemptsFor(corner) > plain, 'item $item adds attempts');
+			var last = scanner.attemptAt(corner, scanner.attemptsFor(corner) - 1);
+			assertEquals(item, last.items.heldItem, 'item $item attempts hold it');
+			var expected = item == 8 ? "sword lunge" : (item == 5 ? "super jump item" : "speed burst");
+			assertTrue(last.describe().indexOf(expected) >= 0, 'described: ${last.describe()}');
+		}
+		var settings = scanSettings(50);
+		settings.heldItem = 5;
+		var jump = new ClipScanner(cornerBlocks(), settings).attemptAt(corner, 1);
+		assertTrue(jump.inputAt(0, true).item && !jump.inputAt(0, true).jump, "the super jump item launches with the item key, not jump");
+	}
+
+	private static function testReplayGivesTheGhostsItem():Void {
+		course.setKey(Keyboard.F9, true);
+		course.setKey(Keyboard.C, true);
+		course.setKey(Keyboard.D, true);
+		var session = course.clipFinder;
+		var controller = course.localCharacter.controller;
+		var before = course.localCharacter.stateSnapshot();
+		var ownItem = controller.itemId;
+		// A clip recorded holding a jetpack.
+		var attempt = new ClipAttempt(Math.round(before.x), Math.round(before.y), 50, 50, 50, course.level.gravity, 1, 0, 0, false, 10);
+		attempt.items = new ClipSimulator.ClipItems(6);
+		var area = ClipArea.around(course.level.blocks, attempt.startX, attempt.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP,
+			ClipFinder.AREA_DOWN);
+		var run = ClipSimulator.run(area, attempt, true);
+		assertEquals(6, run.ghost[0].item, "the ghost records the item it holds");
+		session.clips = [new pr2.gameplay.debug.ClipFinder.FoundClip(attempt, run)];
+		session.panel.setClipCount(1);
+		session.showClip(0);
+		session.startReplay();
+		assertEquals(6, controller.itemId, "the real player is given the ghost's item for the replay");
+		session.stopReplay();
+		assertEquals(ownItem, controller.itemId, "and gets their own item back after");
 		session.close();
 		course.setKey(Keyboard.F9, false);
 		course.setKey(Keyboard.C, false);

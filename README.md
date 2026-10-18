@@ -414,7 +414,14 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     from the wall and fire. The recoil (15 px a frame into the wall) plus the
     landing speed can put you through the floor. Only that exact frame
     works, and it depends on your stats, so every fire frame from 4 to 75 is
-    tried (with three jump heights and 0-2 px from the wall).
+    tried (with three jump heights and 0-2 px from the wall). Other held
+    items add their own attempts: the **Sword** the same grid facing the
+    wall (its lunge adds 8 px a frame forward), the **Super Jump** item
+    run-ups that launch with it (25 up) into fast-fall, and **Speed Burst**
+    run-ups that burst first (double speed and acceleration) then jump or
+    hop into fast-fall. In testing on a plain corner only the laser opened it
+    (the sword's 8 is about half the laser's 15), but every corner is tried
+    with whatever you hold.
     It also scans **mines**: a mine on the floor with room to stand beside
     it (walk, hop or jump at it from 2 px and 40 px), a mine set into the
     floor (step onto it or run across it), and a mine overhead (jump up into
@@ -477,14 +484,22 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
       it standing, running, mid-jump and held down (the jetpack flies while
       held). Steps say "(gets Jet Pack)" or "(uses up the item)". A teleport
       (block or item) is not mistaken for being sent back. Holding a Laser
-      Gun, its clip moves also try the laser recoil clip; such steps say
-      "(laser recoil)". You start with the uses your item has left. Item uses
-      are kept in one global store in the game (as in Flash), so searches
-      put your real item's uses back after every slice of work.
+      Gun, Sword, Super Jump or Speed Burst, its clip moves also try that
+      item's clips; such steps say "(laser recoil)", "(sword lunge)",
+      "(super jump item)" or "(speed burst)". When a move takes an item from
+      an item block, it also tries each other movement item that block could
+      give (laser, teleport, super jump, jetpack, speed burst, sword), so a
+      route can count on the one it needs; the route remembers its choice.
+      You start with the uses your item has left. Item uses are kept in one
+      global store in the game (as in Flash), so searches put your real
+      item's uses back after every slice of work.
     - **Water:** 10 frames of swimming count as a spot (a pool may have no
       bottom: sinking out of it drops you off the map and back into the
       water), and from a spot in water it tries swimming up, up and to each
       side, sideways, and diving.
+    - **Arrow blocks and ice:** riding a conveyor of arrow blocks (or
+      sliding on ice) never comes to a stop, so standing on them counts as a
+      spot after 10 frames, and so does 45 frames on any floor.
     - **Vanish blocks:** standing on one isn't a resting spot (it fades and
       drops you). Next to one it tries pushing into it or bumping it from
       below, waiting for it to fade, then going through before it returns.
@@ -504,7 +519,10 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
   own stats come back when it ends; press the button again to stop early. It
   needs the race to be running, and other players see the jump. Mines it
   blows up and bricks it breaks are put back when it ends (only on your
-  screen; other players saw them go).
+  screen; other players saw them go). If the ghost holds an item you are
+  given it for the replay, and where the ghost takes an item from an item
+  block you are given that same item (the game's own roll is random); your
+  own item comes back when the replay ends.
 - **Start** searches from where you are standing in a cropped copy of the
   level, a few attempts per frame so the race keeps running. Every attempt
   starts from a fresh simulated player; your real player, blocks and network

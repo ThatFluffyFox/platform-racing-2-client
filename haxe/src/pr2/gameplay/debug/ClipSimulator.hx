@@ -180,6 +180,11 @@ class ClipSimulator {
 		return result;
 	}
 
+	/** Takes the held item away (as using it up does). **/
+	public static function clearItem(player:LocalPlayerController):Void {
+		player.itemController.consumeHeldItemCompletely();
+	}
+
 	/** Uses left on the held item (the global store the items share). **/
 	public static inline function itemUses():Float return com.jiggmin.data.SecureData.getNumber("uses");
 
@@ -240,6 +245,10 @@ class ClipAttempt {
 	public var items:Null<ClipItems> = null;
 	/** Describes a scripted attempt (e.g. a laser recoil clip) instead of "random inputs". **/
 	public var label:Null<String> = null;
+	/** Frame the item key is pressed (-1 = never), e.g. a Speed Burst before the run-up. **/
+	public var itemAt:Int = -1;
+	/** Launch with the held item (the Super Jump item) on `jumpFrame` instead of the jump key. **/
+	public var jumpWithItem:Bool = false;
 	/** Frame the direction starts being held; before it the player stands or jumps in place. **/
 	public var moveStart:Int = 0;
 	/** Frame the held direction flips (an air turn), or -1 for never. **/
@@ -303,11 +312,12 @@ class ClipAttempt {
 		var holdDown = false;
 		if (superCharge > 0) {
 			holdDown = frame >= superStart && frame < superStart + superCharge;
-		} else {
+		} else if (!jumpWithItem) {
 			jumping = frame >= jumpFrame && frame < jumpFrame + hold;
 		}
 		if (down && frame >= launchFrame() && !grounded) holdDown = true;
-		return new LocalPlayerInput(heldDir == -1, heldDir == 1, jumping, holdDown);
+		var item = frame == itemAt || (jumpWithItem && frame == jumpFrame);
+		return new LocalPlayerInput(heldDir == -1, heldDir == 1, jumping, holdDown, item);
 	}
 
 	/** Frame the jump (or super jump release) happens. **/
@@ -325,6 +335,7 @@ class ClipAttempt {
 	public function describe():String {
 		var stats = 'speed=$speed accel=$accel jump=$jump';
 		if (script != null) return label != null ? '$stats $label' : '$stats random inputs';
+		if (label != null) return '$stats $label';
 		var move = '${dir == 1 ? "right" : "left"}${moveStart > 0 ? ' from frame $moveStart' : ""}';
 		if (turnFrame >= 0) move += ', turn at $turnFrame';
 		var launch = superCharge > 0 ? 'super jump (charge $superCharge${superStart > 0 ? ' from frame $superStart' : ""})'
@@ -432,6 +443,9 @@ class GhostFrame {
 	public final grounded:Bool;
 	/** How far the simulated course was turned by rotate blocks (0, 90, 180 or -90). **/
 	public final rotation:Int;
+	/** The item held (its code) and its uses left, so a replay can hand the real player the same item. **/
+	public var item:Null<Int> = null;
+	public var itemUses:Float = 0;
 
 	public function new(x:Float, y:Float, state:CharacterState, facing:Int, inSolid:Bool, grounded:Bool = false, rotation:Int = 0) {
 		this.x = x;
@@ -445,8 +459,11 @@ class GhostFrame {
 
 	public static function capture(player:LocalPlayerController, inSolid:Bool):GhostFrame {
 		var feet = ClipSimulator.toLevel(player.x, player.y, player.courseRotation);
-		return new GhostFrame(feet.x, feet.y, player.stateSnapshot().characterState, player.facingScaleX, inSolid, player.grounded,
+		var frame = new GhostFrame(feet.x, feet.y, player.stateSnapshot().characterState, player.facingScaleX, inSolid, player.grounded,
 			player.courseRotation);
+		frame.item = player.itemId;
+		frame.itemUses = player.itemId == null ? 0 : ClipSimulator.itemUses();
+		return frame;
 	}
 }
 
