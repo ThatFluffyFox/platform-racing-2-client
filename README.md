@@ -411,7 +411,19 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
 - **Scan level...** (the menu under the title) has two stages; picking one
   runs it:
   - **Stage 1: map scan (every corner)** checks every inside corner in the
-    level, nearest first, with your own stats, gravity and hats: run-ups of
+    level, nearest first, with your own stats, gravity and hats. Besides a
+    floor meeting a wall it scans two more shapes (the panel says which):
+    the **bottom corner of a wall** or block with air under it, and a
+    **ceiling meeting a wall** (an overhang against a wall), both started
+    from the floor below. A bottom corner clips when you fall past it moving
+    into it with your feet 10-15 px below its bottom edge: the wall check
+    (10 px above the feet) is already below the block and nothing checks the
+    head while falling, so the body goes in. That window is only 5 px, so
+    these run-ups are also tried without fast-fall (a hop held 8 frames from
+    about 185 px clips a floating block at 100 speed). Ceilings meeting walls
+    are tried with run-ups too; in testing they didn't clip (the wall check
+    pushes you out before the head gets there), so they show as grey
+    crosses unless your level is different. For the usual corners, run-ups of
     0-260 px (short ones fit narrow shafts) into a full jump, a short hop or a super jump, each into
     fast-fall. Each corner's wall tile is marked: a grey cross if it can't be
     clipped, or a box if it can (green = you pass through and land beyond it,
@@ -489,6 +501,11 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     clips: on level 3460484 without items it clips 102 corners to Stage 1's
     99 (24 of them predicted), in a little less time. The status says how
     many were predicted.
+    Stage 1.5 predicts bottom-corner clips too (from the same flights: the
+    frames with the feet 10-15 px below a block's bottom edge as the body
+    crosses into its column) and sends ceiling corners to Stage 1's run-ups.
+    With these shapes level 3460484 has 246 targets: Stage 1 clips 140,
+    Stage 1.5 158 (everything Stage 1 does, plus 18).
   - **Stage 2: route to target** (with Range ticked on stat rows, it plans
     with each sampled set of stats in turn, up to 3 values per ranged stat
     and your own stats first, until one finds a route; the status shows which
@@ -591,6 +608,33 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
   state are never touched.
 - A translucent ghost of your character replays the selected clip, holds for a
   moment, then resets and plays it again. **Prev/Next** switch between clips.
+
+**Stage 3: movement glitches** looks for movement the game shouldn't allow,
+not just clips. It first plays, on open ground with your stats, gravity,
+hats and item, the highest and fastest anything can go: every super jump
+charge with a jump just before, on or after the release, and your item used
+on each frame of a jump. Then at spots you can stand on near you (up to 400,
+nearest first) it plays 34 moves (run-up jumps of three heights, jumping up
+a wall, bunny hops, super jumps, crouch-jumps, fast-fall, and your item at
+three moments, each way) and lists any run that:
+
+- **jumps higher** above the floor it left than anything can on open ground,
+- **moves faster** than anything can on open ground, or
+- **passes through the edge of a block**: at least half the body's width
+  (10 px) inside a block beside or above it without being pushed out. The
+  game only checks the sides 10 px above the feet and the head at the
+  middle, so a block at head height (an overhang's edge, a hanging pillar)
+  can be passed through. Crouching uses the crouched body.
+
+Runs that touch blocks meant to move you (arrows, mines, teleports, item and
+stat blocks, rotate blocks, water, push and move blocks, the finish) and
+runs that clip are left out, so what is listed comes from the level's
+shapes. Each glitch (one per kind and tile) goes in the clip list with what
+it does, the moves, the ghost and Replay on me. On level 3460484 (100/45/40)
+it checks 150 spots in about 10 s and finds 28 edge passes (for example a
+small hop from the item block at 422,333 puts the head into the hanging
+pillar at 425,331); nothing there jumps higher or runs faster than open
+ground allows.
 
 **Turned courses:** every stage works while the course is turned by a
 rotate block. Corners, starts and spots are found as you see the course

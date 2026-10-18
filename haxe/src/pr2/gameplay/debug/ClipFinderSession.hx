@@ -63,6 +63,7 @@ class ClipFinderSession {
 		panel.onTarget = toggleTargetPicking;
 		panel.onScan = () -> startScan(false);
 		panel.onPredict = () -> startScan(true);
+		panel.onGlitches = startGlitches;
 		panel.onRoute = startRoute;
 		panelLayer.addChild(panel);
 		ghost = new ClipGhost(player);
@@ -129,6 +130,8 @@ class ClipFinderSession {
 		}
 		stopReplay();
 		finder = ClipSimulator.keepRealItem(() -> new ClipFinder(liveBlocks(), settings));
+		glitchFinder = null;
+		glitchNotes = new Map();
 		clips = finder.clips;
 		clipPortals = [];
 		scanner = null;
@@ -143,6 +146,10 @@ class ClipFinderSession {
 	}
 
 	function stopSearch():Void {
+		if (glitchFinder != null) {
+			stopGlitches();
+			return;
+		}
 		if (planner != null) {
 			stopRoute();
 			return;
@@ -162,6 +169,7 @@ class ClipFinderSession {
 		if (closed) return;
 		// Simulated items share the game's one item-uses store; keep the real player's.
 		ClipSimulator.keepRealItem(() -> {
+			tickGlitches();
 			tickScan();
 			tickRoute();
 			tickFinder();
@@ -197,18 +205,93 @@ class ClipFinderSession {
 		var recorded = found.run.ghost;
 		if (recorded != null) ghost.play(recorded);
 		var portal = index < clipPortals.length ? clipPortals[index] : null;
-		if (routeText != null) {
+		var note = glitchNotes.get(index);
+		if (note != null) {
+			panel.setClipInfo(index, note);
+		} else if (routeText != null) {
 			panel.setClipInfo(index, 'Route: $routeText');
 		} else if (portal != null) {
 			// Corners are in the scan's course turn: show them as level tiles.
 			var turn = found.attempt.courseRotation;
 			var tile = portal.corner.mine != null ? ClipSimulator.layoutTile(portal.corner.mine.x, portal.corner.mine.y, -turn)
 				: ClipSimulator.layoutTile(portal.corner.x, portal.corner.y, -turn);
-			var where = portal.corner.mine != null ? 'Mine at ${tile.x},${tile.y}' : 'Corner ${tile.x},${tile.y}';
+			var where = portal.corner.mine != null ? 'Mine at ${tile.x},${tile.y}' : 'Corner ${tile.x},${tile.y} (${portal.corner.kindText()})';
 			panel.setClipInfo(index, '$where: ${portalOutcome(portal)}. ${found.attempt.describe()}.');
 		} else {
 			panel.setClipInfo(index, '${found.attempt.describe()}, clips on frame ${found.run.clipFrame + 1}. Replaying on a loop.');
 		}
+	}
+
+	// ---- Stage 3: movement glitches ---------------------------------------------
+
+	var glitchFinder:Null<MovementGlitchFinder> = null;
+	/** For movement glitches in the clip list: what each one does (same index as `clips`). **/
+	var glitchNotes:Map<Int, String> = new Map();
+
+	/** "Stage 3": moves played at spots near the player, compared with open ground. **/
+	function startGlitches():Void {
+		var state = player.stateSnapshot();
+		stopReplay();
+		finder = null;
+		planner = null;
+		scanner = null;
+		routeText = null;
+		searchRotation = state.courseRotation;
+		var gravity = level.gravity * (player.hasHatFlag(Character.MOON) ? MOON_GRAVITY : 1);
+		var settings = new ClipScanner.ClipScanSettings(state.speedStat, state.accelerationStat, state.jumpStat, gravity);
+		settings.hats = ClipHats.from(player.controller);
+		settings.originX = state.x;
+		settings.originY = state.y;
+		settings.heldItem = player.controller.itemId;
+		settings.courseRotation = searchRotation;
+		glitchFinder = ClipSimulator.keepRealItem(() -> new MovementGlitchFinder(liveBlocks(), settings));
+		clips = [];
+		clipPortals = [];
+		glitchNotes = new Map();
+		shownClips = 0;
+		selectedClip = -1;
+		ghost.stop();
+		panel.setClipCount(0);
+		panel.setRunning(true);
+		updateGlitchStatus();
+	}
+
+	function stopGlitches():Void {
+		if (glitchFinder == null) return;
+		panel.setRunning(false);
+		updateGlitchStatus(true);
+		glitchFinder = null;
+	}
+
+	function tickGlitches():Void {
+		var search = glitchFinder;
+		if (search == null) return;
+		if (!search.done) {
+			var deadline = haxe.Timer.stamp() + FRAME_BUDGET_SECONDS;
+			search.step(1000, () -> haxe.Timer.stamp() > deadline);
+		}
+		while (clips.length < search.glitches.length) {
+			var glitch = search.glitches[clips.length];
+			glitchNotes.set(clips.length, 'Movement glitch: ${glitch.describe()}. ${glitch.found.attempt.describe()}.');
+			clips.push(glitch.found);
+			clipPortals.push(null);
+		}
+		if (clips.length != shownClips) {
+			shownClips = clips.length;
+			panel.setClipCount(shownClips);
+			if (selectedClip < 0) showClip(0);
+		}
+		updateGlitchStatus();
+		if (search.done) {
+			panel.setRunning(false);
+			glitchFinder = null;
+		}
+	}
+
+	function updateGlitchStatus(stopped:Bool = false):Void {
+		var search = glitchFinder;
+		if (search == null) return;
+		panel.setStatus(search.done ? search.doneText() : search.progressText(stopped));
 	}
 
 	// ---- Level scan ------------------------------------------------------------
@@ -233,6 +316,8 @@ class ClipFinderSession {
 		stopReplay();
 		finder = null;
 		planner = null;
+		glitchFinder = null;
+		glitchNotes = new Map();
 		routeText = null;
 		var gravity = level.gravity * (player.hasHatFlag(Character.MOON) ? MOON_GRAVITY : 1);
 		var settings = new ClipScanner.ClipScanSettings(state.speedStat, state.accelerationStat, state.jumpStat, gravity);
@@ -364,6 +449,8 @@ class ClipFinderSession {
 		stopReplay();
 		finder = null;
 		scanner = null;
+		glitchFinder = null;
+		glitchNotes = new Map();
 		var gravity = level.gravity * (player.hasHatFlag(Character.MOON) ? MOON_GRAVITY : 1);
 		// The stat rows: plan with each sampled set in turn (your own stats first) until one finds a route.
 		routeSets = statSetsFromPanel(ROUTE_SAMPLES);
@@ -709,6 +796,7 @@ class ClipFinderSession {
 		setTarget(null, null);
 		scanner = null;
 		planner = null;
+		glitchFinder = null;
 		if (overlay != null) overlay.dispose();
 		overlay = null;
 		closed = true;

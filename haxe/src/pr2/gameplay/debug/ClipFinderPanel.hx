@@ -20,6 +20,8 @@ enum abstract ScanStage(Int) {
 	var RouteToTarget = 1;
 	/** Stage 1.5: predicted clips, worked back from landings to start spots anywhere in the level. **/
 	var PredictedScan = 2;
+	/** Stage 3: movement glitches (higher, faster, or through block edges compared with open ground). **/
+	var MovementGlitches = 3;
 }
 
 /**
@@ -78,6 +80,8 @@ class ClipFinderPanel extends NativeView {
 	public var onScan:Null<Void->Void>;
 	/** Stage 1.5 (predicted clips) picked. **/
 	public var onPredict:Null<Void->Void>;
+	/** Stage 3 (movement glitches) picked. **/
+	public var onGlitches:Null<Void->Void>;
 	public var onRoute:Null<Void->Void>;
 	final status:TextField;
 	final clipInfo:TextField;
@@ -107,7 +111,8 @@ class ClipFinderPanel extends NativeView {
 		scanSelect.addOption("Stage 1: map scan (every corner)", MapScan);
 		scanSelect.addOption("Stage 1.5: predicted clips", PredictedScan);
 		scanSelect.addOption("Stage 2: route to target", RouteToTarget);
-		scanSelect.rowCount = 3;
+		scanSelect.addOption("Stage 3: movement glitches", MovementGlitches);
+		scanSelect.rowCount = 4;
 		scanSelect.onChange = function(option:SelectOption<ScanStage>):Void {
 			scanSelect.selectedIndex = -1;
 			chooseScanStage(option.value);
@@ -202,6 +207,8 @@ class ClipFinderPanel extends NativeView {
 				if (onScan != null) onScan();
 			case PredictedScan:
 				if (onPredict != null) onPredict();
+			case MovementGlitches:
+				if (onGlitches != null) onGlitches();
 			case RouteToTarget:
 				if (onRoute != null) onRoute();
 		}
@@ -262,6 +269,7 @@ class ClipFinderPanel extends NativeView {
 		onTarget = null;
 		onScan = null;
 		onPredict = null;
+		onGlitches = null;
 		onRoute = null;
 		super.dispose();
 	}

@@ -15,6 +15,8 @@ import pr2.gameplay.debug.ClipFinderPanel.ScanStage;
 import pr2.gameplay.debug.ClipRoutePlanner.RouteSettings;
 import pr2.gameplay.debug.ClipScanner.ClipScanSettings;
 import pr2.gameplay.debug.ClipScanner.MineUse;
+import pr2.gameplay.debug.ClipScanner.CornerKind;
+import pr2.gameplay.debug.MovementGlitchFinder.GlitchKind;
 import pr2.gameplay.debug.ClipScanOverlay.PortalKind;
 import pr2.level.BlockType;
 import pr2.level.Level.LevelBlock;
@@ -88,6 +90,10 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSpeedBurstWhileChargingASuperJump", testSpeedBurstWhileChargingASuperJump);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesSwordSuperJumpAndSpeedBurst", testScanTriesSwordSuperJumpAndSpeedBurst);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScansWorkOnATurnedCourse", testScansWorkOnATurnedCourse);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testWallAndCeilingCornersAreFound", testWallAndCeilingCornersAreFound);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testHangingCornerClips", testHangingCornerClips);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testHangingCornerClipsArePredicted", testHangingCornerClipsArePredicted);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMovementGlitchThroughABlockEdge", testMovementGlitchThroughABlockEdge);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testLevelItemsFromItemBlocks", testLevelItemsFromItemBlocks);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesTheLevelsItems", testScanTriesTheLevelsItems);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPredictorFindsTheClipFromTheLanding", testPredictorFindsTheClipFromTheLanding);
@@ -426,6 +432,7 @@ class ClipFinderTest {
 		settings.jumpHolds = [8];
 		settings.superCharges = [];
 		settings.hopHolds = [];
+		settings.wallClips = false;
 		return settings;
 	}
 
@@ -736,6 +743,7 @@ class ClipFinderTest {
 		settings.laserHolds = [8];
 		settings.laserFireFrames = [35, 36, 37, 38];
 		settings.hopHolds = [];
+		settings.wallClips = false;
 		return settings;
 	}
 
@@ -1074,6 +1082,85 @@ class ClipFinderTest {
 		}
 	}
 
+	/** A floor (row 20) with a block floating above it (col 40, rows 15-16). **/
+	private static function floatingBlockBlocks():Array<LevelBlock> {
+		var blocks = [for (col in 0...60) new LevelBlock(col, 20, BlockType.Basic)];
+		for (row in 15...17) blocks.push(new LevelBlock(40, row, BlockType.Basic));
+		return blocks;
+	}
+
+	private static function testWallAndCeilingCornersAreFound():Void {
+		var hanging = ClipScanner.findWallCorners(floatingBlockBlocks());
+		assertEquals(2, hanging.length, "the floating block's two bottom corners");
+		for (c in hanging) {
+			assertEquals(CornerKind.HangingWall, c.kind, "bottom corners of a wall");
+			assertEquals(16, c.y, "at the block's bottom row");
+			assertEquals(20, c.startRow, "started from the floor below");
+			assertEquals(c.dir == 1 ? 39 : 41, c.x, "in front of the block");
+		}
+		// An overhang (row 15, cols 8-18) meeting a wall (col 19) over a floor (row 20).
+		var blocks = [for (col in 0...30) new LevelBlock(col, 20, BlockType.Basic)];
+		for (row in 0...20) blocks.push(new LevelBlock(19, row, BlockType.Basic));
+		for (col in 8...19) blocks.push(new LevelBlock(col, 15, BlockType.Basic));
+		var ceilings = ClipScanner.findWallCorners(blocks).filter(c -> c.kind == CornerKind.CeilingWall);
+		assertEquals(1, ceilings.length, 'the overhang meeting the wall: ${[for (c in ceilings) c.x + "," + c.y]}');
+		assertTrue(ceilings[0].x == 18 && ceilings[0].y == 16 && ceilings[0].dir == 1, "the air tile under the overhang, against the wall");
+		var settings = scanSettings(100);
+		settings.wallClips = false;
+		assertEquals(0, new ClipScanner(floatingBlockBlocks(), settings).corners.length, "wall corners can be switched off");
+	}
+
+	private static function testHangingCornerClips():Void {
+		// Stats 100/45/40: a hop (jump held 8) without fast-fall from about 185 px drops
+		// past the block's bottom corner with the feet 10-15 px below it, moving into it.
+		var settings = new ClipScanSettings(100, 45, 40, 1);
+		settings.distances = [184, 185, 186];
+		settings.jumpHolds = [8];
+		settings.superCharges = [];
+		settings.hopHolds = [];
+		settings.mines = false;
+		var scanner = new ClipScanner(floatingBlockBlocks(), settings);
+		while (!scanner.done) scanner.step(20);
+		assertEquals(2, scanner.portals.length, "Stage 1 clips both bottom corners");
+		for (p in scanner.portals) {
+			assertEquals(CornerKind.HangingWall, p.corner.kind, "as bottom corners of a wall");
+			assertTrue(!p.attempt.down, 'without fast-fall: ${p.attempt.describe()}');
+			assertTrue(p.passesThrough, 'and comes out past the block (${p.exitX}, ${p.exitY})');
+		}
+	}
+
+	private static function testHangingCornerClipsArePredicted():Void {
+		var predict = predictSettings(100);
+		predict.wallClips = true;
+		var predictor = new ClipPredictor(floatingBlockBlocks(), predict);
+		while (!predictor.done) predictor.step(20);
+		assertEquals(2, predictor.portals.length, "Stage 1.5 predicts both");
+		assertEquals(0, predictor.fallbackFound, "from the flights alone");
+	}
+
+	private static function testMovementGlitchThroughABlockEdge():Void {
+		// A floor (row 20) and a pillar hanging over it (col 30, rows 15-17): a hop
+		// toward it puts the head into its side, since the game only checks the
+		// sides 10 px above the feet (below the pillar) and the head at the middle.
+		var blocks = [for (col in 0...45) new LevelBlock(col, 20, BlockType.Basic)];
+		for (row in 15...18) blocks.push(new LevelBlock(30, row, BlockType.Basic));
+		var settings = new ClipScanSettings(100, 45, 40, 1);
+		settings.originX = 27 * 30 + 15;
+		settings.originY = 600;
+		// Probed with the shortest and longest super jump only, and only the small hops played.
+		var finder = new MovementGlitchFinder(blocks, settings, [50], "jump held 3");
+		assertTrue(finder.maxRise > 300 && finder.maxRise < 450, 'open ground: a full super jump is the highest (${finder.maxRise})');
+		assertTrue(Math.abs(finder.maxSpeed - 12) < 0.1, 'and speed 100 tops out at 12 (${finder.maxSpeed})');
+		finder.maxSpots = 1;
+		while (!finder.done) finder.step(50);
+		var edges = finder.glitches.filter(g -> g.kind == GlitchKind.ThroughEdge);
+		assertTrue(edges.length > 0, 'a move passes into the pillar\'s edge: ${[for (g in finder.glitches) g.describe()]}');
+		var glitch = edges[0];
+		assertEquals(30, glitch.tileX, 'in the pillar: ${glitch.describe()}');
+		assertTrue(glitch.found.run.ghost != null && glitch.found.attempt.script != null, "recorded for the ghost and the replay");
+		assertEquals(0, finder.glitches.filter(g -> g.kind != GlitchKind.ThroughEdge).length, "nothing here jumps higher or runs faster than open ground");
+	}
+
 	private static function testLevelItemsFromItemBlocks():Void {
 		var blocks = [
 			new LevelBlock(1, 1, BlockType.Item, "5-7"),
@@ -1115,6 +1202,7 @@ class ClipFinderTest {
 		settings.jumpHolds = [8];
 		settings.superCharges = [];
 		settings.hopHolds = [];
+		settings.wallClips = false;
 		return settings;
 	}
 
@@ -1264,7 +1352,8 @@ class ClipFinderTest {
 		course.setKey(Keyboard.D, true);
 		var session = course.clipFinder;
 		var menu = session.panel.scanSelect;
-		assertEquals(3, menu.length, "the Scan level menu has the three stages");
+		assertEquals(4, menu.length, "the Scan level menu has the four stages");
+		assertEquals(ScanStage.MovementGlitches, menu.itemAt(3), "stage 3 is movement glitches");
 		assertEquals(ScanStage.MapScan, menu.itemAt(0), "stage 1 is the map scan");
 		assertEquals(ScanStage.PredictedScan, menu.itemAt(1), "stage 1.5 is the predicted clips");
 		assertEquals(ScanStage.RouteToTarget, menu.itemAt(2), "stage 2 is the route to the target");

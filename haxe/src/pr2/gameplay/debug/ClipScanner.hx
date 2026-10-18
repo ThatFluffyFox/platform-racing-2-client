@@ -21,12 +21,27 @@ class ClipCorner {
 		the player stands in and `dir` faces the mine.
 	**/
 	public var mine:Null<MineSpot> = null;
+	/** Which shape this is: a floor meeting a wall (the usual), a wall's bottom corner, or a ceiling meeting a wall. **/
+	public final kind:CornerKind;
+	/** For a hanging or ceiling corner: the row of the floor the player starts on (below the corner). **/
+	public final startRow:Int;
 
-	public function new(x:Int, y:Int, dir:Int, ?mine:MineSpot) {
+	public function new(x:Int, y:Int, dir:Int, ?mine:MineSpot, ?kind:CornerKind, ?startRow:Int) {
 		this.x = x;
 		this.y = y;
 		this.dir = dir;
 		this.mine = mine;
+		this.kind = kind == null ? FloorWall : kind;
+		this.startRow = startRow == null ? y + 1 : startRow;
+	}
+
+	/** What kind of clip this is, for the panel. **/
+	public function kindText():String {
+		return switch (kind) {
+			case FloorWall: "floor meets wall";
+			case HangingWall: "bottom corner of a wall";
+			case CeilingWall: "ceiling meets wall";
+		}
 	}
 
 	/** The tile the overlay marks: the wall tile of a corner, or the mine. **/
@@ -40,13 +55,35 @@ class ClipCorner {
 	public var wallFace(get, never):Float;
 	inline function get_wallFace():Float return (dir == 1 ? x + 1 : x) * ClipSimulator.TILE;
 
-	/** Pixel y of the floor's top (the player's feet when standing in the corner). **/
+	/**
+		Pixel y of the floor's top the player starts on: the corner's own floor,
+		or for a hanging or ceiling corner the floor below it.
+	**/
 	public var floorY(get, never):Float;
-	inline function get_floorY():Float return (y + 1) * ClipSimulator.TILE;
+	inline function get_floorY():Float return startRow * ClipSimulator.TILE;
+
+	/** Pixel y of the bottom of the wall tile (a hanging corner's bottom edge). **/
+	public var wallBottom(get, never):Float;
+	inline function get_wallBottom():Float return (y + 1) * ClipSimulator.TILE;
 
 	/** The wall tile next to the corner, the one a clip goes into. **/
 	public var wallTileX(get, never):Int;
 	inline function get_wallTileX():Int return x + dir;
+}
+
+/** The shapes the scan clips. **/
+enum CornerKind {
+	/** A floor meeting a wall: land deep in the floor moving into the wall. **/
+	FloorWall;
+	/**
+		The bottom corner of a wall or block with air below it: fall past it
+		moving into it with the feet 10-15 px below its bottom edge. The wall
+		check (10 px above the feet) is already below the block, and nothing
+		checks the head while falling, so the body goes in.
+	**/
+	HangingWall;
+	/** A ceiling (overhang) meeting a wall: jump up into the corner moving into the wall. **/
+	CeilingWall;
 }
 
 /** How a mine spot is used: a mine beside the player on the floor, set into the floor, or overhead. **/
@@ -109,6 +146,7 @@ class ClipPortal {
 			var t = ClipSimulator.TILE;
 			return Math.abs(x - attempt.startX) > t * 1.5 || Math.abs(y - attempt.startY) > t * 1.5;
 		}
+		if (corner.kind != FloorWall) return corner.dir * (x - corner.wallFace) > 0;
 		return corner.dir * (x - corner.wallFace) > 0 || y > corner.floorY + 1;
 	}
 
@@ -199,6 +237,8 @@ class ClipScanSettings {
 		coordinates (the player's own), and runs start the course turned.
 	**/
 	public var courseRotation:Int = 0;
+	/** Also scan the bottom corners of walls hanging in the air, and ceilings meeting walls (not only floors meeting walls). **/
+	public var wallClips:Bool = true;
 	/**
 		Stage 1.5: a corner no predicted start clips is then tried with Stage 1's
 		own attempts (hop-backs and the rest), so it finds everything Stage 1
@@ -266,6 +306,7 @@ class ClipScanner implements CornerScan {
 		// Corners as the player sees them on the turned course.
 		var seen = ClipSimulator.layoutFor(blocks, settings.courseRotation);
 		corners = onlyCorner != null ? [onlyCorner] : findCorners(seen, 1).concat(findCorners(seen, -1));
+		if (onlyCorner == null && settings.wallClips) corners = corners.concat(findWallCorners(seen));
 		if (onlyCorner == null && settings.mines) corners = corners.concat(findMineSpots(seen));
 		statSets = settings.statSets != null && settings.statSets.length > 0 ? settings.statSets : [[settings.speed, settings.accel, settings.jump]];
 		variants = [settings.heldItem];
@@ -317,6 +358,16 @@ class ClipScanner implements CornerScan {
 		return (baseVariant ? runUpAttempts + hopAttempts : 0) + laserAttempts + itemRunUpAttempts;
 	}
 
+	/**
+		Attempts at a hanging or ceiling corner: run-ups only (no standing
+		against its wall), each with and without fast-fall (fast-fall drops
+		past a hanging corner's 5 px window).
+	**/
+	function wallCornerAttempts(v:Int):Int {
+		useVariant(v);
+		return (baseVariant ? runUpAttempts * 2 : 0) + itemRunUpAttempts;
+	}
+
 	/** Attempts at one inside corner with one stat set, over every item variant. **/
 	var cornerAttempts(get, never):Int;
 	function get_cornerAttempts():Int {
@@ -331,7 +382,13 @@ class ClipScanner implements CornerScan {
 	/** Attempts at one target with one stat set. **/
 	function attemptsPerSet(corner:ClipCorner):Int {
 		var mine = corner.mine;
-		return mine == null ? cornerAttempts : mineMoves(mine.use).length;
+		if (mine != null) return mineMoves(mine.use).length;
+		if (corner.kind != FloorWall) {
+			var total = 0;
+			for (v in 0...variants.length) total += wallCornerAttempts(v);
+			return total;
+		}
+		return cornerAttempts;
 	}
 
 	public function attemptsFor(corner:ClipCorner):Int return attemptsPerSet(corner) * statSets.length;
@@ -442,6 +499,16 @@ class ClipScanner implements CornerScan {
 		var mine = corner.mine;
 		if (mine != null) return mineAttemptAt(corner, mine, index, stats);
 		var v = 0;
+		if (corner.kind != FloorWall) {
+			while (v < variants.length - 1 && index >= wallCornerAttempts(v)) {
+				index -= wallCornerAttempts(v);
+				v++;
+			}
+			useVariant(v);
+			var runs = baseVariant ? runUpAttempts * 2 : 0;
+			if (index >= runs) return itemRunUpAttemptAt(corner, index - runs, stats);
+			return runUpAttemptAt(corner, index >> 1, stats, index % 2 == 0);
+		}
 		while (v < variants.length - 1 && index >= variantAttempts(v)) {
 			index -= variantAttempts(v);
 			v++;
@@ -453,11 +520,16 @@ class ClipScanner implements CornerScan {
 		if (!baseVariant) return index >= laserAttempts ? itemRunUpAttemptAt(corner, index - laserAttempts, stats) : laserAttemptAt(corner, index, stats);
 		if (index >= runUpAttempts + laserAttempts) return itemRunUpAttemptAt(corner, index - runUpAttempts - laserAttempts, stats);
 		if (index >= runUpAttempts) return laserAttemptAt(corner, index - runUpAttempts, stats);
+		return runUpAttemptAt(corner, index, stats);
+	}
+
+	/** A plain run-up at `corner`: distance-major, every launch at each distance. **/
+	function runUpAttemptAt(corner:ClipCorner, index:Int, stats:Array<Float>, fastFall:Bool = true):ClipAttempt {
 		var launch = launches[index % launches.length];
 		var distance = settings.distances[Std.int(index / launches.length)];
 		var startX = corner.wallFace - corner.dir * (10 + distance);
 		var attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], settings.gravity, corner.dir, 0,
-			launch.hold, true, settings.frames);
+			launch.hold, fastFall, settings.frames);
 		attempt.superCharge = launch.superCharge;
 		attempt.hats = settings.hats;
 		return attempt;
@@ -685,6 +757,64 @@ class ClipScanner implements CornerScan {
 		the player away instead of letting them clip in (it still counts as
 		solid for the room-to-stand checks).
 	**/
+	/** Rows below a hanging or ceiling corner searched for a floor to start on. **/
+	static inline var START_DROP:Int = 12;
+
+	/**
+		Hanging and ceiling corners facing both ways. A hanging corner: a solid
+		tile (not a mine) with air below it and air in front (both rows), and a
+		floor below the air in front to start from. A ceiling corner: an air
+		tile with a solid ceiling above and a solid wall beside it, at least two
+		tiles above a floor (room to stand under it).
+	**/
+	public static function findWallCorners(blocks:Array<LevelBlock>):Array<ClipCorner> {
+		var solid:Map<String, Bool> = new Map();
+		var mine:Map<String, Bool> = new Map();
+		for (block in blocks) {
+			if (block.isMarker() || !block.type.isSolid()) continue;
+			solid.set(block.x + "," + block.y, true);
+			if (block.type == BlockType.Mine) mine.set(block.x + "," + block.y, true);
+		}
+		inline function isSolid(x:Int, y:Int):Bool return solid.exists(x + "," + y);
+		inline function isClippable(x:Int, y:Int):Bool return isSolid(x, y) && !mine.exists(x + "," + y);
+		// The first floor below (x, y) with two rows of room above it, or -1.
+		function floorBelow(x:Int, y:Int):Int {
+			for (row in y + 1...y + START_DROP + 1) {
+				if (isSolid(x, row)) return !isSolid(x, row - 1) && !isSolid(x, row - 2) && row - 2 >= y ? row : -1;
+			}
+			return -1;
+		}
+		var corners:Array<ClipCorner> = [];
+		var seen:Map<String, Bool> = new Map();
+		for (block in blocks) {
+			if (block.isMarker() || !block.type.isSolid() || block.type == BlockType.Mine) continue;
+			var wx = block.x, wy = block.y;
+			for (dir in [1, -1]) {
+				var fx = wx - dir;
+				// Hanging: air below the block and in front of it (both rows).
+				if (!isSolid(wx, wy + 1) && !isSolid(fx, wy) && !isSolid(fx, wy + 1)) {
+					var row = floorBelow(fx, wy);
+					var key = 'h$fx,$wy,$dir';
+					if (row > 0 && !seen.exists(key)) {
+						seen.set(key, true);
+						corners.push(new ClipCorner(fx, wy, dir, null, HangingWall, row));
+					}
+				}
+				// Ceiling: air in front with a solid tile above it, the block being the wall.
+				if (!isSolid(fx, wy) && isSolid(fx, wy - 1) && isClippable(wx, wy)) {
+					var row = floorBelow(fx, wy);
+					var key = 'c$fx,$wy,$dir';
+					if (row > 0 && row - wy >= 2 && !seen.exists(key)) {
+						seen.set(key, true);
+						corners.push(new ClipCorner(fx, wy, dir, null, CeilingWall, row));
+					}
+				}
+			}
+		}
+		corners.sort((a, b) -> a.y != b.y ? a.y - b.y : a.x - b.x);
+		return corners;
+	}
+
 	public static function findCorners(blocks:Array<LevelBlock>, dir:Int):Array<ClipCorner> {
 		var solid:Map<String, Bool> = new Map();
 		var mine:Map<String, Bool> = new Map();

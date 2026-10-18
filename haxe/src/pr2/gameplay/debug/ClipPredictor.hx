@@ -1,6 +1,7 @@
 package pr2.gameplay.debug;
 
 import pr2.gameplay.debug.ClipScanner.ClipCorner;
+import pr2.gameplay.debug.ClipScanner.CornerKind;
 import pr2.gameplay.debug.ClipScanner.ClipPortal;
 import pr2.gameplay.debug.ClipScanner.ClipScanSettings;
 import pr2.gameplay.debug.ClipSimulator.ClipArea;
@@ -78,6 +79,7 @@ class ClipPredictor implements CornerScan {
 		var seen = ClipSimulator.layoutFor(blocks, settings.courseRotation);
 		for (b in seen) if (!b.isMarker() && b.type.isSolid()) solid.set(key(b.x, b.y), true);
 		corners = ClipScanner.findCorners(seen, 1).concat(ClipScanner.findCorners(seen, -1));
+		if (settings.wallClips) corners = corners.concat(ClipScanner.findWallCorners(seen));
 		// Mine spots have no landing to predict; they go straight to Stage 1's mine moves.
 		if (settings.mines && settings.predictFallback) corners = corners.concat(ClipScanner.findMineSpots(seen));
 		var ox = settings.originX, oy = settings.originY;
@@ -268,6 +270,7 @@ class ClipPredictor implements CornerScan {
 		launch.path = path.xs;
 		launch.pathY = path.ys;
 		launch.hits = [];
+		launch.hangHits = [];
 		var xs = path.xs, ys = path.ys;
 		for (f in 1...xs.length) {
 			var x0 = (xs[f - 1] - startX) * dir, x1 = (xs[f] - startX) * dir;
@@ -280,6 +283,17 @@ class ClipPredictor implements CornerScan {
 			for (k in kMin...kMax + 1) {
 				if (k * t <= y0 || k < -MAX_RISE_ROWS || k > MAX_DROP_ROWS) continue;
 				launch.hits.push(new PredictHit(f, k, lo, hi));
+			}
+			// Hanging corners: the feet 10-15 px below a block's bottom edge as the
+			// body midpoint crosses into its column. If the wall check (10 px above
+			// the feet) was still at the block's height the frame before, the
+			// leading edge must not have reached it yet.
+			var bottom = Math.ceil((y1 - 15) / t) * t;
+			if (bottom < y1 - 10 && bottom > y1 - 15) {
+				var n = Std.int(bottom / t);
+				var hangLo = x1 - 30;
+				if (y0 - 10 < bottom) hangLo = Math.max(hangLo, x0 + 10);
+				if (x1 > hangLo && n >= -MAX_RISE_ROWS && n <= MAX_DROP_ROWS) launch.hangHits.push(new PredictHit(f, n, hangLo, x1));
 			}
 		}
 	}
@@ -316,7 +330,11 @@ class ClipPredictor implements CornerScan {
 
 	/** Start spots for `corner`: every hit of every flown launch facing its wall, at spots the player can stand on. **/
 	function candidatesFor(corner:ClipCorner):Array<ClipAttempt> {
+		// Ceilings meeting walls have no landing to predict: Stage 1's run-ups try them.
+		if (corner.kind == CeilingWall) return [];
+		var hanging = corner.kind == HangingWall;
 		var t = ClipSimulator.TILE;
+		// The row whose top the hit is measured to: the floor, or a hanging block's bottom edge.
 		var floorRow = corner.y + 1;
 		var face = corner.wallFace;
 		var list:Array<ClipAttempt> = [];
@@ -324,7 +342,7 @@ class ClipPredictor implements CornerScan {
 		for (launch in flown) {
 			if (launch.attempt.dir != corner.dir || launch.hits == null) continue;
 			if (launch.needsTiming) continue;
-			for (hit in launch.hits) {
+			for (hit in (hanging ? launch.hangHits : launch.hits)) {
 				var row = floorRow - hit.k;
 				// Start x window (the feet): face - hi .. face - lo (mirrored facing left).
 				var a = corner.dir == 1 ? face - hit.hi : face + hit.lo;
@@ -362,7 +380,9 @@ class ClipPredictor implements CornerScan {
 
 	function nearCorner(corner:ClipCorner, x:Float, y:Float):Bool {
 		var tx = ClipSimulator.tileOf(x), ty = ClipSimulator.tileOf(y - 1);
-		return Math.abs(tx - corner.wallTileX) <= NEAR_TILES && Math.abs(ty - (corner.y + 1)) <= NEAR_TILES;
+		// A hanging corner's clip is in the block itself (the row of the corner).
+		var row = corner.kind == HangingWall ? corner.y : corner.y + 1;
+		return Math.abs(tx - corner.wallTileX) <= NEAR_TILES && Math.abs(ty - row) <= NEAR_TILES;
 	}
 
 	function areaFor(corner:ClipCorner, attempt:ClipAttempt):ClipArea {
@@ -392,6 +412,8 @@ class PredictLaunch {
 	public var path:Null<Array<Float>> = null;
 	public var pathY:Null<Array<Float>> = null;
 	public var hits:Null<Array<PredictHit>> = null;
+	/** Frames that would enter a hanging corner: `k` is then the block bottom's row offset from the start floor. **/
+	public var hangHits:Array<PredictHit> = [];
 
 	public function new(attempt:ClipAttempt, item:Null<Int>, label:String, needsTiming:Bool = false) {
 		id = nextId++;
