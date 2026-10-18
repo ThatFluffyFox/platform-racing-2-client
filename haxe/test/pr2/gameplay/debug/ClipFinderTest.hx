@@ -69,7 +69,8 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteTurnsTheCourseWithARotateBlock", testRouteTurnsTheCourseWithARotateBlock);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testItemBlockRollsAreRepeatable", testItemBlockRollsAreRepeatable);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteUsesTheHeldItem", testRouteUsesTheHeldItem);
-		pr2.DeterministicTestMode.runTest("ClipFinderTest.testWaterGivesTimeToSinkAndSwimMoves", testWaterGivesTimeToSinkAndSwimMoves);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSwimmingIsASpotWithSwimMoves", testSwimmingIsASpotWithSwimMoves);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testBottomlessPoolStartsInTheWater", testBottomlessPoolStartsInTheWater);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStandingOnVanishBlockIsNotRest", testStandingOnVanishBlockIsNotRest);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteGoesThroughAVanishWall", testRouteGoesThroughAVanishWall);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testNoRouteSaysWhy", testNoRouteSaysWhy);
@@ -637,17 +638,32 @@ class ClipFinderTest {
 		assertTrue(route.steps[0].indexOf("Jet Pack") > 0, 'using the jetpack: ${route.steps}');
 	}
 
-	private static function testWaterGivesTimeToSinkAndSwimMoves():Void {
-		// A pool 14 tiles deep: sinking to the bottom takes longer than the usual settle time.
+	private static function testSwimmingIsASpotWithSwimMoves():Void {
+		// A pool 14 tiles deep: the player doesn't have to sink to the bottom first.
 		var blocks = boxRoom(9, 0);
 		for (c in 1...8) for (r in 3...17) blocks.push(new LevelBlock(c, r, BlockType.Water));
 		var settings = roomRoute(105, 150, 8, 1);
 		settings.normalMoves = false;
 		var planner = new ClipRoutePlanner(blocks, settings);
 		var start = planner.open[0];
-		assertEquals(16, start.tileY, "the start sinks to the bottom of the pool");
-		assertTrue(start.inWater, "and is in the water there");
+		assertTrue(start.inWater, "the start is a spot in the water");
+		assertTrue(start.tileY < 16, 'swimming counts as a spot before reaching the bottom (row ${start.tileY})');
 		assertTrue(planner.movesFrom(start).filter(m -> m.name.indexOf("swim up") == 0).length > 0, "so swim moves are tried");
+		while (!planner.done) planner.step(50);
+		assertTrue(planner.route != null && planner.route.steps[0].indexOf("swim") == 0, 'and swimming reaches the top corner: ${planner.route == null ? [] : planner.route.steps}');
+	}
+
+	private static function testBottomlessPoolStartsInTheWater():Void {
+		// Water with nothing under it (like razor blade's start): sinking out of the
+		// bottom drops the player off the map and back into the water, forever.
+		var blocks:Array<LevelBlock> = [];
+		for (c in 0...12) for (r in 15...18) blocks.push(new LevelBlock(c, r, c < 6 ? BlockType.Water : BlockType.Basic));
+		var planner = new ClipRoutePlanner(blocks, roomRoute(75, 14 * 30, 9, 14));
+		var start = planner.open[0];
+		assertTrue(start.inWater, 'the start is a spot in the water (${start.key})');
+		assertTrue(start.tileY >= 15 && start.tileY <= 17, 'inside the pool, not below the level (row ${start.tileY})');
+		while (!planner.done) planner.step(50);
+		assertTrue(planner.route != null, 'and the block beside the pool is reached (${planner.rejectionSummary()})');
 	}
 
 	private static function testStandingOnVanishBlockIsNotRest():Void {

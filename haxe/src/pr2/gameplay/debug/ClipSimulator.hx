@@ -62,23 +62,22 @@ class ClipSimulator {
 	**/
 	public static function preparePlayer(area:ClipArea, level:Level, startX:Float, startY:Float, speed:Float, accel:Float, jump:Float,
 			gravity:Float, hats:Null<ClipHats>, ?items:ClipItems):LocalPlayerController {
-		var player = new LocalPlayerController(level);
+		// Our own block controller: its clock counts frames, so move blocks and
+		// freezes run the same way in every replay (the game's runs on the wall clock).
+		var blocks = new ClipBlockController(level);
+		var player = new LocalPlayerController(level, blocks);
+		blocks.startGameplay();
 		player.setStartingStats(speed, accel, jump);
 		player.setGravity(gravity);
 		if (hats != null) hats.applyTo(player);
-		// Item blocks roll with Math.random in the game; a fixed sequence here keeps
-		// every replay of a script identical (the real roll may differ).
-		var seed = ITEM_SEED;
-		player.itemRandom = function():Float {
-			seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-			return seed / 2147483648.0;
-		};
+		rollItemsFromState(player);
 		if (items != null) items.applyTo(player);
 		// Clears the constructor's grounded state, then one idle frame lets the
 		// real collision pass decide it: floor starts stand, mid-air starts fall.
 		player.resetPreRacePosition(startX, startY);
 		// The fall-off-the-map return uses the whole level's extent, not the crop's.
 		player.setMapBoundsForClipSearch(area.mapMinX, area.mapMinY, area.mapMaxX, area.mapMaxY);
+		watchAddedBlocks(player);
 		player.step(new LocalPlayerInput());
 		return player;
 	}
@@ -141,6 +140,30 @@ class ClipSimulator {
 		var body = toLevel(player.x, player.y - 15, player.courseRotation);
 		var block = level.blockAt(tileOf(body.x), tileOf(body.y));
 		return block != null && block.type.isSolid() && !player.blockController.isBlockRemoved(block);
+	}
+
+	/**
+		Item blocks roll with Math.random in the game. In a simulation the roll
+		comes from the player's own state (position, speed, the block clock), so
+		a replay of a script, or a copy of a player, always gets the same item
+		(the real game may roll a different one).
+	**/
+	public static function rollItemsFromState(player:LocalPlayerController):Void {
+		player.itemRandom = function():Float {
+			var frames = Std.isOfType(player.blockController, ClipBlockController) ? (cast player.blockController : ClipBlockController).frames : 0;
+			var h = ITEM_SEED ^ Std.int(player.x * 7) * 73856093 ^ Std.int(player.y * 7) * 19349663 ^ frames * 83492791;
+			h = (h ^ (h >>> 13)) * 1274126177;
+			h = h ^ (h >>> 16);
+			return (h & 0x7fffffff) / 2147483648.0;
+		};
+	}
+
+	/** Blocks the run adds (a placed mine, a returning crumble) join the indexed level's loose list. **/
+	public static function watchAddedBlocks(player:LocalPlayerController):Void {
+		if (Std.isOfType(player.level, ClipLevel)) {
+			var indexed:ClipLevel = cast player.level;
+			player.blockController.onBlockAdded = indexed.blockAdded;
+		}
 	}
 
 	/**
@@ -538,7 +561,7 @@ class ClipArea {
 	public function buildLevel(gravity:Float):Level {
 		if (sharedLevel != null && sharedGravity == gravity) return sharedLevel;
 		var blocks = [for (b in template) LevelBlock.fromWorldPixels(b.code, b.worldX, b.worldY, b.options)];
-		var level = new Level("clip-search", "Clip Search", maxTileX - minTileX + 1, maxTileY - minTileY + 1, ClipSimulator.TILE, gravity,
+		var level = new ClipLevel("clip-search", "Clip Search", maxTileX - minTileX + 1, maxTileY - minTileY + 1, ClipSimulator.TILE, gravity,
 			new StatDefaults(50, 1, 3), startTile, startTile, blocks, minTileX, minTileY);
 		if (allStatic) {
 			sharedLevel = level;
@@ -574,5 +597,141 @@ class ClipArea {
 			case Basic | Ice | Start | Water | ArrowUp | ArrowDown | ArrowLeft | ArrowRight: true;
 			default: false;
 		}
+	}
+}
+
+/**
+	A simulation-only Level with a tile index, so `blockAt` doesn't scan every
+	block (Level.blockAt is a linear scan; a big simulated area makes each
+	frame slow). It answers exactly as the scan does: blocks that can change
+	tile (push and move blocks) and blocks added during the run are kept in a
+	short list that is still scanned, removed blocks are skipped (they lose
+	collisionActive), and if two blocks match, the later one in `blocks` wins,
+	like the scan from the end.
+**/
+class ClipLevel extends Level {
+	final index:Map<Int, LevelBlock> = new Map();
+	final loose:Array<LevelBlock> = [];
+
+	public function new(id:String, name:String, widthTiles:Int, heightTiles:Int, tileSize:Int, gravity:Float, stats:StatDefaults,
+			playerStart:TilePosition, finish:TilePosition, blocks:Array<LevelBlock>, minTileX:Int, minTileY:Int) {
+		super(id, name, widthTiles, heightTiles, tileSize, gravity, stats, playerStart, finish, blocks, minTileX, minTileY);
+		for (block in blocks) {
+			if (block.isMarker() || !block.collisionActive) continue;
+			if (canMove(block.type)) {
+				loose.push(block);
+			} else {
+				index.set(key(block.x, block.y), block);
+			}
+		}
+	}
+
+	static inline function key(x:Int, y:Int):Int return (x & 0xffff) << 16 | (y & 0xffff);
+
+	static function canMove(type:BlockType):Bool {
+		return type == BlockType.Push || type == BlockType.Move;
+	}
+
+	public function blockAdded(block:LevelBlock):Void {
+		if (!block.isMarker()) loose.push(block);
+	}
+
+	override public function blockAt(x:Int, y:Int):Null<LevelBlock> {
+		var found = index.get(key(x, y));
+		if (found != null && !(found.collisionActive && found.x == x && found.y == y)) found = null;
+		for (block in loose) {
+			if (block.collisionActive && block.x == x && block.y == y) {
+				if (found == null || blocks.indexOf(block) > blocks.indexOf(found)) found = block;
+			}
+		}
+		return found;
+	}
+}
+
+/** Simulation block controller whose clock counts frames (30 a second) instead of reading the wall clock. **/
+class ClipBlockController extends BlockController {
+	public var frames:Int = 0;
+
+	public function new(level:Level) {
+		super(level);
+		useFrameClock(this);
+	}
+
+	/** (Re)points the clock at this controller's own frame count (also after a copy). **/
+	public static function useFrameClock(controller:ClipBlockController):Void {
+		Reflect.setField(controller, "clock", function():Float return controller.frames * 1000 / pr2.Constants.SIMULATION_FRAME_RATE);
+	}
+
+	override public function update():Void {
+		frames++;
+		super.update();
+	}
+}
+
+/**
+	Copies a simulated player with everything it owns (its level and blocks,
+	block controller, item state), so the route planner can try many moves from
+	one spot without replaying the route from the start each time. Functions
+	can't be copied, so the few the simulation sets up are pointed at the copy.
+**/
+@:access(pr2.gameplay.player.LocalPlayerController)
+class ClipSnapshot {
+	public static function copy(source:LocalPlayerController):LocalPlayerController {
+		var seen = new haxe.ds.ObjectMap<Dynamic, Dynamic>();
+		var player:LocalPlayerController = deep(source, seen);
+		var blocks = player.blockController;
+		if (Std.isOfType(blocks, ClipBlockController)) ClipBlockController.useFrameClock(cast blocks);
+		ClipSimulator.rollItemsFromState(player);
+		ClipSimulator.watchAddedBlocks(player);
+		return player;
+	}
+
+	static function deep(value:Dynamic, seen:haxe.ds.ObjectMap<Dynamic, Dynamic>):Dynamic {
+		switch (Type.typeof(value)) {
+			case TNull | TInt | TFloat | TBool | TFunction | TEnum(_) | TUnknown:
+				return value;
+			case TClass(String):
+				return value;
+			default:
+		}
+		var known = seen.get(value);
+		if (known != null) return known;
+		if (Std.isOfType(value, Array)) {
+			var items:Array<Dynamic> = value;
+			var list:Array<Dynamic> = [];
+			seen.set(value, list);
+			for (item in items) list.push(deep(item, seen));
+			return list;
+		}
+		if (Std.isOfType(value, haxe.ds.StringMap)) {
+			var map:haxe.ds.StringMap<Dynamic> = value;
+			var out = new haxe.ds.StringMap<Dynamic>();
+			seen.set(value, out);
+			for (key in map.keys()) out.set(key, deep(map.get(key), seen));
+			return out;
+		}
+		if (Std.isOfType(value, haxe.ds.IntMap)) {
+			var map:haxe.ds.IntMap<Dynamic> = value;
+			var out = new haxe.ds.IntMap<Dynamic>();
+			seen.set(value, out);
+			for (key in map.keys()) out.set(key, deep(map.get(key), seen));
+			return out;
+		}
+		if (Std.isOfType(value, haxe.ds.ObjectMap)) {
+			var map:haxe.ds.ObjectMap<Dynamic, Dynamic> = value;
+			var out = new haxe.ds.ObjectMap<Dynamic, Dynamic>();
+			seen.set(value, out);
+			for (key in map.keys()) out.set(deep(key, seen), deep(map.get(key), seen));
+			return out;
+		}
+		var cls = Type.getClass(value);
+		var copy:Dynamic = cls == null ? {} : Type.createEmptyInstance(cls);
+		seen.set(value, copy);
+		for (field in Reflect.fields(value)) {
+			// Haxe/JS caches bound methods per object; a copy must bind its own.
+			if (field == "hx__closures__" || field == "__id__") continue;
+			Reflect.setField(copy, field, deep(Reflect.field(value, field), seen));
+		}
+		return copy;
 	}
 }

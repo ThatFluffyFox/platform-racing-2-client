@@ -41,6 +41,12 @@ class RotationMath {
 	}
 
 	private static function as3Int(value:Float):Int {
+		// Fast path: inside the int range, AS3 int() is truncation toward zero,
+		// which is what the wrap below works out too (same result, far cheaper;
+		// this runs for every tile lookup).
+		if (value > -2147483648.0 && value < 2147483648.0) {
+			return value < 0 ? Std.int(Math.ceil(value)) : Std.int(Math.floor(value));
+		}
 		if (!Math.isFinite(value) || value == 0) {
 			return 0;
 		}

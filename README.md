@@ -425,13 +425,27 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     into the floor. That way a blast can launch you onto a ledge, or even
     into a clip. Steps that set off a mine say "(hits a mine)". Mines already
     blown up in the race (or placed with the mine item) are taken as they are
-    when the search starts. Each step is replayed from the start in the real
-    physics, so the finished route is one input script that plays back
-    exactly. The route becomes the one clip in the list: the ghost plays it,
-    the info text lists its steps, and **Replay on me** runs it on you. It
-    gives up after 300 spots or 8 steps; then the info text says why moves
-    were dropped (back to known spots, never settled, sent back or fell out,
-    stuck in blocks, could not line up).
+    when the search starts. The route becomes the one clip in the list: the
+    ghost plays it, the info text lists its steps, and **Replay on me** runs
+    it on you. It gives up after 3000 spots or 60 steps; then the info text
+    says why moves were dropped (back to known spots, never settled, sent
+    back or fell out, stuck in blocks, could not line up).
+
+    How it searches big levels:
+    - It heads for the target: each spot is ranked by what it took to get
+      there plus how far it still is from the target, measured through the
+      level's open tiles (blocks that can be cleared, like vanish, brick,
+      crumble, mine and push, count as open but costly). So it follows
+      corridors instead of pushing into walls.
+    - Moves from a spot start from a copy of the player standing there
+      (with its level, blocks and items), not a replay of the whole route,
+      and the simulated level looks blocks up by tile. The finished route is
+      still one input script that plays back exactly from the start.
+    - Move blocks run on a frame clock in the simulation, so every replay
+      sees them move at the same moments.
+    - On level 80814 (Mario Bros remix, 545 tiles from start to finish) it
+      finds a 51-step route in under a minute (about 3 minutes in game,
+      where it only gets a slice of each frame).
 
     Other blocks and items it knows about:
     - **Rotate blocks** turn the whole course. The planner follows the
@@ -446,9 +460,10 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
       it standing, running, mid-jump and held down (the jetpack flies while
       held). Steps say "(gets Jet Pack)" or "(uses up the item)". A teleport
       (block or item) is not mistaken for being sent back.
-    - **Water:** a player sinking through water gets up to 360 frames to
-      reach the bottom before a move is dropped, and from a spot in water it
-      tries swimming up, up and to each side, sideways, and diving.
+    - **Water:** 10 frames of swimming count as a spot (a pool may have no
+      bottom: sinking out of it drops you off the map and back into the
+      water), and from a spot in water it tries swimming up, up and to each
+      side, sideways, and diving.
     - **Vanish blocks:** standing on one isn't a resting spot (it fades and
       drops you). Next to one it tries pushing into it or bumping it from
       below, waiting for it to fade, then going through before it returns.

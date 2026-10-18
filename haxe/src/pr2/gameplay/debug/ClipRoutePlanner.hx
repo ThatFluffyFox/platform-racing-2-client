@@ -30,9 +30,16 @@ class RouteSettings {
 	public var targetTileX:Int;
 	public var targetTileY:Int;
 	/** Most steps (moves) in a route. **/
-	public var maxSteps:Int = 8;
+	public var maxSteps:Int = 60;
 	/** Most standing spots explored before giving up. **/
-	public var maxSpots:Int = 300;
+	public var maxSpots:Int = 3000;
+	/**
+		How strongly the search heads for the target: a spot's priority is its
+		cost plus this times its distance to the target (through open tiles) in moves (about 4 tiles
+		a move). 0 searches evenly in every direction; above 1 it trades the
+		cheapest route for finding one sooner in big levels.
+	**/
+	public var targetPull:Float = 1.5;
 	/** A step that goes through a block costs this many normal steps, so clips are only used when they pay off. **/
 	public var clipCost:Int = 4;
 	/** Clips are only tried toward a wall within this many tiles (negative = no clip moves). **/
@@ -100,7 +107,10 @@ class RouteSpot {
 		this.state = state;
 	}
 
-	/** One spot per tile, course rotation, number of mines gone and item held. **/
+	/** Order in the search: cost so far plus the pull toward the target. **/
+	public var priority:Float = 0;
+
+	/** One spot per tile, course rotation and item held. **/
 	public var key(get, never):String;
 	inline function get_key():String return state.restKey();
 
@@ -176,8 +186,13 @@ class RouteSim {
 
 	public function new() {}
 
+	/**
+		One spot per tile, course rotation and item. Mines blown up on the way
+		aren't part of it: levels with hundreds of mines would otherwise keep a
+		copy of every tile per count (the first, cheapest way there is kept).
+	**/
 	public function restKey():String {
-		return restTileX + "," + restTileY + "," + restRotation + "," + minesHit + "," + (restItem == null ? "-" : Std.string(restItem));
+		return restTileX + "," + restTileY + "," + restRotation + "," + (restItem == null ? "-" : Std.string(restItem));
 	}
 
 	/** What the move changed, for its step name: mines, item, course rotation. **/
@@ -215,29 +230,29 @@ class RouteSim {
 	that hit mines by chance, the planner tries mine moves at the nearest
 	mines: walk to a set distance from the mine, stop, then walk, hop or jump
 	into it (or jump up into one overhead, or step onto one in the floor), so
-	the knockback can launch the player somewhere, even into a clip. A spot is
-	kept per tile and per number of mines gone.
+	the knockback can launch the player somewhere, even into a clip.
 
 	Rotate blocks turn the whole course; positions are followed in the
 	level's own space, so a route may turn the course (and turn it back) and
 	the spot is kept per rotation too. Items: the player starts with the item
 	they hold, item blocks give items (rolled from a fixed seed so replays
 	match; the real game rolls at random), and a spot holding an item tries
-	using it (tap, while running, mid-jump, held for the jetpack). Water: the
-	player is given time to sink to rest, and swim moves are tried from spots
+	using it (tap, while running, mid-jump, held for the jetpack). Water: 10 frames
+	swimming count as a spot (a pool may have no bottom), and swim moves are tried from spots
 	in water. Vanish blocks: a player on a fading vanish block is not at rest
 	(it drops through), and next to one the planner tries touching it,
 	waiting for it to fade, then going through. After a move the keys are
 	released until the player is at rest; that spot is where the next move
-	starts. Spots are searched cheapest first (a step through a block costs
-	`clipCost`), one spot per tile. Like the other searches it works a few
+	starts. Spots are searched by cost (a step through a block costs
+	`clipCost`) plus a pull toward the target (`targetPull`, weighted A*), so
+	the search heads for far targets instead of filling the whole level; one
+	spot per tile, course rotation and item. Like the other searches it works a few
 	simulations at a time (`step`).
 **/
+@:access(pr2.gameplay.player.LocalPlayerController)
 class ClipRoutePlanner {
 	/** Idle frames allowed for the player to come to rest after a move. **/
 	static inline var SETTLE_FRAMES:Int = 90;
-	/** In water the player sinks slowly (about 3 px a frame), so it gets longer to reach the bottom. **/
-	static inline var WATER_SETTLE_FRAMES:Int = 360;
 	/** A jump this big between frames is the game returning the player to a safe spot. **/
 	static inline var RESPAWN_JUMP:Float = 60;
 	/** Most frames a clip move may take to walk to its pixel and play its recipe. **/
@@ -275,6 +290,8 @@ class ClipRoutePlanner {
 	public var done(default, null):Bool = false;
 
 	final area:ClipArea;
+	/** Distance to the target through the level's open tiles (guides the search around walls). **/
+	final field:TargetField;
 	/** Every mine in the level (tile positions). **/
 	final mines:Array<LevelBlock>;
 	/** Every vanish block in the level. **/
@@ -293,6 +310,7 @@ class ClipRoutePlanner {
 		corners = ClipScanner.findCorners(blocks, 1).concat(ClipScanner.findCorners(blocks, -1));
 		mines = [for (block in blocks) if (!block.isMarker() && block.type == BlockType.Mine) block];
 		vanishes = [for (block in blocks) if (!block.isMarker() && block.type == BlockType.Vanish) block];
+		field = new TargetField(blocks, settings.targetTileX, settings.targetTileY);
 		area = ClipArea.around(blocks, settings.startX, settings.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP, ClipFinder.AREA_DOWN);
 		// The start itself: simulate standing still, in case the target is already touched.
 		var start = simulate([], 0, false);
@@ -301,7 +319,7 @@ class ClipRoutePlanner {
 			done = true;
 			return;
 		}
-		open.push(new RouteSpot([for (_ in 0...start.idleFrames) new LocalPlayerInput()], [], 0, 0, start));
+		insert(new RouteSpot([for (_ in 0...start.idleFrames) new LocalPlayerInput()], [], 0, 0, start));
 	}
 
 	/** Runs simulations until `maxRuns` have run or `deadline()` says time is up. Returns runs made. **/
@@ -354,7 +372,7 @@ class ClipRoutePlanner {
 
 	function tryMove(spot:RouteSpot, move:RouteMove):Void {
 		var script = spot.script.concat(move.inputs);
-		finishMove(spot, move.name, script, simulate(script, spot.script.length, false));
+		finishMove(spot, move.name, script, simulate(script, spot.script.length, false, null, true));
 	}
 
 	/** Records what a move did: the route if it reached the target, else the spot it came to rest on. **/
@@ -393,10 +411,18 @@ class ClipRoutePlanner {
 		insert(new RouteSpot(rested, spot.steps.concat([stepName + landed]), clips, cost, sim));
 	}
 
-	/** Keeps `open` sorted by cost (then fewer steps), so the cheapest spot is expanded next. **/
+	/** About how many tiles one move covers, for the distance part of a spot's priority. **/
+	static inline var TILES_PER_MOVE:Float = 4;
+
+	/**
+		Keeps `open` sorted by priority (then fewer steps), so the most
+		promising spot is expanded next: cost so far plus `targetPull` times
+		the moves still needed at about 4 tiles a move (weighted A*).
+	**/
 	function insert(spot:RouteSpot):Void {
+		spot.priority = spot.cost + settings.targetPull * field.distance(spot.tileX, spot.tileY) / TILES_PER_MOVE;
 		var i = open.length;
-		while (i > 0 && (open[i - 1].cost > spot.cost || (open[i - 1].cost == spot.cost && open[i - 1].steps.length > spot.steps.length))) i--;
+		while (i > 0 && (open[i - 1].priority > spot.priority || (open[i - 1].priority == spot.priority && open[i - 1].steps.length > spot.steps.length))) i--;
 		open.insert(i, spot);
 	}
 
@@ -407,34 +433,78 @@ class ClipRoutePlanner {
 		from `checkFrom` on. The controller's inputs are returned in
 		`policyInputs`, so the route script reproduces the run exactly.
 	**/
-	public function simulate(script:Array<LocalPlayerInput>, checkFrom:Int, record:Bool, ?makePolicy:Void->RoutePolicy):RouteSim {
+	public function simulate(script:Array<LocalPlayerInput>, checkFrom:Int, record:Bool, ?makePolicy:Void->RoutePolicy, fromSpot:Bool = false):RouteSim {
 		simulations++;
 		while (true) {
-			var sim = simulateOnce(script, checkFrom, record, makePolicy == null ? null : makePolicy());
+			// A move from the spot being expanded starts from a copy of the player
+			// standing there, instead of replaying the whole route from the start.
+			var from = fromSpot && !record ? spotBase(script, checkFrom) : null;
+			var sim = simulateOnce(script, checkFrom, record, makePolicy == null ? null : makePolicy(), from);
 			if (sim != null) return sim;
+			// The area grew: copies of the old area are stale.
+			base = null;
 		}
 	}
 
-	function simulateOnce(script:Array<LocalPlayerInput>, checkFrom:Int, record:Bool, policy:Null<RoutePolicy>):Null<RouteSim> {
+	/** The player standing on the spot being expanded (built once per spot by replaying its script). **/
+	var base:Null<SpotBase> = null;
+
+	function spotBase(script:Array<LocalPlayerInput>, frames:Int):Null<SpotBase> {
+		var b = base;
+		if (b != null && b.frame == frames && b.script == current) return b;
+		while (true) {
+			var s = settings;
+			var level = area.buildLevel(s.gravity);
+			var player = ClipSimulator.preparePlayer(area, level, s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity, s.hats, s.items);
+			var minesAtStart = countMines(level);
+			var grew = false;
+			for (frame in 0...frames) {
+				player.step(script[frame]);
+				var feet = ClipSimulator.toLevel(player.x, player.y, player.courseRotation);
+				if (!area.containsPixel(feet.x, feet.y)) {
+					if (area.growToInclude(feet.x, feet.y)) {
+						grew = true;
+						break;
+					}
+				}
+			}
+			if (grew) continue;
+			base = new SpotBase(player, frames, minesAtStart, current);
+			return base;
+		}
+	}
+
+	function simulateOnce(script:Array<LocalPlayerInput>, checkFrom:Int, record:Bool, policy:Null<RoutePolicy>, ?from:SpotBase):Null<RouteSim> {
 		var s = settings;
-		var level = area.buildLevel(s.gravity);
-		var player = ClipSimulator.preparePlayer(area, level, s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity, s.hats, s.items);
+		var player:LocalPlayerController;
+		var frame = 0;
+		var minesAtStart:Int;
+		if (from != null) {
+			player = ClipSimulator.ClipSnapshot.copy(from.player);
+			frame = from.frame;
+			minesAtStart = from.minesAtStart;
+		} else {
+			player = ClipSimulator.preparePlayer(area, area.buildLevel(s.gravity), s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity, s.hats,
+				s.items);
+			minesAtStart = -1;
+		}
+		var level = player.level;
 		var sim = new RouteSim();
 		if (record) sim.ghost = [GhostFrame.capture(player, ClipSimulator.bodyInSolid(level, player))];
 		// Positions are compared in the level's own space, which stays continuous when a rotate block turns the course.
 		var feet = ClipSimulator.toLevel(player.x, player.y, player.courseRotation);
 		var prevX = feet.x, prevY = feet.y;
 		var settled = 0;
-		var frame = 0;
 		var policyFrame = 0;
 		var policyDone = policy == null;
 		// Blown-up mines leave the level's block list, so counting them tells how many were hit.
-		var minesAtStart = countMines(level);
+		if (minesAtStart < 0) minesAtStart = countMines(level);
 		var minesAtCheck = minesAtStart;
 		sim.itemAtCheck = player.itemId;
 		var rotationAtCheck = player.courseRotation;
 		var lastRotation = player.courseRotation;
 		var settleLimit = SETTLE_FRAMES;
+		var swimming = 0;
 		while (true) {
 			if (frame == checkFrom) {
 				minesAtCheck = countMines(level);
@@ -498,13 +568,14 @@ class ClipRoutePlanner {
 			}
 			if (idle) {
 				sim.idleFrames++;
-				// Sinking through water takes a while: give it time to reach the bottom.
-				if (player.mode == LocalPlayerController.MODE_WATER) settleLimit = WATER_SETTLE_FRAMES;
 				var still = player.grounded && Math.abs(player.vx) < 0.5 && Math.abs(player.vy) < 1;
 				// Standing on a vanish block isn't rest: it fades and drops the player.
 				if (still && onFadingFloor(level, player)) still = false;
 				settled = still ? settled + 1 : 0;
-				if (settled >= 10) {
+				// Swimming counts as a spot too: water is slow and fully steerable, and a
+				// pool may have no bottom to sink to (the player would drop out of it).
+				swimming = player.mode == LocalPlayerController.MODE_WATER ? swimming + 1 : 0;
+				if (settled >= 10 || swimming >= 10) {
 					sim.atRest = true;
 					break;
 				}
@@ -736,7 +807,8 @@ class ClipRoutePlanner {
 	/** A mine move: walk to its pixel and stop, then play its inputs live (recorded into the route). **/
 	function tryApproachMove(spot:RouteSpot, move:RouteMove):Void {
 		var inputs = move.inputs;
-		var sim = simulate(spot.script, spot.script.length, false, () -> walkThen(move.approachX, MINE_APPROACH_TOLERANCE, inputs.length, (i, _) -> inputs[i]));
+		var sim = simulate(spot.script, spot.script.length, false, () -> walkThen(move.approachX, MINE_APPROACH_TOLERANCE, inputs.length, (i, _) -> inputs[i]),
+			true);
 		if (sim.policyFailed) {
 			rejectedApproach++;
 			return;
@@ -814,7 +886,7 @@ class ClipRoutePlanner {
 		}
 		var recipe = recipes.get(key);
 		if (recipe == null) return true;
-		var sim = simulate(spot.script, spot.script.length, false, () -> walkThenRecipe(recipe));
+		var sim = simulate(spot.script, spot.script.length, false, () -> walkThenRecipe(recipe), true);
 		if (sim.policyFailed) {
 			rejectedApproach++;
 			return true;
@@ -926,3 +998,161 @@ class ClipRoutePlanner {
 }
 
 typedef RoutePolicy = Int->LocalPlayerController->Null<LocalPlayerInput>;
+
+/** A player standing on a spot (after `frame` frames of its script), copied for each move tried from it. **/
+private class SpotBase {
+	public final player:LocalPlayerController;
+	public final frame:Int;
+	/** Mines in the level when the run started, so mines hit count from the start. **/
+	public final minesAtStart:Int;
+	/** The spot it belongs to. **/
+	public final script:Null<RouteSpot>;
+
+	public function new(player:LocalPlayerController, frame:Int, minesAtStart:Int, script:Null<RouteSpot>) {
+		this.player = player;
+		this.frame = frame;
+		this.minesAtStart = minesAtStart;
+		this.script = script;
+	}
+}
+/**
+	How far each tile is from the target, going through the level's open tiles
+	(Dijkstra over the tile grid, 8 directions). Blocks a player can get
+	through (vanish, brick, crumble, mine, push, move) count as open but cost
+	more; other solid blocks are walls. The route planner uses it so a far
+	target pulls the search along corridors instead of straight into walls.
+	Tiles it can't reach (or outside the level) fall back to straight-line
+	distance plus a penalty.
+**/
+class TargetField {
+	static inline var MARGIN:Int = 6;
+	static inline var SOFT_COST:Float = 4;
+	static inline var UNREACHABLE_PENALTY:Float = 40;
+
+	final minX:Int;
+	final minY:Int;
+	final width:Int;
+	final height:Int;
+	final targetX:Int;
+	final targetY:Int;
+	final dist:Array<Float>;
+
+	public function new(blocks:Array<LevelBlock>, targetX:Int, targetY:Int) {
+		this.targetX = targetX;
+		this.targetY = targetY;
+		var x0 = targetX, y0 = targetY, x1 = targetX, y1 = targetY;
+		for (b in blocks) {
+			if (b.x < x0) x0 = b.x;
+			if (b.y < y0) y0 = b.y;
+			if (b.x > x1) x1 = b.x;
+			if (b.y > y1) y1 = b.y;
+		}
+		minX = x0 - MARGIN;
+		minY = y0 - MARGIN;
+		width = x1 - x0 + 1 + MARGIN * 2;
+		height = y1 - y0 + 1 + MARGIN * 2;
+		// Step cost into each tile: 1 for open, SOFT_COST for blocks that can be cleared, -1 for walls.
+		var cost = [for (_ in 0...width * height) 1.0];
+		for (b in blocks) {
+			if (b.isMarker() || !b.type.isSolid()) continue;
+			var i = (b.y - minY) * width + (b.x - minX);
+			cost[i] = switch (b.type) {
+				case BlockType.Vanish | BlockType.Brick | BlockType.Crumble | BlockType.Mine | BlockType.Push | BlockType.Move: SOFT_COST;
+				default: -1;
+			};
+		}
+		dist = [for (_ in 0...width * height) Math.POSITIVE_INFINITY];
+		// Start from the target itself (it is usually solid; its open neighbours get 1).
+		var heap = new FieldHeap();
+		var start = index(targetX, targetY);
+		if (start >= 0) {
+			dist[start] = 0;
+			heap.push(start, 0);
+		}
+		var dirs = [[1, 0, 1.0], [-1, 0, 1.0], [0, 1, 1.0], [0, -1, 1.0], [1, 1, 1.42], [1, -1, 1.42], [-1, 1, 1.42], [-1, -1, 1.42]];
+		while (heap.size > 0) {
+			var at = heap.popIndex();
+			var d = heap.lastKey;
+			if (d > dist[at]) continue;
+			var ax = at % width, ay = Std.int(at / width);
+			for (dir in dirs) {
+				var nx = ax + Std.int(dir[0]), ny = ay + Std.int(dir[1]);
+				if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+				var n = ny * width + nx;
+				var step = cost[n];
+				if (step < 0) continue;
+				var nd = d + dir[2] * step;
+				if (nd < dist[n]) {
+					dist[n] = nd;
+					heap.push(n, nd);
+				}
+			}
+		}
+	}
+
+	inline function index(x:Int, y:Int):Int {
+		var gx = x - minX, gy = y - minY;
+		return gx < 0 || gy < 0 || gx >= width || gy >= height ? -1 : gy * width + gx;
+	}
+
+	/** Tiles to the target through open space (straight-line plus a penalty where the field doesn't reach). **/
+	public function distance(x:Int, y:Int):Float {
+		var i = index(x, y);
+		var d = i < 0 ? Math.POSITIVE_INFINITY : dist[i];
+		if (d != Math.POSITIVE_INFINITY) return d;
+		var dx = x - targetX, dy = y - targetY;
+		return Math.sqrt(dx * dx + dy * dy) + UNREACHABLE_PENALTY;
+	}
+}
+
+/** A small binary min-heap of (tile index, distance) for TargetField. **/
+private class FieldHeap {
+	final keys:Array<Float> = [];
+	final items:Array<Int> = [];
+	public var lastKey(default, null):Float = 0;
+
+	public function new() {}
+
+	public var size(get, never):Int;
+	inline function get_size():Int return items.length;
+
+	public function push(item:Int, key:Float):Void {
+		var i = items.length;
+		items.push(item);
+		keys.push(key);
+		while (i > 0) {
+			var parent = (i - 1) >> 1;
+			if (keys[parent] <= keys[i]) break;
+			swap(i, parent);
+			i = parent;
+		}
+	}
+
+	public function popIndex():Int {
+		var top = items[0];
+		lastKey = keys[0];
+		var last = items.length - 1;
+		swap(0, last);
+		items.pop();
+		keys.pop();
+		var i = 0;
+		while (true) {
+			var l = i * 2 + 1, r = l + 1, m = i;
+			if (l < items.length && keys[l] < keys[m]) m = l;
+			if (r < items.length && keys[r] < keys[m]) m = r;
+			if (m == i) break;
+			swap(i, m);
+			i = m;
+		}
+		return top;
+	}
+
+	inline function swap(a:Int, b:Int):Void {
+		var k = keys[a];
+		keys[a] = keys[b];
+		keys[b] = k;
+		var t = items[a];
+		items[a] = items[b];
+		items[b] = t;
+	}
+}
