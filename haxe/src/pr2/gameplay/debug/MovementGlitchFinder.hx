@@ -16,13 +16,16 @@ enum GlitchKind {
 	TooHigh;
 	/** Moves faster sideways than any move can on open ground. **/
 	TooFast;
+	/** Gains height while only walking (no jump, super jump or item), off no block meant to lift it. **/
+	ClimbWithoutJump;
 	/**
-		Passes part of the body through the edge of a block without being
-		pushed out: the game only checks the sides 10 px above the feet and the
-		head at the middle, so a block at head height beside the player (an
-		overhang's edge, a floating block) can be passed through.
+		Moved further in one frame than its speed carries it (more than 12 px
+		past both frames' speed): the collision code snapped the player
+		somewhere (not a respawn, teleport or course turn).
 	**/
-	ThroughEdge;
+	CollisionSnap;
+	/** Stays in the air without rising or falling for 8 frames or more (not swimming, flying a jetpack or with the cowboy hat). **/
+	Hover;
 }
 
 /** One movement glitch: the moves that do it, the recorded run, and what happened. **/
@@ -52,7 +55,9 @@ class MovementGlitch {
 		var what = switch (kind) {
 			case TooHigh: 'jumps ${Math.round(excess)} px higher than anything can on open ground';
 			case TooFast: 'moves ${Math.round(excess * 10) / 10} px/frame faster than anything can on open ground';
-			case ThroughEdge: 'passes ${Math.round(excess)} px into the edge of a block without being pushed out';
+			case ClimbWithoutJump: 'climbs ${Math.round(excess)} px without jumping';
+			case CollisionSnap: 'is snapped ${Math.round(excess)} px further than its speed carries it in one frame';
+			case Hover: 'hangs in the air for ${Math.round(excess)} frames';
 		}
 		return '$what (frame ${frame + 1}, at tile $tileX,$tileY${cause != "" ? ", " + cause : ""})';
 	}
@@ -61,10 +66,12 @@ class MovementGlitch {
 /**
 	Stage 3 of the Clip Finder: movement glitches. Every move is first played on
 	open ground (a long flat floor) with your stats, gravity, hats and item, so
-	the finder knows how high and how fast that move normally goes. Then it is
-	played from spots you can stand on in the level, nearest first; a run that
-	rises higher, moves faster, or ends up standing higher than the open-ground
-	run of the same move is a glitch. Runs boosted by blocks that are meant to
+	the finder knows how high and how fast anything can go there. Then moves
+	are played from spots you can stand on in the level, nearest first; a run
+	that jumps higher or moves faster than that, climbs while only walking,
+	is snapped further in one frame than its speed, or hangs in the air is a
+	glitch. Head clips into block edges and clips through blocks are not (the
+	clip stages cover those). Runs boosted by blocks that are meant to
 	(arrows, mines, teleports, item blocks, rotate blocks, water) are left out,
 	so what is listed comes from the level's shapes: bumps, corners, block
 	edges, crouching and so on. Each glitch (one per spot, kind and block)
@@ -72,6 +79,7 @@ class MovementGlitch {
 **/
 @:access(pr2.gameplay.player.LocalPlayerController)
 class MovementGlitchFinder {
+	static inline var JET_PACK:Int = 6;
 	/** Frames each move is played. **/
 	public static inline var FRAMES:Int = 90;
 	/** Extra height (px) and speed (px/frame) over open ground that count as a glitch. **/
@@ -109,7 +117,8 @@ class MovementGlitchFinder {
 		inline function isSolid(x:Int, y:Int):Bool return solid.exists(x + "," + y);
 		var list = [];
 		for (b in seen) {
-			if (b.isMarker() || !b.type.isSolid() || b.type == BlockType.Mine) continue;
+			// Not on a block that moves the player itself (an arrow bounces it before the move starts).
+			if (b.isMarker() || !b.type.isSolid() || b.type == BlockType.Mine || boosts(b.type)) continue;
 			if (!isSolid(b.x, b.y - 1) && !isSolid(b.x, b.y - 2)) list.push({x: b.x, row: b.y});
 		}
 		var ox = settings.originX, oy = settings.originY;
@@ -184,6 +193,10 @@ class MovementGlitchFinder {
 			}
 			// Crouch-walk and jump out (low ceilings bump and crouch the player).
 			moves.push(new GlitchMove('crouch $side then jump', dir, [for (f in 0...FRAMES) keys(f, false, true, f >= 15 && f < 40, f < 15)]));
+			// Only walking: nothing here should lift the player.
+			moves.push(new GlitchMove('walk $side', dir, [for (f in 0...FRAMES) keys(f, false, true, false, false)], true));
+			moves.push(new GlitchMove('walk $side, turn back at frame 30', dir, [for (f in 0...FRAMES) keys(f, f >= 30, f < 30, false, false)], true));
+			moves.push(new GlitchMove('walk $side, stop at frame 20', dir, [for (f in 0...FRAMES) keys(f, false, f < 20, false, false)], true));
 			// Fast-fall after a full jump.
 			moves.push(new GlitchMove('jump $side, fast-fall', dir, [for (f in 0...FRAMES) keys(f, false, true, f < 12, f >= 12)]));
 			if (item != null) {
@@ -250,35 +263,17 @@ class MovementGlitchFinder {
 
 	function items():Null<ClipItems> return settings.heldItem == null ? null : new ClipItems(settings.heldItem);
 
-	/** Px of body inside a block's edge that counts as passing through it. **/
-	static inline var EDGE_DEPTH:Float = 10;
+	/** Px a frame's move may exceed both frames' speed before it counts as a snap, and the respawn size it stays under. **/
+	static inline var SNAP_MARGIN:Float = 12;
+	static inline var SNAP_LIMIT:Float = 200;
+	/** Frames in the air without moving up or down that count as hovering. **/
+	static inline var HOVER_FRAMES:Int = 8;
+	/** Px of height gained while only walking that counts as climbing. **/
+	static inline var CLIMB_MARGIN:Float = 8;
+	/** Frames at the start ignored while the player settles onto the floor. **/
+	static inline var SETTLE_FRAMES:Int = 3;
 	/** Super jump charges (frames of down) probed on open ground: the shortest, the longest, and between. **/
 	static final PROBE_CHARGES:Array<Int> = [0, 13, 20, 26, 30, 35, 40, 45, 50];
-
-	/**
-		How far (px) the upper body is inside a solid block beside or above it,
-		checked at the body's corners (the game itself only checks 10 px above
-		the feet at the sides and the head at the middle). 0 when clear.
-	**/
-	static function edgeDepth(player:LocalPlayerController):Float {
-		var t = ClipSimulator.TILE;
-		var level = player.level;
-		var best = 0.0;
-		// A crouching player is only about half as tall (the game shrinks the body under low blocks).
-		for (dy in (player.crouching ? [20.0] : [25.0, 40.0, 50.0])) for (side in [-1, 1]) {
-			// Walk in from the body's side toward its middle: how far is solid?
-			var depth = 0.0;
-			var px = player.x + side * 10;
-			while (depth < 10) {
-				var p = ClipSimulator.toLevel(px - side * depth, player.y - dy, player.courseRotation);
-				var block = level.blockAt(ClipSimulator.tileOf(p.x), ClipSimulator.tileOf(p.y));
-				if (block == null || !block.type.isSolid() || player.blockController.isBlockRemoved(block)) break;
-				depth += 1;
-			}
-			best = Math.max(best, depth);
-		}
-		return best;
-	}
 
 	/** Blocks that move the player on purpose: a boost from them is not a glitch. **/
 	static function boosts(type:BlockType):Bool {
@@ -304,13 +299,36 @@ class MovementGlitchFinder {
 		var boosted = false;
 		// Height is measured from the floor last stood on (a jump's height, not the climb).
 		var ground = floorY;
+		// For walking moves: the lowest floor stood on so far (climbing is measured from it).
+		var lowest = floorY;
+		var px = startX, py = floorY, pvx = 0.0, pvy = 0.0;
+		var still = 0;
+		var floats = settings.hats != null && settings.hats.cowboy || settings.heldItem == JET_PACK;
 		var glitch:Null<{kind:GlitchKind, excess:Float, frame:Int, x:Float, y:Float, cause:String}> = null;
 		var result = ClipSimulator.run(area, attempt, false, (frame:Int, input:LocalPlayerInput, player:LocalPlayerController, inSolid:Bool) -> {
 			var touched = player.touchedBlock;
 			if (touched != null && boosts(touched.type)) boosted = true;
-			// A clip (the body midpoint inside a block) is the other stages' business.
-			if (inSolid) boosted = true;
-			if (player.grounded) ground = player.y;
+			// The floor under the feet too (a step touches several blocks; the last one is remembered).
+			var under = ClipSimulator.toLevel(player.x, player.y + 1, player.courseRotation);
+			var floor = player.level.blockAt(ClipSimulator.tileOf(under.x), ClipSimulator.tileOf(under.y));
+			if (player.grounded && floor != null && boosts(floor.type)) boosted = true;
+			// A clip (the body midpoint inside a block) is the other stages' business,
+			// and a knock-back (mine, sting, zap) or a freeze moves the player on purpose.
+			if (inSolid || player.mode == LocalPlayerController.MODE_HURT || player.mode == LocalPlayerController.MODE_FROZEN_SOLID) boosted = true;
+			if (player.grounded) {
+				ground = player.y;
+				// Measured once the start has settled (the first frames place the player on the floor).
+				if (frame >= SETTLE_FRAMES) lowest = frame == SETTLE_FRAMES ? player.y : Math.max(lowest, player.y);
+			}
+			var dx = player.x - px, dy = player.y - py;
+			var pvxBefore = pvx, pvyBefore = pvy;
+			var snap = Math.max(Math.abs(dx) - Math.abs(pvx) - Math.abs(player.vx), Math.abs(dy) - Math.abs(pvy) - Math.abs(player.vy));
+			var moved = Math.sqrt(dx * dx + dy * dy);
+			still = !player.grounded && Math.abs(dy) < 0.3 && player.mode != LocalPlayerController.MODE_WATER ? still + 1 : 0;
+			px = player.x;
+			py = player.y;
+			pvx = player.vx;
+			pvy = player.vy;
 			if (glitch != null || boosted || player.courseRotation != settings.courseRotation) return;
 			var rise = ground - player.y;
 			var cause = touched == null ? "" : '${touched.type} block';
@@ -318,9 +336,14 @@ class MovementGlitchFinder {
 				glitch = {kind: TooHigh, excess: rise - maxRise, frame: frame, x: player.x, y: player.y, cause: cause};
 			} else if (Math.abs(player.vx) > maxSpeed + SPEED_MARGIN) {
 				glitch = {kind: TooFast, excess: Math.abs(player.vx) - maxSpeed, frame: frame, x: player.x, y: player.y, cause: cause};
-			} else {
-				var depth = edgeDepth(player);
-				if (depth >= EDGE_DEPTH) glitch = {kind: ThroughEdge, excess: depth, frame: frame, x: player.x, y: player.y, cause: cause};
+			} else if (move.walkOnly && frame > SETTLE_FRAMES && lowest - player.y > CLIMB_MARGIN) {
+				glitch = {kind: ClimbWithoutJump, excess: lowest - player.y, frame: frame, x: player.x, y: player.y, cause: cause};
+			} else if (snap > SNAP_MARGIN && moved < SNAP_LIMIT && frame > SETTLE_FRAMES) {
+				var way = Math.abs(dy) - Math.abs(pvyBefore) >= Math.abs(dx) - Math.abs(pvxBefore) ? (dy < 0 ? "up" : "down") : (dx < 0 ? "left" : "right");
+				// Snapped down is the head being pushed back out of a ceiling it was already in (a head clip): not counted.
+				if (way != "down") glitch = {kind: CollisionSnap, excess: snap, frame: frame, x: player.x, y: player.y, cause: way + (cause != "" ? ", " + cause : "")};
+			} else if (still >= HOVER_FRAMES && !floats) {
+				glitch = {kind: Hover, excess: still, frame: frame, x: player.x, y: player.y, cause: cause};
 			}
 		});
 		tested++;
@@ -345,10 +368,13 @@ private class GlitchMove {
 	public final inputs:Array<LocalPlayerInput>;
 	public var baseRise:Float = 0;
 	public var baseSpeed:Float = 0;
+	/** Only walks (no jump, down or item): any height gained is a glitch. **/
+	public final walkOnly:Bool;
 
-	public function new(label:String, dir:Int, inputs:Array<LocalPlayerInput>) {
+	public function new(label:String, dir:Int, inputs:Array<LocalPlayerInput>, walkOnly:Bool = false) {
 		this.label = label;
 		this.dir = dir;
 		this.inputs = inputs;
+		this.walkOnly = walkOnly;
 	}
 }

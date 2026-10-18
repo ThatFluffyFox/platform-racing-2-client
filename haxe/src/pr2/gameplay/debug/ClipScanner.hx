@@ -172,6 +172,32 @@ class ClipPortal {
 		var a = ghost[i - 1], b = ghost[i];
 		return Math.abs(b.x - a.x) > RESPAWN_JUMP || Math.abs(b.y - a.y) > RESPAWN_JUMP;
 	}
+
+	/**
+		True when a clip goes through the block: after getting into it the
+		player comes to rest outside the blocks on the far side of the block it
+		went into (and at least a tile from where it went in), without being
+		sent back to a safe spot. A head clip that pops back out, or a clip that
+		falls out of the level, does not. `clipFrame` is the run's clip frame.
+	**/
+	public static function wentThrough(ghost:Null<Array<GhostFrame>>, clipFrame:Int):Bool {
+		if (ghost == null || clipFrame < 0 || clipFrame + 1 >= ghost.length) return false;
+		// ghost[i] is the pose after frame i - 1: in the block at clipFrame + 1, before it at clipFrame.
+		var before = ghost[clipFrame], inside = ghost[clipFrame + 1];
+		var t = ClipSimulator.TILE;
+		var bx = (ClipSimulator.tileOf(inside.x) + 0.5) * t, by = (ClipSimulator.tileOf(inside.y - 15) + 0.5) * t;
+		for (i in clipFrame + 2...ghost.length) {
+			if (isRespawn(ghost, i)) return false;
+			var f = ghost[i];
+			if (f.inSolid || !f.grounded) continue;
+			// Came to rest: past the block, going the way it went in?
+			var inX = bx - before.x, inY = by - (before.y - 15);
+			var outX = f.x - bx, outY = (f.y - 15) - by;
+			var moved = Math.sqrt((f.x - before.x) * (f.x - before.x) + (f.y - before.y) * (f.y - before.y));
+			return inX * outX + inY * outY > 0 && moved > t;
+		}
+		return false;
+	}
 }
 
 class ClipScanSettings {
@@ -249,6 +275,9 @@ class ClipScanSettings {
 	public var predictRunFrames:Array<Int> = [0, 5, 10, 20, 30];
 	public var predictHolds:Array<Int> = [999, 12, 8, 4, 2];
 	public var predictCharges:Array<Int> = [20, 27, 35, 42, 50];
+	/** Frames after a super jump's release before moving (the rise spent first), and ceiling heights (tiles of air) bumped into. **/
+	public var predictMoveDelays:Array<Int> = [0, 6, 12, 20];
+	public var predictCeilings:Array<Int> = [for (h in 2...13) h];
 	/** Also scan mines: blasts from beside, from the floor and from below that drive the player into blocks. **/
 	public var mines:Bool = true;
 	/**

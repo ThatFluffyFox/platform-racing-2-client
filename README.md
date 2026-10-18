@@ -501,6 +501,13 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     clips: on level 3460484 without items it clips 102 corners to Stage 1's
     99 (24 of them predicted), in a little less time. The status says how
     many were predicted.
+    Stage 1.5 also flies super jumps that wait to move (0-20 frames after the
+    release) and the same into a ceiling: each is flown under a flat ceiling
+    2-12 tiles up and only used from spots with a ceiling exactly that high
+    above, since bumping it stops the rise there and the fall starts from
+    it. On level 102573 that finds the super jump from 340,336 into the
+    ceiling, holding right, through the pillar's corner and out near 406,338
+    (64 clips there from its flights alone, in about 10 s).
     Stage 1.5 predicts bottom-corner clips too (from the same flights: the
     frames with the feet 10-15 px below a block's bottom edge as the body
     crosses into its column) and sends ceiling corners to Stage 1's run-ups.
@@ -609,32 +616,50 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
 - A translucent ghost of your character replays the selected clip, holds for a
   moment, then resets and plays it again. **Prev/Next** switch between clips.
 
-**Stage 3: movement glitches** looks for movement the game shouldn't allow,
-not just clips. It first plays, on open ground with your stats, gravity,
-hats and item, the highest and fastest anything can go: every super jump
-charge with a jump just before, on or after the release, and your item used
-on each frame of a jump. Then at spots you can stand on near you (up to 400,
-nearest first) it plays 34 moves (run-up jumps of three heights, jumping up
-a wall, bunny hops, super jumps, crouch-jumps, fast-fall, and your item at
-three moments, each way) and lists any run that:
+**Stage 3: movement glitches** looks for movement and collision bugs, not
+clips (the other stages find those) and not head clips. It first plays, on
+open ground with your stats, gravity, hats and item, the highest and fastest
+anything can go: every super jump charge with a jump just before, on or
+after the release, and your item used on each frame of a jump. Then at spots
+you can stand on near you (up to 400, nearest first, not on arrows or other
+blocks that move you) it plays 40 moves (run-up jumps of three heights,
+jumping up a wall, bunny hops, super jumps, crouch-jumps, fast-fall, plain
+walking, and your item at three moments, each way) and lists any run that:
 
 - **jumps higher** above the floor it left than anything can on open ground,
-- **moves faster** than anything can on open ground, or
-- **passes through the edge of a block**: at least half the body's width
-  (10 px) inside a block beside or above it without being pushed out. The
-  game only checks the sides 10 px above the feet and the head at the
-  middle, so a block at head height (an overhang's edge, a hanging pillar)
-  can be passed through. Crouching uses the crouched body.
+- **moves faster** than anything can on open ground,
+- **climbs without jumping** (gains more than 8 px while only walking),
+- **is snapped** up or sideways more than 12 px further in one frame than
+  its speed carries it (the collision code moving the player: for example
+  landing at the foot of a one-block step while running puts you on top of
+  it in one frame), or
+- **hangs in the air** for 8 frames or more without rising or falling (not
+  swimming, with a jetpack or the cowboy hat; for example pinned under a low
+  ceiling while holding jump).
 
-Runs that touch blocks meant to move you (arrows, mines, teleports, item and
-stat blocks, rotate blocks, water, push and move blocks, the finish) and
-runs that clip are left out, so what is listed comes from the level's
-shapes. Each glitch (one per kind and tile) goes in the clip list with what
-it does, the moves, the ghost and Replay on me. On level 3460484 (100/45/40)
-it checks 150 spots in about 10 s and finds 28 edge passes (for example a
-small hop from the item block at 422,333 puts the head into the hanging
-pillar at 425,331); nothing there jumps higher or runs faster than open
-ground allows.
+Snaps down are left out (that is the head being pushed back out of a ceiling
+it was already in), and so are runs that clip, are hurt or frozen, or touch
+blocks meant to move you (arrows, mines, teleports, item and stat blocks,
+rotate blocks, water, push and move blocks, the finish). Each glitch (one per
+kind and tile) goes in the clip list with what it does, the moves, the ghost
+and Replay on me. On level 3460484 (100/45/40) it checks 300 spots in about
+16 s and finds 25 step snaps and one hover.
+
+**What counts as a clip:** in the map scans (Stages 1 and 1.5) and in a
+search without a target, a clip only counts when it goes through: after
+getting into the blocks you come to rest outside them on the far side of
+the block you went into, at least a tile from where you went in, without
+being sent back to a safe spot. A head clip that pops back out, or one that
+falls out of the level, isn't listed. Aiming at a target block, any clip
+into it counts, and Stage 2 routes use whatever clip gets them there.
+
+**Hats:** every search uses the hats you wear: moon (lower gravity),
+propeller (holding jump slows the fall), cowboy (moves like swimming in the
+air, and its speed), santa (freezes blocks), crown, party, jellyfish, top
+hat (vanish blocks) and cheese (crumble force). A speed burst running when
+you start (the Jump Start or Artifact hat, or the item) carries into the
+simulation. With the Artifact hat's swapped controls, **Replay on me**
+swaps the keys back, so the replay moves as simulated.
 
 **Turned courses:** every stage works while the course is turned by a
 rotate block. Corners, starts and spots are found as you see the course

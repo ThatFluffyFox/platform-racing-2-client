@@ -971,6 +971,12 @@ class Course extends Sprite {
 			// Debug Clip Finder "Replay on me" drives the player instead of the keyboard.
 			var replayed = clipFinder == null ? null : clipFinder.replayInput(beforeStep.grounded);
 			var playerInput = replayed != null ? replayed : input.copy();
+			if (replayed != null && player.controlsReversed()) {
+				// The Artifact hat swaps left and right in LocalCharacter.step; swap first so the replay moves as simulated.
+				var swapped = playerInput.left;
+				playerInput.left = playerInput.right;
+				playerInput.right = swapped;
+			}
 			if ((snakeManager != null && snakeManager.localActive()) || (input.item && beforeStep.itemId == Items.SNAKE)) {
 				playerInput.left = false;
 				playerInput.right = false;

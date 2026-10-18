@@ -402,6 +402,7 @@ class ClipAttempt {
 	vanish-block passing, propeller glide, ...). The moon hat's lower gravity is
 	carried in the attempt's gravity instead.
 **/
+@:access(pr2.gameplay.player.LocalPlayerController)
 class ClipHats {
 	public var propeller:Bool = false;
 	public var cowboy:Bool = false;
@@ -411,6 +412,12 @@ class ClipHats {
 	public var jellyfish:Bool = false;
 	public var top:Bool = false;
 	public var cheese:Bool = false;
+	/**
+		Frames left of a speed burst running now: the Jump Start hat (2 s at the
+		start), the Artifact hat (30 s) or a Speed Burst item. The simulated
+		player starts with it too.
+	**/
+	public var burstFrames:Int = 0;
 
 	public function new() {}
 
@@ -424,6 +431,7 @@ class ClipHats {
 		hats.jellyfish = controller.jellyfishHatActive;
 		hats.top = controller.topHatActive;
 		hats.cheese = controller.cheeseHatActive;
+		hats.burstFrames = controller.speedBurstFramesRemaining;
 		return hats;
 	}
 
@@ -438,6 +446,7 @@ class ClipHats {
 		player.cheeseHatActive = cheese;
 		if (cowboy) player.ensureCowboyStats();
 		if (santa) player.ensureSantaStats();
+		if (burstFrames > 0) player.activateSpeedBurst(burstFrames);
 	}
 
 	public function names():Array<String> {
@@ -448,6 +457,7 @@ class ClipHats {
 		if (crown) out.push("crown");
 		if (party) out.push("party");
 		if (jellyfish) out.push("jellyfish");
+		if (burstFrames > 0) out.push('speed burst ${Math.round(burstFrames / pr2.Constants.SIMULATION_FRAME_RATE * 10) / 10}s');
 		if (top) out.push("top hat");
 		if (cheese) out.push("cheese");
 		return out;

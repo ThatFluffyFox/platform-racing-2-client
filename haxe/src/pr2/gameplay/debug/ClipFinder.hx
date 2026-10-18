@@ -155,10 +155,11 @@ class ClipFinder {
 			}
 			tested++;
 			if (result.clipped) {
+				// Aiming at a block, any clip into it counts; otherwise only one that goes through the block.
+				var run = settings.targetTileX != null ? ClipSimulator.run(area, attempt, true) : ClipScanner.follow(area, attempt, 150);
+				if (settings.targetTileX == null && !ClipScanner.ClipPortal.wentThrough(run.ghost, run.clipFrame)) continue;
 				clipCount++;
-				if (clips.length < settings.maxStoredClips) {
-					clips.push(new FoundClip(attempt, ClipSimulator.run(area, attempt, true)));
-				}
+				if (clips.length < settings.maxStoredClips) clips.push(new FoundClip(attempt, run));
 			}
 		}
 		return runs;

@@ -217,6 +217,28 @@ class ClipPredictor implements CornerScan {
 					list.push(new PredictLaunch(superJump(charge, standing, ff), null,
 						'super jump (charge $charge${standing ? ", standing until the release" : ""})${ff ? ", fast-fall" : ""}'));
 				}
+				// Super jump straight up, then move a while after the release (the rise is spent first).
+				var bumpCharges = [for (c in charges) if (c == 20 || c == 35 || c == 50) c];
+				if (bumpCharges.length == 0) bumpCharges = charges;
+				for (charge in bumpCharges) for (delay in s.predictMoveDelays) for (ff in [true, false]) {
+					if (delay == 0) continue;
+					var a = superJump(charge, true, ff);
+					a.moveStart = charge + delay;
+					list.push(new PredictLaunch(a, null, 'super jump (charge $charge), move $delay frames after the release${ff ? ", fast-fall" : ""}'));
+				}
+				// The same into a ceiling: bumping it stops the rise there, and the fall
+				// starts from the ceiling. Each is flown under a flat ceiling `h` tiles up
+				// and only used from spots with a ceiling exactly that high.
+				for (h in s.predictCeilings) {
+					for (charge in bumpCharges) for (delay in s.predictMoveDelays) for (ff in [true, false]) {
+						var a = superJump(charge, true, ff);
+						a.moveStart = charge + delay;
+						list.push(new PredictLaunch(a, null, 'super jump (charge $charge) into the ceiling ${h} tiles up, move $delay frames after the release${ff ? ", fast-fall" : ""}', false, h));
+					}
+					for (jumpFrame in [0, 10]) for (ff in [true, false]) {
+						list.push(new PredictLaunch(base(jumpFrame, 999, ff), null, 'run ${jumpFrame} frames, full jump into the ceiling ${h} tiles up${ff ? ", fast-fall" : ""}', false, h));
+					}
+				}
 			case SPEED_BURST:
 				for (jumpFrame in burstRuns) for (hold in burstHolds) for (ff in [true, false]) {
 					var a = base(jumpFrame, hold, ff);
@@ -301,6 +323,11 @@ class ClipPredictor implements CornerScan {
 	/** One open-ground flight; floor tiles `minCol`..`maxCol` on `floorRow`. **/
 	function flight(launch:PredictLaunch, startX:Float, floorY:Float, minCol:Int, maxCol:Int, floorRow:Int, longFloor:Bool):FlightPath {
 		var floor = [for (c in minCol...maxCol + 1) new LevelBlock(c, floorRow, BlockType.Basic)];
+		// A flat ceiling `ceiling` tiles above the floor, the whole way across.
+		if (launch.ceiling > 0) {
+			var start = ClipSimulator.tileOf(startX);
+			for (c in start - 190...start + 191) floor.push(new LevelBlock(c, floorRow - launch.ceiling - 1, BlockType.Basic));
+		}
 		var area = new ClipArea(floor, minCol - 200, floorRow - 150, maxCol + 200, floorRow + 250);
 		var level = area.buildLevel(settings.gravity);
 		var attempt = launch.placed(startX, floorY);
@@ -349,6 +376,8 @@ class ClipPredictor implements CornerScan {
 				var b = corner.dir == 1 ? face - hit.lo : face + hit.hi;
 				for (col in ClipSimulator.tileOf(a)...ClipSimulator.tileOf(b) + 1) {
 					if (!standable(col, row)) continue;
+					// A ceiling launch needs that ceiling over the start: `h` tiles of air, then a block.
+					if (launch.ceiling > 0 && !ceilingAt(col, row, launch.ceiling)) continue;
 					var x0 = Math.max(a, col * t + 0.5), x1 = Math.min(b, col * t + t - 0.5);
 					if (x1 < x0) continue;
 					var mid = Math.round((x0 + x1) / 2 * 4) / 4;
@@ -371,6 +400,12 @@ class ClipPredictor implements CornerScan {
 			Math.abs(q.startX - face) + Math.abs(q.startY - corner.floorY)));
 		if (list.length > MAX_CANDIDATES) list.resize(MAX_CANDIDATES);
 		return list;
+	}
+
+	/** Exactly `h` tiles of air above the floor tile (col, floorRow), then a solid block. **/
+	function ceilingAt(col:Int, floorRow:Int, h:Int):Bool {
+		for (dy in 1...h + 1) if (solid.exists(key(col, floorRow - dy))) return false;
+		return solid.exists(key(col, floorRow - h - 1));
 	}
 
 	/** A solid floor tile with two air tiles above it. **/
@@ -409,14 +444,17 @@ class PredictLaunch {
 	public final label:String;
 	/** Sword or laser: this plain flight only times the slash or shot; its timed copies are the real launches. **/
 	public final needsTiming:Bool;
+	/** Tiles of air under the flat ceiling it is flown with (0 = no ceiling). **/
+	public final ceiling:Int;
 	public var path:Null<Array<Float>> = null;
 	public var pathY:Null<Array<Float>> = null;
 	public var hits:Null<Array<PredictHit>> = null;
 	/** Frames that would enter a hanging corner: `k` is then the block bottom's row offset from the start floor. **/
 	public var hangHits:Array<PredictHit> = [];
 
-	public function new(attempt:ClipAttempt, item:Null<Int>, label:String, needsTiming:Bool = false) {
+	public function new(attempt:ClipAttempt, item:Null<Int>, label:String, needsTiming:Bool = false, ceiling:Int = 0) {
 		id = nextId++;
+		this.ceiling = ceiling;
 		this.attempt = attempt;
 		this.item = item;
 		this.label = label;
@@ -465,7 +503,7 @@ class PredictLaunch {
 				} else {
 					what = 'slash on frame $use';
 				}
-				list.push(new PredictLaunch(a, item, '$label, $what'));
+				list.push(new PredictLaunch(a, item, '$label, $what', false, ceiling));
 			}
 		}
 		return list;

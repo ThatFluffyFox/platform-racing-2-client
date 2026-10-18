@@ -93,7 +93,8 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testWallAndCeilingCornersAreFound", testWallAndCeilingCornersAreFound);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testHangingCornerClips", testHangingCornerClips);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testHangingCornerClipsArePredicted", testHangingCornerClipsArePredicted);
-		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMovementGlitchThroughABlockEdge", testMovementGlitchThroughABlockEdge);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMovementGlitchesSkipHeadClips", testMovementGlitchesSkipHeadClips);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMovementGlitchStepSnap", testMovementGlitchStepSnap);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testLevelItemsFromItemBlocks", testLevelItemsFromItemBlocks);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesTheLevelsItems", testScanTriesTheLevelsItems);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPredictorFindsTheClipFromTheLanding", testPredictorFindsTheClipFromTheLanding);
@@ -159,7 +160,10 @@ class ClipFinderTest {
 		settings.maxJumpFrame = 0;
 		settings.holds = [8];
 		settings.downModes = [true];
-		var finder = new ClipFinder(cornerBlocks(), settings);
+		// A ledge past the wall to land on: a clip only counts when it goes through the wall.
+		var blocks = cornerBlocks();
+		for (col in 22...32) blocks.push(new LevelBlock(col, 25, BlockType.Basic));
+		var finder = new ClipFinder(blocks, settings);
 		assertEquals(3, finder.total, "three speeds, one input script");
 		finder.step(2);
 		assertEquals(2, finder.tested, "step honours maxRuns");
@@ -171,6 +175,10 @@ class ClipFinderTest {
 		assertTrue(found.run.ghost != null, "found clips are recorded for the ghost");
 		var speeds = [for (clip in finder.clips) clip.attempt.speed];
 		assertTrue(speeds.indexOf(90) >= 0, "the known clipping speed is among the clips");
+		// Without the ledge the same clip falls out of the level: it never comes out the far side.
+		var falls = new ClipFinder(cornerBlocks(), settings);
+		falls.step(100);
+		assertEquals(0, falls.clipCount, "a clip that doesn't go through the wall doesn't count");
 	}
 
 	private static function testHatsChangeSimulatedPhysics():Void {
@@ -1138,27 +1146,41 @@ class ClipFinderTest {
 		assertEquals(0, predictor.fallbackFound, "from the flights alone");
 	}
 
-	private static function testMovementGlitchThroughABlockEdge():Void {
-		// A floor (row 20) and a pillar hanging over it (col 30, rows 15-17): a hop
-		// toward it puts the head into its side, since the game only checks the
-		// sides 10 px above the feet (below the pillar) and the head at the middle.
+	private static function testMovementGlitchesSkipHeadClips():Void {
+		// A floor (row 20) and a pillar hanging over it (col 30, rows 15-17): a hop toward
+		// it puts the head into its side. That is a head clip, not a movement glitch.
 		var blocks = [for (col in 0...45) new LevelBlock(col, 20, BlockType.Basic)];
 		for (row in 15...18) blocks.push(new LevelBlock(30, row, BlockType.Basic));
 		var settings = new ClipScanSettings(100, 45, 40, 1);
 		settings.originX = 27 * 30 + 15;
 		settings.originY = 600;
-		// Probed with the shortest and longest super jump only, and only the small hops played.
+		// Probed with the longest super jump only, and only the small hops played.
 		var finder = new MovementGlitchFinder(blocks, settings, [50], "jump held 3");
 		assertTrue(finder.maxRise > 300 && finder.maxRise < 450, 'open ground: a full super jump is the highest (${finder.maxRise})');
 		assertTrue(Math.abs(finder.maxSpeed - 12) < 0.1, 'and speed 100 tops out at 12 (${finder.maxSpeed})');
 		finder.maxSpots = 1;
 		while (!finder.done) finder.step(50);
-		var edges = finder.glitches.filter(g -> g.kind == GlitchKind.ThroughEdge);
-		assertTrue(edges.length > 0, 'a move passes into the pillar\'s edge: ${[for (g in finder.glitches) g.describe()]}');
-		var glitch = edges[0];
-		assertEquals(30, glitch.tileX, 'in the pillar: ${glitch.describe()}');
-		assertTrue(glitch.found.run.ghost != null && glitch.found.attempt.script != null, "recorded for the ghost and the replay");
-		assertEquals(0, finder.glitches.filter(g -> g.kind != GlitchKind.ThroughEdge).length, "nothing here jumps higher or runs faster than open ground");
+		assertEquals(0, finder.glitches.length, 'head clips into the pillar are not listed: ${[for (g in finder.glitches) g.describe()]}');
+	}
+
+	private static function testMovementGlitchStepSnap():Void {
+		// A floor (row 20) with a one-block step on it (cols 30-40, row 19). Landing at the
+		// foot of the step while running puts the player on top of it in one frame (30 px up).
+		var blocks = [for (col in 0...50) new LevelBlock(col, 20, BlockType.Basic)];
+		for (col in 30...41) blocks.push(new LevelBlock(col, 19, BlockType.Basic));
+		var settings = new ClipScanSettings(100, 45, 40, 1);
+		// A full jump from about 12 tiles before the step lands at its foot.
+		settings.originX = 18 * 30 + 15;
+		settings.originY = 600;
+		var finder = new MovementGlitchFinder(blocks, settings, [50], "run right 0f, jump held all");
+		finder.maxSpots = 4;
+		while (!finder.done) finder.step(50);
+		var snaps = finder.glitches.filter(g -> g.kind == GlitchKind.CollisionSnap);
+		assertTrue(snaps.length > 0, 'a full jump lands at the step and is snapped onto it: ${[for (g in finder.glitches) g.describe()]}');
+		var snap = snaps[0];
+		assertTrue(snap.cause.indexOf("up") == 0, 'snapped up: ${snap.describe()}');
+		assertTrue(snap.excess > 12 && snap.excess <= 31, 'about a block: ${snap.describe()}');
+		assertTrue(snap.found.run.ghost != null && snap.found.attempt.script != null, "recorded for the ghost and the replay");
 	}
 
 	private static function testLevelItemsFromItemBlocks():Void {
@@ -1196,6 +1218,8 @@ class ClipFinderTest {
 		settings.predictRunFrames = [0];
 		settings.predictHolds = [8];
 		settings.predictCharges = [];
+		settings.predictMoveDelays = [];
+		settings.predictCeilings = [];
 		settings.mines = false;
 		// Stage 1's fallback attempts narrowed like `scanSettings` (one run-up that speed 50 can't clip).
 		settings.distances = [202];
