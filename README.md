@@ -446,7 +446,12 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     the charge, both running in and standing still until the release (with
     100 speed and the item on level 3460484 it found 42 corners this way). In testing on a plain corner only the laser opened it
     (the sword's 8 is about half the laser's 15), but every corner is tried
-    with whatever you hold.
+    with whatever you hold, and with every one of those items (Laser Gun,
+    Super Jump, Speed Burst, Sword) the level's item blocks can give, even if
+    you hold nothing (a block without options gives any of the level's
+    items). A clip found with an item says so, and **Replay on me** hands you
+    that item. Trying them all makes Stage 1 several times slower on a level
+    with items; Stage 1.5 is the quick way to try them.
     It also scans **mines**: a mine on the floor with room to stand beside
     it (walk, hop or jump at it from 2 px and 40 px), a mine set into the
     floor (step onto it or run across it), and a mine overhead (jump up into
@@ -455,6 +460,31 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     corner and mine is tried with each sampled set of stats (up to 4 values
     per ranged stat, your own stats first), and a clip shows the stats that
     did it.
+  - **Stage 1.5: predicted clips** works backwards instead of trying run-ups
+    at each corner. A corner clips when you land more than 10 px into its
+    floor while moving at least 10 px a frame into its wall (the wall check
+    is 10 px above your feet, so it is inside the floor row and nothing
+    pushes you out). So it flies every launch once with the real physics on
+    open ground, with your stats (each sampled set with Range), and finds
+    the frames that land deep and fast enough. The launches are run-up jumps
+    of five heights after 0-30 frames of running, with and without
+    fast-fall, and super jumps of five charges, running in or standing
+    until the release. Each item you hold or the level gives adds its own:
+    Speed Burst before a jump or while charging a super jump, the Super Jump
+    item, and Sword slashes and Laser shots timed to each landing (slash
+    the frame before you land; turn away and fire for the recoil). Each
+    such frame says exactly how far before a wall the launch must start,
+    for every floor height it passes. For each corner it lists the spots
+    you can stand on in those few-px windows, from any distance (a burst
+    super jump crosses 40+ tiles), checks them nearest first with the real
+    physics in the real level, and lists the first that clips, like Stage 1.
+    On level 3460484 (100/45/40, all items) it flies 1,144 launches in about
+    a second and checks all 130 corners in about 8 s (outside the game),
+    finding the Speed Burst super jump from on top of the item block at
+    526,382 into the stepped blocks at 568,378, 1,269 px away, which Stage
+    1's run-ups (up to 260 px) can't reach. It only predicts landing clips
+    at floor-meets-wall corners; hop-backs, mines and other clips are Stage
+    1's.
   - **Stage 2: route to target** (with Range ticked on stat rows, it plans
     with each sampled set of stats in turn, up to 3 values per ranged stat
     and your own stats first, until one finds a route; the status shows which

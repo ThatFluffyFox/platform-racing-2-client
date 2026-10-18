@@ -18,6 +18,8 @@ enum abstract ScanStage(Int) {
 	var MapScan = 0;
 	/** Stage 2: a route from where you stand to the target block. **/
 	var RouteToTarget = 1;
+	/** Stage 1.5: predicted clips, worked back from landings to start spots anywhere in the level. **/
+	var PredictedScan = 2;
 }
 
 /**
@@ -74,6 +76,8 @@ class ClipFinderPanel extends NativeView {
 	**/
 	public final scanSelect:GameSelect<ScanStage>;
 	public var onScan:Null<Void->Void>;
+	/** Stage 1.5 (predicted clips) picked. **/
+	public var onPredict:Null<Void->Void>;
 	public var onRoute:Null<Void->Void>;
 	final status:TextField;
 	final clipInfo:TextField;
@@ -101,8 +105,9 @@ class ClipFinderPanel extends NativeView {
 		scanSelect.y = 19;
 		scanSelect.prompt = "Scan level...";
 		scanSelect.addOption("Stage 1: map scan (every corner)", MapScan);
+		scanSelect.addOption("Stage 1.5: predicted clips", PredictedScan);
 		scanSelect.addOption("Stage 2: route to target", RouteToTarget);
-		scanSelect.rowCount = 2;
+		scanSelect.rowCount = 3;
 		scanSelect.onChange = function(option:SelectOption<ScanStage>):Void {
 			scanSelect.selectedIndex = -1;
 			chooseScanStage(option.value);
@@ -195,6 +200,8 @@ class ClipFinderPanel extends NativeView {
 		switch (stage) {
 			case MapScan:
 				if (onScan != null) onScan();
+			case PredictedScan:
+				if (onPredict != null) onPredict();
 			case RouteToTarget:
 				if (onRoute != null) onRoute();
 		}
@@ -254,6 +261,7 @@ class ClipFinderPanel extends NativeView {
 		onReplay = null;
 		onTarget = null;
 		onScan = null;
+		onPredict = null;
 		onRoute = null;
 		super.dispose();
 	}

@@ -170,6 +170,12 @@ class ClipScanSettings {
 		acceleration) then jump or hop into fast-fall.
 	**/
 	public var heldItem:Null<Int> = null;
+	/**
+		Other items to try at every corner as well (codes; e.g. every item the
+		level's item blocks can give). Only the ones with clip attempts count:
+		Laser Gun (1), Super Jump (5), Speed Burst (7) and Sword (8).
+	**/
+	public var extraItems:Array<Int> = [];
 	/** Px between the player's side and the wall at the start of a laser attempt. **/
 	public var laserGaps:Array<Float> = [0, 1, 2];
 	/** Frames jump is held for a laser attempt. **/
@@ -185,6 +191,10 @@ class ClipScanSettings {
 	**/
 	public var hopHolds:Array<Int> = [1, 2, 3, 4, 6, 8, 12, 999];
 	public var hopBackFrames:Array<Int> = [for (f in 4...76) f];
+	/** Stage 1.5 (predicted clips): frames run before the jump, jump holds and super jump charges flown. **/
+	public var predictRunFrames:Array<Int> = [0, 5, 10, 20, 30];
+	public var predictHolds:Array<Int> = [999, 12, 8, 4, 2];
+	public var predictCharges:Array<Int> = [20, 27, 35, 42, 50];
 	/** Also scan mines: blasts from beside, from the floor and from below that drive the player into blocks. **/
 	public var mines:Bool = true;
 	/**
@@ -213,7 +223,7 @@ class ClipScanSettings {
 	Like ClipFinder it works a few attempts at a time (`step`) so the race keeps
 	running. Corners are scanned nearest-first.
 **/
-class ClipScanner {
+class ClipScanner implements CornerScan {
 	/** Tiles kept around a corner for its simulated area (it grows as needed). **/
 	static inline var CROP_BACK:Int = 12;
 	static inline var CROP_PAST:Int = 4;
@@ -242,12 +252,23 @@ class ClipScanner {
 		corners = onlyCorner != null ? [onlyCorner] : findCorners(blocks, 1).concat(findCorners(blocks, -1));
 		if (onlyCorner == null && settings.mines) corners = corners.concat(findMineSpots(blocks));
 		statSets = settings.statSets != null && settings.statSets.length > 0 ? settings.statSets : [[settings.speed, settings.accel, settings.jump]];
+		variants = [settings.heldItem];
+		for (extra in settings.extraItems) {
+			if (CLIP_ITEMS.indexOf(extra) >= 0 && variants.indexOf(extra) < 0) variants.push(extra);
+		}
 		var ox = settings.originX, oy = settings.originY;
 		corners.sort((a, b) -> Reflect.compare(distanceSq(a, ox, oy), distanceSq(b, ox, oy)));
 	}
 
 	public var done(get, never):Bool;
-	inline function get_done():Bool return cornerIndex >= corners.length;
+	function get_done():Bool return cornerIndex >= corners.length;
+
+	public function progressText(stopped:Bool):String {
+		var total = corners.length;
+		return '${stopped ? "Stopped at" : "Scanning"} ${Std.int(Math.min(cornerIndex + 1, total))}/$total corners/mines, ${portals.length} clip';
+	}
+
+	public function doneText():String return 'Scan done: ${portals.length} of ${corners.length} corners/mines clip';
 
 	/** The stat sets every corner is tried with. **/
 	final statSets:Array<Array<Float>>;
@@ -256,9 +277,37 @@ class ClipScanner {
 	public var attemptsPerCorner(get, never):Int;
 	inline function get_attemptsPerCorner():Int return cornerAttempts * statSets.length;
 
-	/** Attempts at one inside corner with one stat set. **/
+	/**
+		Items each corner is tried with: the held item (with the plain run-ups
+		and hops), then each extra item (only its own attempts).
+	**/
+	final variants:Array<Null<Int>>;
+	/** The item the attempt being counted or built is for. **/
+	var item:Null<Int> = null;
+	/** True for the first variant, which also has the plain run-ups and hops. **/
+	var baseVariant:Bool = true;
+
+	/** Items with clip attempts of their own. **/
+	public static final CLIP_ITEMS:Array<Int> = [LASER_GUN, SUPER_JUMP, SPEED_BURST, SWORD];
+
+	function useVariant(v:Int):Void {
+		item = variants[v];
+		baseVariant = v == 0;
+	}
+
+	/** Attempts for one item variant (with one stat set). **/
+	function variantAttempts(v:Int):Int {
+		useVariant(v);
+		return (baseVariant ? runUpAttempts + hopAttempts : 0) + laserAttempts + itemRunUpAttempts;
+	}
+
+	/** Attempts at one inside corner with one stat set, over every item variant. **/
 	var cornerAttempts(get, never):Int;
-	inline function get_cornerAttempts():Int return runUpAttempts + laserAttempts + itemRunUpAttempts + hopAttempts;
+	function get_cornerAttempts():Int {
+		var total = 0;
+		for (v in 0...variants.length) total += variantAttempts(v);
+		return total;
+	}
 
 	var hopAttempts(get, never):Int;
 	inline function get_hopAttempts():Int return settings.hopHolds.length * settings.hopBackFrames.length;
@@ -277,7 +326,7 @@ class ClipScanner {
 	/** Recoil-style attempts: the laser (turn away and fire) or the sword (face the wall and slash). **/
 	var recoilItem(get, never):Null<Int>;
 	inline function get_recoilItem():Null<Int> {
-		return settings.laser || settings.heldItem == LASER_GUN ? LASER_GUN : (settings.heldItem == SWORD ? SWORD : null);
+		return (settings.laser && baseVariant) || item == LASER_GUN ? LASER_GUN : (item == SWORD ? SWORD : null);
 	}
 
 	var laserAttempts(get, never):Int;
@@ -288,7 +337,7 @@ class ClipScanner {
 	/** Item launches per run-up distance: the Super Jump item, or a Speed Burst before each jump hold. **/
 	var itemLaunches(get, never):Int;
 	inline function get_itemLaunches():Int {
-		return settings.heldItem == SUPER_JUMP ? 1 : (settings.heldItem == SPEED_BURST ? settings.jumpHolds.length + burstSuperLaunches : 0);
+		return item == SUPER_JUMP ? 1 : (item == SPEED_BURST ? settings.jumpHolds.length + burstSuperLaunches : 0);
 	}
 
 	/**
@@ -339,15 +388,18 @@ class ClipScanner {
 		out); once the player first lands outside the blocks they are released,
 		so it stops there instead of running on, and a replay does the same.
 	**/
-	function followClip(area:ClipArea, attempt:ClipAttempt):ClipRun {
-		var held = ClipSimulator.run(area, attempt, true, null, settings.followFrames);
+	function followClip(area:ClipArea, attempt:ClipAttempt):ClipRun return follow(area, attempt, settings.followFrames);
+
+	/** `followClip` for any clipping attempt (also used by the Stage 1.5 predictor). **/
+	public static function follow(area:ClipArea, attempt:ClipAttempt, followFrames:Int):ClipRun {
+		var held = ClipSimulator.run(area, attempt, true, null, followFrames);
 		var ghost = held.ghost;
 		if (ghost == null) return held;
 		var landing = ClipPortal.landingIndex(ghost, held.clipFrame);
 		if (landing < 0) return held;
 		// ghost[i] is the pose after frame i - 1, so let go from frame `landing`.
 		attempt.releaseFrame = landing;
-		return ClipSimulator.run(area, attempt, true, null, settings.followFrames);
+		return ClipSimulator.run(area, attempt, true, null, followFrames);
 	}
 
 	function nextCorner():Void {
@@ -367,8 +419,16 @@ class ClipScanner {
 		index = index % perSet;
 		var mine = corner.mine;
 		if (mine != null) return mineAttemptAt(corner, mine, index, stats);
-		var hopsFrom = runUpAttempts + laserAttempts + itemRunUpAttempts;
+		var v = 0;
+		while (v < variants.length - 1 && index >= variantAttempts(v)) {
+			index -= variantAttempts(v);
+			v++;
+		}
+		useVariant(v);
+		var runUps = baseVariant ? runUpAttempts : 0;
+		var hopsFrom = runUps + laserAttempts + itemRunUpAttempts;
 		if (index >= hopsFrom) return hopAttemptAt(corner, index - hopsFrom, stats);
+		if (!baseVariant) return index >= laserAttempts ? itemRunUpAttemptAt(corner, index - laserAttempts, stats) : laserAttemptAt(corner, index, stats);
 		if (index >= runUpAttempts + laserAttempts) return itemRunUpAttemptAt(corner, index - runUpAttempts - laserAttempts, stats);
 		if (index >= runUpAttempts) return laserAttemptAt(corner, index - runUpAttempts, stats);
 		var launch = launches[index % launches.length];
@@ -439,7 +499,7 @@ class ClipScanner {
 		var distance = s.distances[Std.int(index / launches)];
 		var startX = corner.wallFace - corner.dir * (10 + distance);
 		var attempt:ClipAttempt;
-		if (s.heldItem == SUPER_JUMP) {
+		if (item == SUPER_JUMP) {
 			attempt = new ClipAttempt(startX, corner.floorY, stats[0], stats[1], stats[2], s.gravity, corner.dir, 0, 0, true, s.frames);
 			attempt.jumpWithItem = true;
 			attempt.label = 'super jump item from ${distance}px, then fast-fall';
@@ -453,7 +513,7 @@ class ClipScanner {
 			attempt.itemAt = 0;
 			attempt.label = 'speed burst, run from ${distance}px, jump held ${hold >= 999 ? "all" : Std.string(hold)}, fast-fall';
 		}
-		attempt.items = new ClipItems(s.heldItem);
+		attempt.items = new ClipItems(item);
 		attempt.hats = s.hats;
 		return attempt;
 	}
@@ -527,6 +587,24 @@ class ClipScanner {
 		attempt.hats = settings.hats;
 		attempt.label = 'mine at ${mine.x},${mine.y}: ${move.label}';
 		return attempt;
+	}
+
+	/**
+		Every item the level's item blocks can give (codes, in code order): a
+		block's own options ("5-7"), or `allowed` (the level's item list; null =
+		every item) for a block without options. "none" gives nothing.
+	**/
+	public static function levelItems(blocks:Array<LevelBlock>, ?allowed:Array<Int>):Array<Int> {
+		var all = allowed != null ? allowed : pr2.gameplay.Items.getAllCodes();
+		var found:Array<Int> = [];
+		for (b in blocks) {
+			if (b.type != BlockType.Item && b.type != BlockType.InfiniteItem) continue;
+			var options = b.options == null ? "" : b.options;
+			var codes = options == "" ? all : (options == "none" ? [] : [for (id in options.split("-")) if (Std.parseInt(id) != null) Std.parseInt(id)]);
+			for (code in codes) if (found.indexOf(code) < 0) found.push(code);
+		}
+		found.sort((a, b) -> a - b);
+		return found;
 	}
 
 	/**

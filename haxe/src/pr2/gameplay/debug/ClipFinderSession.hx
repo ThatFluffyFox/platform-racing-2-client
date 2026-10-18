@@ -61,7 +61,8 @@ class ClipFinderSession {
 		panel.onShowClip = showClip;
 		panel.onReplay = startReplay;
 		panel.onTarget = toggleTargetPicking;
-		panel.onScan = startScan;
+		panel.onScan = () -> startScan(false);
+		panel.onPredict = () -> startScan(true);
 		panel.onRoute = startRoute;
 		panelLayer.addChild(panel);
 		ghost = new ClipGhost(player);
@@ -204,15 +205,20 @@ class ClipFinderSession {
 
 	// ---- Level scan ------------------------------------------------------------
 
-	var scanner:Null<ClipScanner> = null;
+	/** The running level scan: Stage 1 (ClipScanner) or Stage 1.5 (ClipPredictor). **/
+	var scanner:Null<CornerScan> = null;
 	var overlay:Null<ClipScanOverlay> = null;
 	/** For clips found by the scan, the portal each came from (same index as `clips`). **/
 	var clipPortals:Array<Null<ClipScanner.ClipPortal>> = [];
 	var drawnPortals:Int = 0;
 	var drawnSolid:Int = 0;
 
-	/** "Scan level": every corner in the level, with your stats, nearest first. **/
-	function startScan():Void {
+	/**
+		"Scan level": every corner in the level, with your stats, nearest first.
+		Stage 1 tries run-ups at each corner; Stage 1.5 (`predict`) works back
+		from predicted landings to start spots anywhere in the level.
+	**/
+	function startScan(predict:Bool = false):Void {
 		var state = player.stateSnapshot();
 		if (state.courseRotation != 0) {
 			panel.setStatus("Only works while the course is upright.");
@@ -227,11 +233,13 @@ class ClipFinderSession {
 		settings.hats = ClipHats.from(player.controller);
 		settings.originX = state.x;
 		settings.originY = state.y;
-		// A held Laser Gun, Sword, Super Jump or Speed Burst adds its own clip attempts at each corner.
+		// A held Laser Gun, Sword, Super Jump or Speed Burst adds its own clip attempts at each corner,
+		// and so does every one of those the level's item blocks can give.
 		settings.heldItem = player.controller.itemId;
+		settings.extraItems = ClipScanner.levelItems(level.blocks, ClipSimulator.ClipItems.from(player.controller).allowedItems);
 		// The stat rows: each corner and mine is tried with every sampled set (your own stats first).
 		settings.statSets = statSetsFromPanel(SCAN_SAMPLES);
-		scanner = new ClipScanner(liveBlocks(), settings);
+		scanner = predict ? new ClipPredictor(liveBlocks(), settings) : new ClipScanner(liveBlocks(), settings);
 		clips = [];
 		clipPortals = [];
 		shownClips = 0;
@@ -286,14 +294,7 @@ class ClipFinderSession {
 	function updateScanStatus(stopped:Bool = false):Void {
 		var scan = scanner;
 		if (scan == null) return;
-		var total = scan.corners.length;
-		var found = scan.portals.length;
-		if (scan.done) {
-			panel.setStatus('Scan done: $found of $total corners/mines clip');
-		} else {
-			var verb = stopped ? "Stopped at" : "Scanning";
-			panel.setStatus('$verb ${Std.int(Math.min(scan.cornerIndex + 1, total))}/$total corners/mines, $found clip');
-		}
+		panel.setStatus(scan.done ? scan.doneText() : scan.progressText(stopped));
 	}
 
 	static function portalOutcome(portal:ClipScanner.ClipPortal):String {

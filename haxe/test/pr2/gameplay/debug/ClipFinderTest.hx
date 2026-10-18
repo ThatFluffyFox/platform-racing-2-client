@@ -87,6 +87,9 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteUsesHopBackClip", testRouteUsesHopBackClip);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSpeedBurstWhileChargingASuperJump", testSpeedBurstWhileChargingASuperJump);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesSwordSuperJumpAndSpeedBurst", testScanTriesSwordSuperJumpAndSpeedBurst);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testLevelItemsFromItemBlocks", testLevelItemsFromItemBlocks);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesTheLevelsItems", testScanTriesTheLevelsItems);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPredictorFindsTheClipFromTheLanding", testPredictorFindsTheClipFromTheLanding);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -1032,6 +1035,62 @@ class ClipFinderTest {
 		assertTrue(burst.vx > 18, 'with it the super jump carries about double (${burst.vx})');
 	}
 
+	private static function testLevelItemsFromItemBlocks():Void {
+		var blocks = [
+			new LevelBlock(1, 1, BlockType.Item, "5-7"),
+			new LevelBlock(2, 1, BlockType.InfiniteItem, ""),
+			new LevelBlock(3, 1, BlockType.Item, "none"),
+			new LevelBlock(4, 1, BlockType.Basic),
+		];
+		assertEquals("1,5,7,8", ClipScanner.levelItems(blocks, [8, 1]).join(","), "a block's own options, and the level's items for a block without");
+		assertEquals(0, ClipScanner.levelItems([new LevelBlock(0, 0, BlockType.Basic)]).length, "no item blocks, no items");
+	}
+
+	private static function testScanTriesTheLevelsItems():Void {
+		var corner = ClipScanner.findCorners(cornerBlocks(), 1)[0];
+		var settings = scanSettings(50);
+		// A Speed Burst and a Sword from the level's item blocks (a Mine has no clip moves).
+		settings.extraItems = [7, 2, 8];
+		var scanner = new ClipScanner(cornerBlocks(), settings, corner);
+		var held:Map<String, Int> = new Map();
+		for (i in 0...scanner.attemptsFor(corner)) {
+			var items = scanner.attemptAt(corner, i).items;
+			var code = items == null || items.heldItem == null ? "none" : Std.string(items.heldItem);
+			held.set(code, (held.exists(code) ? held.get(code) : 0) + 1);
+		}
+		assertEquals(1, held.get("none"), "the one plain run-up");
+		assertTrue(held.get("7") > 0, "Speed Burst attempts though the player holds nothing");
+		assertTrue(held.get("8") > 0, "and Sword attempts");
+		assertTrue(!held.exists("2"), "but none for the Mine");
+	}
+
+	/** Stage 1.5 narrowed to one launch: a short hop into fast-fall from a run (no items). **/
+	private static function predictSettings(speed:Float):ClipScanSettings {
+		var settings = new ClipScanSettings(speed, 50, 75, 1);
+		settings.predictRunFrames = [0];
+		settings.predictHolds = [8];
+		settings.predictCharges = [];
+		settings.mines = false;
+		return settings;
+	}
+
+	private static function testPredictorFindsTheClipFromTheLanding():Void {
+		var blocks = cornerBlocks();
+		for (col in 22...32) blocks.push(new LevelBlock(col, 25, BlockType.Basic));
+		var predictor = new pr2.gameplay.debug.ClipPredictor(blocks, predictSettings(90));
+		assertEquals(4, predictor.launchCount, "one hop, with and without fast-fall, facing each way");
+		while (!predictor.done) predictor.step(20);
+		assertEquals(1, predictor.portals.length, "the corner clips");
+		var portal = predictor.portals[0];
+		assertTrue(portal.attempt.describe().indexOf("(predicted)") > 0, 'a predicted start: ${portal.attempt.describe()}');
+		assertTrue(portal.passesThrough, 'and it lands past the wall (${portal.exitX}, ${portal.exitY})');
+		assertTrue(predictor.tested < 30, 'with a handful of runs, not a grid (${predictor.tested})');
+		var slow = new pr2.gameplay.debug.ClipPredictor(cornerBlocks(), predictSettings(50));
+		while (!slow.done) slow.step(20);
+		assertEquals(0, slow.portals.length, "speed 50 never lands fast enough");
+		assertEquals(1, slow.solidCorners.length, "so the corner is marked as not clippable");
+	}
+
 	private static function testScanTriesSwordSuperJumpAndSpeedBurst():Void {
 		var corner = ClipScanner.findCorners(cornerBlocks(), 1)[0];
 		for (item in [8, 5, 7]) {
@@ -1085,7 +1144,7 @@ class ClipFinderTest {
 		course.setKey(Keyboard.D, true);
 		var session = course.clipFinder;
 		var menu = session.panel.scanSelect;
-		menu.selectFromUser(1);
+		menu.selectFromUser(2);
 		assertEquals(-1, menu.selectedIndex, "the menu goes back to its title after a pick");
 		assertEquals("Scan level...", menu.labelField.text, "which reads Scan level");
 		assertTrue(session.planner == null, "Stage 2 needs a target");
@@ -1093,7 +1152,7 @@ class ClipFinderTest {
 		// The block under the player's feet: already touching it.
 		var state = course.localCharacter.stateSnapshot();
 		session.setTarget(ClipSimulator.tileOf(state.x), ClipSimulator.tileOf(state.y));
-		menu.selectFromUser(1);
+		menu.selectFromUser(2);
 		assertTrue(session.planner != null, "Stage 2 (route to target) starts planning");
 		assertTrue(session.scanner == null, "and not the map scan");
 		assertTrue(!menu.enabled, "the menu is locked while it runs");
@@ -1118,9 +1177,17 @@ class ClipFinderTest {
 		course.setKey(Keyboard.D, true);
 		var session = course.clipFinder;
 		var menu = session.panel.scanSelect;
-		assertEquals(2, menu.length, "the Scan level menu has the two stages");
+		assertEquals(3, menu.length, "the Scan level menu has the three stages");
 		assertEquals(ScanStage.MapScan, menu.itemAt(0), "stage 1 is the map scan");
-		assertEquals(ScanStage.RouteToTarget, menu.itemAt(1), "stage 2 is the route to the target");
+		assertEquals(ScanStage.PredictedScan, menu.itemAt(1), "stage 1.5 is the predicted clips");
+		assertEquals(ScanStage.RouteToTarget, menu.itemAt(2), "stage 2 is the route to the target");
+		menu.selectFromUser(1);
+		assertTrue(Std.isOfType(session.scanner, ClipPredictor), "Stage 1.5 starts the predictor");
+		var text = session.panel.status.text;
+		// This test level has no corners, so there is nothing to fly launches for.
+		assertTrue(text.indexOf("Predicting launches") == 0 || text.indexOf("Prediction done") == 0, 'its status: $text');
+		session.stopSearch();
+		assertTrue(session.scanner == null, "and can be stopped");
 		menu.selectFromUser(0);
 		assertTrue(session.scanner != null, "Stage 1 starts the map scan");
 		assertTrue(session.planner == null, "and not a route");
