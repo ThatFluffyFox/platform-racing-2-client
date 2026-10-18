@@ -60,6 +60,14 @@ class ClipPortal {
 		}
 	}
 
+	/** True when the player came to rest past the wall or below the floor (through the blocks, not back out). **/
+	public var passesThrough(get, never):Bool;
+	function get_passesThrough():Bool {
+		var x = exitX, y = exitY;
+		if (x == null || y == null) return false;
+		return corner.dir * (x - corner.wallFace) > 0 || y > corner.floorY + 1;
+	}
+
 	/**
 		First recorded pose after the clip where the player stands outside the
 		blocks (before any respawn), or -1. Indexes are into the ghost frames.
@@ -102,6 +110,8 @@ class ClipScanSettings {
 	public var frames:Int = 120;
 	/** Frames a found clip is followed to see where the player ends up. **/
 	public var followFrames:Int = 150;
+	/** Only accept a clip that comes out through the blocks (the route planner's recipes); others keep the corner scanning. **/
+	public var passThroughOnly:Bool = false;
 
 	public function new(speed:Float, accel:Float, jump:Float, gravity:Float) {
 		this.speed = speed;
@@ -143,12 +153,13 @@ class ClipScanner {
 	var area:Null<ClipArea> = null;
 	var attemptIndex:Int = 0;
 
-	public function new(blocks:Array<LevelBlock>, settings:ClipScanSettings) {
+	/** Scans the whole level, or only `onlyCorner` when given (the route planner's per-wall recipe). **/
+	public function new(blocks:Array<LevelBlock>, settings:ClipScanSettings, ?onlyCorner:ClipCorner) {
 		this.blocks = blocks;
 		this.settings = settings;
 		launches = [for (hold in settings.jumpHolds) new ScanLaunch(hold, 0)];
 		for (charge in settings.superCharges) if (charge > 0) launches.push(new ScanLaunch(0, charge));
-		corners = findCorners(blocks, 1).concat(findCorners(blocks, -1));
+		corners = onlyCorner != null ? [onlyCorner] : findCorners(blocks, 1).concat(findCorners(blocks, -1));
 		var ox = settings.originX, oy = settings.originY;
 		corners.sort((a, b) -> Reflect.compare(distanceSq(a, ox, oy), distanceSq(b, ox, oy)));
 	}
@@ -178,7 +189,9 @@ class ClipScanner {
 			if (result.startBlocked) continue;
 			tested++;
 			if (result.clipped) {
-				portals.push(new ClipPortal(corner, attempt, followClip(area, attempt)));
+				var portal = new ClipPortal(corner, attempt, followClip(area, attempt));
+				if (settings.passThroughOnly && !portal.passesThrough) continue;
+				portals.push(portal);
 				nextCorner();
 			}
 		}

@@ -51,6 +51,26 @@ class ClipSimulator {
 		}
 	}
 
+	/**
+		A simulated player standing at the start in the same state every search
+		uses (and "Replay on me" reproduces): fresh motion state, the given stats,
+		gravity and hats, the whole level's map edges, then one idle frame.
+	**/
+	public static function preparePlayer(area:ClipArea, level:Level, startX:Float, startY:Float, speed:Float, accel:Float, jump:Float,
+			gravity:Float, hats:Null<ClipHats>):LocalPlayerController {
+		var player = new LocalPlayerController(level);
+		player.setStartingStats(speed, accel, jump);
+		player.setGravity(gravity);
+		if (hats != null) hats.applyTo(player);
+		// Clears the constructor's grounded state, then one idle frame lets the
+		// real collision pass decide it: floor starts stand, mid-air starts fall.
+		player.resetPreRacePosition(startX, startY);
+		// The fall-off-the-map return uses the whole level's extent, not the crop's.
+		player.setMapBoundsForClipSearch(area.mapMinX, area.mapMinY, area.mapMaxX, area.mapMaxY);
+		player.step(new LocalPlayerInput());
+		return player;
+	}
+
 	/** One pass in the current area; null when the area grew and the attempt must restart. **/
 	static function runOnce(area:ClipArea, attempt:ClipAttempt, recordGhost:Bool,
 			onFrame:Null<Int->LocalPlayerInput->LocalPlayerController->Bool->Void>, tailFrames:Int):Null<ClipRun> {
@@ -58,16 +78,8 @@ class ClipSimulator {
 		if (area.overlapsSolid(level, attempt.startX, attempt.startY)) {
 			return ClipRun.blocked();
 		}
-		var player = new LocalPlayerController(level);
-		player.setStartingStats(attempt.speed, attempt.accel, attempt.jump);
-		player.setGravity(attempt.gravity);
-		if (attempt.hats != null) attempt.hats.applyTo(player);
-		// Clears the constructor's grounded state, then one idle frame lets the
-		// real collision pass decide it: floor starts stand, mid-air starts fall.
-		player.resetPreRacePosition(attempt.startX, attempt.startY);
-		// The fall-off-the-map return uses the whole level's extent, not the crop's.
-		player.setMapBoundsForClipSearch(area.mapMinX, area.mapMinY, area.mapMaxX, area.mapMaxY);
-		player.step(new LocalPlayerInput());
+		var player = preparePlayer(area, level, attempt.startX, attempt.startY, attempt.speed, attempt.accel, attempt.jump, attempt.gravity,
+			attempt.hats);
 
 		var ghost:Null<Array<GhostFrame>> = recordGhost ? [GhostFrame.capture(player, bodyInSolid(level, player))] : null;
 		var settledFrames = 0;
@@ -196,7 +208,7 @@ class ClipAttempt {
 		whenever airborne after the launch (fast-fall; never charges on the ground).
 	**/
 	public function inputAt(frame:Int, grounded:Bool):LocalPlayerInput {
-		if (script != null) return script[frame];
+		if (script != null) return frame < script.length ? script[frame] : new LocalPlayerInput();
 		if (releaseFrame >= 0 && frame >= releaseFrame) return new LocalPlayerInput();
 		var heldDir = 0;
 		if (frame >= moveStart) heldDir = turnFrame >= 0 && frame >= turnFrame ? -dir : dir;

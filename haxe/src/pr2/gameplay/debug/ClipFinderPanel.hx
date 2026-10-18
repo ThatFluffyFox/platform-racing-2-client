@@ -22,7 +22,7 @@ import pr2.ui.view.NativeView;
 **/
 class ClipFinderPanel extends NativeView {
 	public static inline var PANEL_WIDTH:Float = 262;
-	public static inline var PANEL_HEIGHT:Float = 392;
+	public static inline var PANEL_HEIGHT:Float = 410;
 
 	public var onStart:Null<Void->Void>;
 	public var onStop:Null<Void->Void>;
@@ -60,6 +60,9 @@ class ClipFinderPanel extends NativeView {
 	/** Scans every corner in the level for clips with your stats (stage 1 of route planning). **/
 	public final scanButton:GameButton;
 	public var onScan:Null<Void->Void>;
+	/** Plans a route from where you stand to the target block, clipping through blocks when needed. **/
+	public final routeButton:GameButton;
+	public var onRoute:Null<Void->Void>;
 	final status:TextField;
 	final clipInfo:TextField;
 	var shownClip:Int = 0;
@@ -85,7 +88,12 @@ class ClipFinderPanel extends NativeView {
 		scanButton.y = 19;
 		scanButton.onPress = function():Void if (onScan != null) onScan();
 		addChild(scanButton);
-		addChild(text("Search starts where you stand.", 96, 21, 160, 12));
+		routeButton = ownControl(new GameButton("Route to target"));
+		routeButton.setSize(100, 16);
+		routeButton.x = 96;
+		routeButton.y = 19;
+		routeButton.onPress = function():Void if (onRoute != null) onRoute();
+		addChild(routeButton);
 
 		targetButton = ownControl(new GameButton("Target: any block"));
 		targetButton.setSize(140, 20);
@@ -150,7 +158,7 @@ class ClipFinderPanel extends NativeView {
 		replayButton.onPress = function():Void if (onReplay != null) onReplay();
 		addChild(replayButton);
 
-		clipInfo = text("", 10, 344, PANEL_WIDTH - 20, 44);
+		clipInfo = text("", 10, 344, PANEL_WIDTH - 20, 60);
 		clipInfo.multiline = true;
 		clipInfo.wordWrap = true;
 		addChild(clipInfo);
@@ -163,6 +171,7 @@ class ClipFinderPanel extends NativeView {
 		for (box in [leftBox, rightBox, downBox, anyFrameBox, aimBox]) box.enabled = !running;
 		targetButton.enabled = !running;
 		scanButton.enabled = !running;
+		routeButton.enabled = !running;
 		for (row in rows) row.setLocked(running);
 	}
 
@@ -219,6 +228,7 @@ class ClipFinderPanel extends NativeView {
 		onReplay = null;
 		onTarget = null;
 		onScan = null;
+		onRoute = null;
 		super.dispose();
 	}
 }

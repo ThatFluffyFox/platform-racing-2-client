@@ -34,10 +34,7 @@ class ClipScanOverlay extends Shape {
 	public static function kindOf(portal:ClipPortal):PortalKind {
 		var exitX = portal.exitX, exitY = portal.exitY;
 		if (exitX == null || exitY == null) return FallsAway;
-		var corner = portal.corner;
-		var pastWall = corner.dir * (exitX - corner.wallFace) > 0;
-		var belowFloor = exitY > corner.floorY + 1;
-		return pastWall || belowFloor ? PassesThrough : PopsBack;
+		return portal.passesThrough ? PassesThrough : PopsBack;
 	}
 
 	public static function colorOf(kind:PortalKind):Int {

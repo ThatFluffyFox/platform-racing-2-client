@@ -10,6 +10,7 @@ import pr2.gameplay.debug.ClipFinder.StatRange;
 import pr2.gameplay.debug.ClipSimulator.ClipArea;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
+import pr2.gameplay.debug.ClipRoutePlanner.RouteSettings;
 import pr2.gameplay.debug.ClipScanner.ClipScanSettings;
 import pr2.gameplay.debug.ClipScanOverlay.PortalKind;
 import pr2.level.BlockType;
@@ -55,6 +56,11 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScannedClipLandsPastTheWall", testScannedClipLandsPastTheWall);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScannedClipWithNothingToLandOnFallsAway", testScannedClipWithNothingToLandOnFallsAway);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScannerMarksCornersItCannotClip", testScannerMarksCornersItCannotClip);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPassThroughScanSkipsClipsThatFallAway", testPassThroughScanSkipsClipsThatFallAway);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPassThroughScanKeepsClipsThatLand", testPassThroughScanKeepsClipsThatLand);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteClipsThroughToSealedFloor", testRouteClipsThroughToSealedFloor);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteReplaysAsAClip", testRouteReplaysAsAClip);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteWalksWhenNoClipIsNeeded", testRouteWalksWhenNoClipIsNeeded);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -67,6 +73,7 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testReplayDrivesRealPlayerAlongTheClip", testReplayDrivesRealPlayerAlongTheClip);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPickingTargetBlockInRace", testPickingTargetBlockInRace);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanFromPanel", testScanFromPanel);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testRouteFromPanel", testRouteFromPanel);
 		course.remove();
 		course = null;
 		trace('ClipFinderTest passed $assertions assertions');
@@ -413,6 +420,117 @@ class ClipFinderTest {
 		while (!scanner.done) scanner.step(10);
 		assertEquals(0, scanner.portals.length, "speed 50 can't clip");
 		assertEquals(1, scanner.solidCorners.length, "the corner is marked as not clippable");
+	}
+
+	private static function testPassThroughScanSkipsClipsThatFallAway():Void {
+		var settings = scanSettings(90);
+		settings.passThroughOnly = true;
+		var falls = new ClipScanner(cornerBlocks(), settings);
+		while (!falls.done) falls.step(10);
+		assertEquals(0, falls.portals.length, "a clip that falls out of the level is not a way through");
+		assertEquals(1, falls.solidCorners.length, "so the corner has no way through");
+	}
+
+	private static function testPassThroughScanKeepsClipsThatLand():Void {
+		var settings = scanSettings(90);
+		settings.passThroughOnly = true;
+		var blocks = cornerBlocks();
+		for (col in 22...32) blocks.push(new LevelBlock(col, 25, BlockType.Basic));
+		var lands = new ClipScanner(blocks, settings);
+		while (!lands.done) lands.step(10);
+		assertEquals(1, lands.portals.length, "a clip that lands past the wall is");
+		assertTrue(lands.portals[0].passesThrough, "and passes through");
+	}
+
+	/**
+		Upper floor (rows 17-19) with the test wall (cols 19-21), and a lower
+		floor (row 24) sealed off by side walls: only a clip gets down there.
+	**/
+	private static function sealedFloorBlocks():Array<LevelBlock> {
+		var blocks:Array<LevelBlock> = [];
+		for (col in 0...36) for (row in 17...20) blocks.push(new LevelBlock(col, row, BlockType.Basic));
+		for (col in 0...36) blocks.push(new LevelBlock(col, 24, BlockType.Basic));
+		for (row in 0...24) {
+			blocks.push(new LevelBlock(0, row, BlockType.Basic));
+			blocks.push(new LevelBlock(35, row, BlockType.Basic));
+		}
+		for (col in 19...22) for (row in 0...17) blocks.push(new LevelBlock(col, row, BlockType.Basic));
+		return blocks;
+	}
+
+	/** Recipe scans narrowed to the known run-up, to keep tests quick. **/
+	private static function routeSettings(startX:Float, targetX:Int, targetY:Int):RouteSettings {
+		var settings = new RouteSettings(startX, FLOOR_Y, 90, 50, 75, 1, targetX, targetY);
+		settings.recipeDistances = [202];
+		settings.recipeJumpHolds = [8];
+		settings.recipeSuperCharges = [];
+		return settings;
+	}
+
+	private static function testRouteClipsThroughToSealedFloor():Void {
+		var settings = routeSettings(CLIP_START_X - 15, 23, 24);
+		// Clip moves only: the walks and jumps are covered by the next test.
+		settings.normalMoves = false;
+		var planner = new ClipRoutePlanner(sealedFloorBlocks(), settings);
+		while (!planner.done) planner.step(50);
+		var route = planner.route;
+		assertTrue(route != null, 'a route is found (${planner.spotsExplored} spots, ${planner.simulations} runs)');
+		assertEquals(1, route.clips, "it clips once");
+		assertTrue(route.steps[route.steps.length - 1].indexOf("clip through the wall at 19,16") == 0, 'the clip gets there: ${route.steps}');
+		assertEquals(route.reachFrame + 1, route.script.length, "the script ends on the frame the block is reached");
+		sealedRoutePlanner = planner;
+	}
+
+	/** The route planned by the test above. **/
+	private static var sealedRoutePlanner:Null<ClipRoutePlanner> = null;
+
+	private static function testRouteReplaysAsAClip():Void {
+		var planner = sealedRoutePlanner;
+		var route = planner.route;
+		var found = planner.foundClip();
+		assertEquals(route.script, found.attempt.script, "as a clip, the route's script is the attempt's inputs");
+		// ghost[0] is the start and ghost[i] the pose after frame i - 1; the recording stops when the block is reached.
+		assertEquals(route.reachFrame + 2, found.run.ghost.length, "replaying the script reaches the block on the same frame");
+		assertTrue(found.run.clipFrame >= 0, "and the recording goes through a block");
+		var last = found.run.ghost[found.run.ghost.length - 1];
+		assertTrue(last.y > 24 * 30 - 2, 'the ghost ends on the lower floor (${last.x}, ${last.y})');
+	}
+
+	private static function testRouteWalksWhenNoClipIsNeeded():Void {
+		var planner = new ClipRoutePlanner(sealedFloorBlocks(), routeSettings(CLIP_START_X, 15, 17));
+		while (!planner.done) planner.step(50);
+		var route = planner.route;
+		assertTrue(route != null, "a route to a floor block nearby");
+		assertEquals(0, route.clips, "needs no clip");
+		assertTrue(route.steps[0].indexOf("walk right") == 0, 'walks there: ${route.steps}');
+	}
+
+	private static function testRouteFromPanel():Void {
+		course.setKey(Keyboard.F9, true);
+		course.setKey(Keyboard.C, true);
+		course.setKey(Keyboard.D, true);
+		var session = course.clipFinder;
+		session.startRoute();
+		assertTrue(session.planner == null, "needs a target");
+		assertTrue(session.panel.status.text.indexOf("Pick a target") == 0, 'asks for one: ${session.panel.status.text}');
+		// The block under the player's feet: already touching it.
+		var state = course.localCharacter.stateSnapshot();
+		session.setTarget(ClipSimulator.tileOf(state.x), ClipSimulator.tileOf(state.y));
+		session.startRoute();
+		assertTrue(session.planner != null, "Route to target starts planning");
+		for (_ in 0...200) {
+			if (session.planner == null) break;
+			course.onEnterFrame(new Event(Event.ENTER_FRAME));
+		}
+		assertEquals(null, session.planner, "planning finishes");
+		assertTrue(session.panel.status.text.indexOf("Route found") == 0, 'status reports the route: ${session.panel.status.text}');
+		assertEquals(1, session.clips.length, "the route is the one clip shown");
+		assertTrue(session.panel.replayButton.enabled, "and can be replayed on the player");
+		assertTrue(session.panel.clipInfo.text.indexOf("Route:") >= 0, 'its steps are listed: ${session.panel.clipInfo.text}');
+		session.close();
+		course.setKey(Keyboard.F9, false);
+		course.setKey(Keyboard.C, false);
+		course.setKey(Keyboard.D, false);
 	}
 
 	private static function testScanFromPanel():Void {

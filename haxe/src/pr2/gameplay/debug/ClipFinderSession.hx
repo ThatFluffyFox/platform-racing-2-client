@@ -61,6 +61,7 @@ class ClipFinderSession {
 		panel.onReplay = startReplay;
 		panel.onTarget = toggleTargetPicking;
 		panel.onScan = startScan;
+		panel.onRoute = startRoute;
 		panelLayer.addChild(panel);
 		ghost = new ClipGhost(player);
 		ghostLayer.addChild(ghost.character);
@@ -127,6 +128,8 @@ class ClipFinderSession {
 		clips = finder.clips;
 		clipPortals = [];
 		scanner = null;
+		planner = null;
+		routeText = null;
 		shownClips = 0;
 		selectedClip = -1;
 		ghost.stop();
@@ -136,6 +139,10 @@ class ClipFinderSession {
 	}
 
 	function stopSearch():Void {
+		if (planner != null) {
+			stopRoute();
+			return;
+		}
 		if (scanner != null) {
 			stopScan();
 			return;
@@ -150,6 +157,7 @@ class ClipFinderSession {
 	public function tick():Void {
 		if (closed) return;
 		tickScan();
+		tickRoute();
 		var search = finder;
 		if (search != null && !search.done) {
 			var deadline = haxe.Timer.stamp() + FRAME_BUDGET_SECONDS;
@@ -174,7 +182,9 @@ class ClipFinderSession {
 		var recorded = found.run.ghost;
 		if (recorded != null) ghost.play(recorded);
 		var portal = index < clipPortals.length ? clipPortals[index] : null;
-		if (portal != null) {
+		if (routeText != null) {
+			panel.setClipInfo(index, 'Route: $routeText');
+		} else if (portal != null) {
 			panel.setClipInfo(index, 'Corner ${portal.corner.x},${portal.corner.y}: ${portalOutcome(portal)}. ${found.attempt.describe()}.');
 		} else {
 			panel.setClipInfo(index, '${found.attempt.describe()}, clips on frame ${found.run.clipFrame + 1}. Replaying on a loop.');
@@ -199,6 +209,8 @@ class ClipFinderSession {
 		}
 		stopReplay();
 		finder = null;
+		planner = null;
+		routeText = null;
 		var gravity = level.gravity * (player.hasHatFlag(Character.MOON) ? MOON_GRAVITY : 1);
 		var settings = new ClipScanner.ClipScanSettings(state.speedStat, state.accelerationStat, state.jumpStat, gravity);
 		settings.hats = ClipHats.from(player.controller);
@@ -275,6 +287,89 @@ class ClipFinderSession {
 			case PassesThrough: 'passes through, lands at tile ${ClipSimulator.tileOf(exitX)},${ClipSimulator.tileOf(exitY - 1)}';
 			case PopsBack: 'clips in but pops back out on the same side';
 			case FallsAway: 'clips in and falls out of the level';
+		}
+	}
+
+	// ---- Route to target -----------------------------------------------------
+
+	var planner:Null<ClipRoutePlanner> = null;
+	/** The shown route's steps, while the clip list holds a route. **/
+	var routeText:Null<String> = null;
+
+	/**
+		"Route to target": plans moves from where you stand to the target block
+		with your stats, clipping through blocks when that is the way there. The
+		found route becomes the one clip in the list, so the ghost plays it and
+		"Replay on me" runs it on you.
+	**/
+	function startRoute():Void {
+		var state = player.stateSnapshot();
+		if (state.courseRotation != 0) {
+			panel.setStatus("Only works while the course is upright.");
+			return;
+		}
+		var tx = targetTileX, ty = targetTileY;
+		if (tx == null || ty == null) {
+			panel.setStatus("Pick a target block first (Target button).");
+			return;
+		}
+		stopReplay();
+		finder = null;
+		scanner = null;
+		var gravity = level.gravity * (player.hasHatFlag(Character.MOON) ? MOON_GRAVITY : 1);
+		var settings = new ClipRoutePlanner.RouteSettings(Math.round(state.x), Math.round(state.y), state.speedStat, state.accelerationStat,
+			state.jumpStat, gravity, tx, ty);
+		settings.hats = ClipHats.from(player.controller);
+		planner = new ClipRoutePlanner(level.blocks, settings);
+		clips = [];
+		clipPortals = [];
+		routeText = null;
+		shownClips = 0;
+		selectedClip = -1;
+		ghost.stop();
+		panel.setClipCount(0);
+		panel.setRunning(true);
+		updateRouteStatus();
+	}
+
+	function stopRoute():Void {
+		if (planner == null) return;
+		panel.setRunning(false);
+		updateRouteStatus(true);
+		planner = null;
+	}
+
+	function tickRoute():Void {
+		var plan = planner;
+		if (plan == null) return;
+		if (!plan.done) {
+			var deadline = haxe.Timer.stamp() + FRAME_BUDGET_SECONDS;
+			plan.step(1000, () -> haxe.Timer.stamp() > deadline);
+		}
+		updateRouteStatus();
+		if (!plan.done) return;
+		panel.setRunning(false);
+		planner = null;
+		var found = plan.foundClip();
+		if (found == null) return;
+		routeText = plan.describeRoute();
+		clips = [found];
+		clipPortals = [null];
+		shownClips = 1;
+		panel.setClipCount(1);
+		showClip(0);
+	}
+
+	function updateRouteStatus(stopped:Bool = false):Void {
+		var plan = planner;
+		if (plan == null) return;
+		var route = plan.route;
+		if (route != null) {
+			panel.setStatus('Route found: ${route.steps.length} steps, ${route.clips} clip${route.clips == 1 ? "" : "s"}');
+		} else if (plan.done) {
+			panel.setStatus('No route found (${plan.spotsExplored} spots tried).');
+		} else {
+			panel.setStatus('${stopped ? "Stopped" : "Planning"}: ${plan.spotsExplored} spots, ${plan.simulations} runs');
 		}
 	}
 
@@ -457,6 +552,7 @@ class ClipFinderSession {
 		setPicking(false);
 		setTarget(null, null);
 		scanner = null;
+		planner = null;
 		if (overlay != null) overlay.dispose();
 		overlay = null;
 		closed = true;
