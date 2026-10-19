@@ -297,7 +297,7 @@ class OptionsPopupTest {
 		assertEquals(2, raw[0], "songs menu persists disabled song ids numerically");
 		assertEquals(true, raw.indexOf(3) >= 0, "songs menu persists newly disabled song");
 		assertEquals(false, raw.indexOf(9) >= 0, "songs menu skips unavailable song 9");
-		assertEquals(false, raw.indexOf(16) >= 0, "songs menu skips unavailable song 16");
+		assertEquals(true, raw.indexOf(16) >= 0, "songs menu persists the unchecked artifact song");
 		popup.remove();
 		closeAll();
 	}

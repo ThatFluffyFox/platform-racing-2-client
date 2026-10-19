@@ -22,6 +22,7 @@ class MusicSelectionTest {
 		pr2.DeterministicTestMode.runTest("MusicSelectionTest.testStreamingEndpoint", testStreamingEndpoint);
 		pr2.DeterministicTestMode.runTest("MusicSelectionTest.testPendingStreamCannotOutlivePlayer", testPendingStreamCannotOutlivePlayer);
 		pr2.DeterministicTestMode.runTest("MusicSelectionTest.testArtifactSong", testArtifactSong);
+		pr2.DeterministicTestMode.runTest("MusicSelectionTest.testArtifactSongCanBeUnchecked", testArtifactSongCanBeUnchecked);
 		trace('MusicSelectionTest passed $assertions assertions');
 	}
 
@@ -74,6 +75,20 @@ class MusicSelectionTest {
 		assertEquals("16", selection.selectedSongId(), "artifact appends and selects its song");
 		assertEquals("16", music.lastSongId, "artifact song starts playing");
 		selection.remove();
+	}
+
+	private static function testArtifactSongCanBeUnchecked():Void {
+		Settings.setValue(Settings.DISABLED_SONGS, [16]);
+		var music = new RecordingGameMusic();
+		var selection = new MusicSelection(music);
+		selection.setSong("3", 0);
+		var count = selection.dropdown.length;
+		selection.gotArtifact();
+		assertEquals("3", selection.selectedSongId(), "disabled artifact song does not replace the current song");
+		assertEquals("3", music.lastSongId, "disabled artifact song never starts playing");
+		assertEquals(count, selection.dropdown.length, "disabled artifact song is not added to the picker");
+		selection.remove();
+		Settings.setValue(Settings.DISABLED_SONGS, []);
 	}
 
 	private static function testPendingStreamCannotOutlivePlayer():Void {
