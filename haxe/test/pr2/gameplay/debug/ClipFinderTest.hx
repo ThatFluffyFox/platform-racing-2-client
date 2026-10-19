@@ -98,6 +98,7 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testLevelItemsFromItemBlocks", testLevelItemsFromItemBlocks);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesTheLevelsItems", testScanTriesTheLevelsItems);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPredictorFindsTheClipFromTheLanding", testPredictorFindsTheClipFromTheLanding);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSolverPredictsTheLandingFrame", testSolverPredictsTheLandingFrame);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
 		// The panel tests share one started race; building a Course is fixture
@@ -1212,13 +1213,14 @@ class ClipFinderTest {
 		assertTrue(!held.exists("2"), "but none for the Mine");
 	}
 
-	/** Stage 1.5 narrowed to one launch: a short hop into fast-fall from a run (no items). **/
+	/** Stage 1.5 narrowed to a short hop, with and without fast-fall, and running (no items). **/
 	private static function predictSettings(speed:Float):ClipScanSettings {
 		var settings = new ClipScanSettings(speed, 50, 75, 1);
-		settings.predictRunFrames = [0];
-		settings.predictHolds = [8];
-		settings.predictCharges = [];
-		settings.predictMoveDelays = [];
+		settings.solveJumpHolds = [8];
+		settings.solveFastFalls = [-1, 1];
+		settings.solveCharges = [];
+		settings.solveTurnBacks = [];
+		settings.solveFrames = 60;
 		settings.predictCeilings = [];
 		settings.mines = false;
 		// Stage 1's fallback attempts narrowed like `scanSettings` (one run-up that speed 50 can't clip).
@@ -1234,7 +1236,7 @@ class ClipFinderTest {
 		var blocks = cornerBlocks();
 		for (col in 22...32) blocks.push(new LevelBlock(col, 25, BlockType.Basic));
 		var predictor = new pr2.gameplay.debug.ClipPredictor(blocks, predictSettings(90));
-		assertEquals(4, predictor.launchCount, "one hop, with and without fast-fall, facing each way");
+		assertEquals(4, predictor.trackCount, "two vertical programs (the hop with and without fast-fall) and a run each way");
 		while (!predictor.done) predictor.step(20);
 		assertEquals(1, predictor.portals.length, "the corner clips");
 		var portal = predictor.portals[0];
@@ -1247,9 +1249,7 @@ class ClipFinderTest {
 		assertEquals(1, slow.solidCorners.length, "so the corner is marked as not clippable");
 		// A corner nothing predicted clips still gets Stage 1's attempts.
 		var hop = predictSettings(90);
-		hop.predictHolds = [];
-		hop.predictCharges = [];
-		hop.predictRunFrames = [];
+		hop.solveJumpHolds = [];
 		hop.distances = [202];
 		hop.jumpHolds = [8];
 		var fallback = new ClipPredictor(blocks, hop);
@@ -1257,6 +1257,34 @@ class ClipFinderTest {
 		assertEquals(1, fallback.portals.length, "with nothing to predict, Stage 1's run-up clips it");
 		assertEquals(1, fallback.fallbackFound, "and says so");
 		assertTrue(fallback.doneText().indexOf("0 predicted") > 0, fallback.doneText());
+	}
+
+	/**
+		The solver puts a jump and a run together from their own tracks: each
+		start it solves lands in the corner on exactly the frame it predicts
+		when played with the real physics.
+	**/
+	private static function testSolverPredictsTheLandingFrame():Void {
+		var settings = predictSettings(90);
+		var solver = new ClipSolver(settings, [90, 50, 75], []);
+		while (!solver.ready) solver.step(10);
+		var blocks = cornerBlocks();
+		var solid:Map<String, Bool> = new Map();
+		for (b in blocks) solid.set('${b.x},${b.y}', true);
+		var standable = (c:Int, r:Int) -> solid.exists('$c,$r') && !solid.exists('$c,${r - 1}') && !solid.exists('$c,${r - 2}');
+		var corner = ClipScanner.findCorners(blocks, 1)[0];
+		var solutions = solver.solve(corner, standable, (c, r, h) -> false, (c, r) -> solid.exists('$c,$r'));
+		assertTrue(solutions.length > 0, "the hop is solved for the corner");
+		solutions.sort((a, b) -> Reflect.compare(a.score, b.score));
+		var exact = 0, tried = 0;
+		for (sol in solutions) {
+			if (tried >= 6) break;
+			tried++;
+			var run = ClipSimulator.run(cornerArea(), solver.attempt(sol));
+			assertTrue(run.clipped, 'the solved start clips: ${solver.attempt(sol).describe()} from ${sol.x}');
+			if (run.clipFrame == sol.clipFrame) exact++;
+		}
+		assertEquals(tried, exact, "on the frame it was solved for");
 	}
 
 	private static function testScanTriesSwordSuperJumpAndSpeedBurst():Void {
@@ -1385,7 +1413,7 @@ class ClipFinderTest {
 		assertTrue(Std.isOfType(session.scanner, ClipPredictor), "Stage 1.5 starts the predictor");
 		var text = session.panel.status.text;
 		// This test level has no corners, so there is nothing to fly launches for.
-		assertTrue(text.indexOf("Predicting launches") == 0 || text.indexOf("Prediction done") == 0, 'its status: $text');
+		assertTrue(text.indexOf("Solving the physics") == 0 || text.indexOf("Prediction done") == 0, 'its status: $text');
 		session.stopSearch();
 		assertTrue(session.scanner == null, "and can be stopped");
 		menu.selectFromUser(0);

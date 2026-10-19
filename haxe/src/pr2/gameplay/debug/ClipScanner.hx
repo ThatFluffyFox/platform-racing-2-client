@@ -271,12 +271,19 @@ class ClipScanSettings {
 		does as well as the far clips.
 	**/
 	public var predictFallback:Bool = true;
-	/** Stage 1.5 (predicted clips): frames run before the jump, jump holds and super jump charges flown. **/
-	public var predictRunFrames:Array<Int> = [0, 5, 10, 20, 30];
-	public var predictHolds:Array<Int> = [999, 12, 8, 4, 2];
-	public var predictCharges:Array<Int> = [20, 27, 35, 42, 50];
-	/** Frames after a super jump's release before moving (the rise spent first), and ceiling heights (tiles of air) bumped into. **/
-	public var predictMoveDelays:Array<Int> = [0, 6, 12, 20];
+	/**
+		Stage 1.5's physics solver: the vertical programs played (frames jump
+		is held, 999 = all; the frame fast-fall starts, -1 = never; super jump
+		charge frames), and the frames held away before turning back at a wall.
+		Run-ups and when moving starts are solved, not listed.
+	**/
+	public var solveJumpHolds:Array<Int> = [for (h in 1...13) h].concat([15, 20, 999]);
+	public var solveFastFalls:Array<Int> = [-1, 1, 2].concat([for (d in 1...16) d * 4]);
+	public var solveCharges:Array<Int> = [for (c in 10...51) c];
+	public var solveTurnBacks:Array<Int> = [for (a in 1...61) a];
+	/** Frames each of those programs is played for (the longest flight solved). **/
+	public var solveFrames:Int = 140;
+	/** Ceiling heights (tiles of air) bumped into, each played as its own program. **/
 	public var predictCeilings:Array<Int> = [for (h in 2...13) h];
 	/** Also scan mines: blasts from beside, from the floor and from below that drive the player into blocks. **/
 	public var mines:Bool = true;

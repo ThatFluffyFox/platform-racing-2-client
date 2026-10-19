@@ -472,47 +472,54 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     corner and mine is tried with each sampled set of stats (up to 4 values
     per ranged stat, your own stats first), and a clip shows the stats that
     did it.
-  - **Stage 1.5: predicted clips** works backwards instead of trying run-ups
-    at each corner. A corner clips when you land more than 10 px into its
-    floor while moving at least 10 px a frame into its wall (the wall check
-    is 10 px above your feet, so it is inside the floor row and nothing
-    pushes you out). So it flies every launch once with the real physics on
-    open ground, with your stats (each sampled set with Range), and finds
-    the frames that land deep and fast enough. The launches are run-up jumps
-    of five heights after 0-30 frames of running, with and without
-    fast-fall, and super jumps of five charges, running in or standing
-    until the release. Each item you hold or the level gives adds its own:
-    Speed Burst before a jump or while charging a super jump, the Super Jump
-    item, and Sword slashes and Laser shots timed to each landing (slash
-    the frame before you land; turn away and fire for the recoil). Each
-    such frame says exactly how far before a wall the launch must start,
-    for every floor height it passes. For each corner it lists the spots
-    you can stand on in those few-px windows, from any distance (a burst
-    super jump crosses 40+ tiles), checks them nearest first with the real
-    physics in the real level, and lists the first that clips, like Stage 1.
-    On level 3460484 (100/45/40, all items) it flies 1,144 launches in about
-    a second and checks all 130 corners in about 8 s (outside the game),
-    finding the Speed Burst super jump from on top of the item block at
-    526,382 into the stepped blocks at 568,378, 1,269 px away, which Stage
-    1's run-ups (up to 260 px) can't reach. It only predicts landing clips
-    at floor-meets-wall corners, so a corner none of its starts clip (and
-    every mine) then gets Stage 1's own attempts: hop-backs, run-ups, item
-    moves and mine moves. So it finds everything Stage 1 does, plus the far
-    clips: on level 3460484 without items it clips 102 corners to Stage 1's
-    99 (24 of them predicted), in a little less time. The status says how
-    many were predicted.
-    Stage 1.5 also flies super jumps that wait to move (0-20 frames after the
-    release) and the same into a ceiling: each is flown under a flat ceiling
-    2-12 tiles up and only used from spots with a ceiling exactly that high
-    above, since bumping it stops the rise there and the fall starts from
-    it. On level 102573 that finds the super jump from 340,336 into the
-    ceiling, holding right, through the pillar's corner and out near 406,338
-    (64 clips there from its flights alone, in about 10 s).
-    Stage 1.5 predicts bottom-corner clips too (from the same flights: the
-    frames with the feet 10-15 px below a block's bottom edge as the body
-    crosses into its column) and sends ceiling corners to Stage 1's run-ups.
-    With these shapes level 3460484 has 246 targets: Stage 1 clips 140,
-    Stage 1.5 158 (everything Stage 1 does, plus 18).
+  - **Stage 1.5: predicted clips** solves the physics instead of trying
+    run-ups at each corner. A corner clips when you land more than 10 px
+    into its floor while moving at least 10 px a frame into its wall (the
+    wall check is 10 px above your feet, so it is inside the floor row and
+    nothing pushes you out). In the air your two axes don't affect each
+    other: left and right only change the sideways speed, jump and down only
+    the vertical one, and each is rounded on its own. So any flight is
+    exactly a vertical program and a horizontal program put together, frame
+    by frame (checked: 0 px apart from the real flight). With your stats
+    (each sampled set with Range), gravity and hats it plays, once each:
+    - **vertical programs**: jump held 1-12, 15, 20 or all frames; super
+      jumps charged 10-50 frames; each with fast-fall from frame 1, 2 or any
+      4th frame up to 60, or none; the Super Jump item alone or during a
+      jump; and full jumps and super jumps bumping a ceiling 2-12 tiles up.
+      The floor is taken away after takeoff, so each lists the frames it
+      lands more than 10 px deep on every floor height above and below
+      (and the frames it passes 10-15 px under a block's bottom, for bottom
+      corners).
+    - **horizontal programs**, each way: running, running with a Speed
+      Burst, holding away for 1-60 frames and turning back, and running
+      with a Sword slash or a Laser shot (turn away and fire for the
+      recoil) on a given frame.
+    For each corner, each floor height with landings, each horizontal
+    program and each frame `s` of it, the wall must be crossed on frame `s`:
+    that gives a window of start x a few px wide. Where a spot you can stand
+    on falls in the window, every landing on that floor height that lines up
+    in time is a solution: moving starts `t + 1 - s` frames into the jump
+    (no sooner than a super jump's release or a ceiling bump), or a plain
+    jump gets a run-up of `s - 1 - t` frames on floor that reaches the
+    takeoff. Starts are whole pixels, like the programs (the game rounds the
+    position every frame, so a start a fraction off drifts). The solved
+    path is then traced through the level: starts whose path stays clear of
+    blocks until the corner are checked first, nearest and with the least
+    waiting first, and the rest after. Each is checked with the real physics
+    in the real level, and the first that clips is listed, like Stage 1.
+    A solved start lands in the corner on exactly the frame it was solved
+    for. Ceiling corners (no landing to solve) and every mine get Stage 1's
+    own attempts, and so does a corner none of its solved starts clip, so
+    it finds everything Stage 1 does as well. The status says how many were
+    predicted.
+    On level 3460484 (100/45/40, no items, 246 corners) it plays 1,097
+    programs in about a second and clips 203 corners (165 solved, the rest
+    from Stage 1's attempts) in 83 s, against Stage 1's 140 in 168 s
+    (outside the game). With the level's items it also times Sword slashes
+    and Laser shots to the landing, and finds 133 corners from solving
+    alone in under a minute. On level 102573 it finds 125 clips from
+    solving alone; from 340,336 it solves super jumps into the ceiling 8
+    tiles up, holding right, that clip the corner at 343,338.
   - **Stage 2: route to target** (with Range ticked on stat rows, it plans
     with each sampled set of stats in turn, up to 3 values per ranged stat
     and your own stats first, until one finds a route; the status shows which
