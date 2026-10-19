@@ -770,6 +770,10 @@ class Course extends Sprite {
 	}
 
 	private function onArtifactHatActivated():Void {
+		if (timer != null && timer.getMS() > 30) {
+			timer.setTime(30);
+			timer.init();
+		}
 		if (musicSelection != null) {
 			musicSelection.gotArtifact();
 		}
