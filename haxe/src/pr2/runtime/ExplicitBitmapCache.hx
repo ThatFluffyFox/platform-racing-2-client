@@ -112,6 +112,24 @@ class ExplicitBitmapCache {
 			-bounds.x * scale + padding,
 			-bounds.y * scale + padding
 		);
+		// BitmapData.draw cancels the target's own transform, but a child with a
+		// colour transform (the tinted part channels) is first rendered into its
+		// own bitmap at its on-stage transform, which leaves out this cache's
+		// scale: on a 2.6x stage those channels came out at 1/2.6 resolution and
+		// were stretched into the cache, softening every coloured edge. Scaling
+		// the target up to the cache's scale for the draw gives the children that
+		// resolution; draw cancels the extra scale, so the result is unchanged.
+		var world = target.transform.concatenatedMatrix;
+		var worldScale = Math.max(Math.sqrt(world.a * world.a + world.b * world.b), Math.sqrt(world.c * world.c + world.d * world.d));
+		if (worldScale > 0 && scale / worldScale > 1.0001) {
+			var boost = scale / worldScale;
+			var boosted = authoredTransform.clone();
+			boosted.a *= boost;
+			boosted.b *= boost;
+			boosted.c *= boost;
+			boosted.d *= boost;
+			target.transform.matrix = boosted;
+		}
 		bitmapData.draw(target, drawMatrix, null, null, null, true);
 		restoreVisibility(preservedVisibility);
 
