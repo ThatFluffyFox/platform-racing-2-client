@@ -137,7 +137,7 @@ class ColorPickerTest {
 		picker.direction = ColorPicker.RIGHT;
 		var swatchWidth = picker.width;
 		@:privateAccess picker.openPopup();
-		var popup:ColorPickerPopup = @:privateAccess picker.popup;
+		var popup:ColorPickerPopup = cast @:privateAccess picker.popup;
 		assertEquals(22, @:privateAccess popup.colorChoices.length, "popup uses 22 palette columns");
 		assertEquals(12, @:privateAccess popup.colorChoices[0].length, "popup uses 12 palette rows");
 		assertEquals(15.0, @:privateAccess popup.palette.x, "authored palette x");
@@ -148,7 +148,7 @@ class ColorPickerTest {
 		picker.direction = ColorPicker.LEFT;
 		picker.x = 400;
 		@:privateAccess picker.openPopup();
-		popup = @:privateAccess picker.popup;
+		popup = cast @:privateAccess picker.popup;
 		assertEquals(Math.round(picker.x - popup.width - 5), popup.x, "left direction places popup to the left");
 		picker.remove();
 	}
@@ -227,6 +227,7 @@ class ColorPickerTest {
 		var popup = new ColorPickerPopup(0x123456);
 		var art = @:privateAccess popup.art;
 		assertClose(0, art.panel.x, "color picker ShadowBG keeps XFL X");
+		assertEquals(true, art.panel.scale9Grid != null, "color picker preserves the ShadowBG scale grid");
 		assertClose(0, art.panel.y, "color picker ShadowBG keeps XFL Y");
 		assertClose(0.919113159179688, art.panel.scaleX, "color picker ShadowBG keeps XFL horizontal scale");
 		assertClose(1.36125183105469, art.panel.scaleY, "color picker ShadowBG keeps XFL vertical scale");

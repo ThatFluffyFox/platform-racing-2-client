@@ -64,6 +64,7 @@ class EditorSettingsTest {
 		if (pr2.DeterministicTestMode.finishSmokeSuite("EditorSettingsTest")) return;
 		pr2.DeterministicTestMode.runTest("EditorSettingsTest.testChooseLevelsModeAuthoredLayout", testChooseLevelsModeAuthoredLayout);
 		pr2.DeterministicTestMode.runTest("EditorSettingsTest.testLevelEditorMenuAuthoredLayout", testLevelEditorMenuAuthoredLayout);
+		pr2.DeterministicTestMode.runTest("EditorSettingsTest.testSideBarsInitializeLazily", testSideBarsInitializeLazily);
 		pr2.DeterministicTestMode.runTest("EditorSettingsTest.testBlockOptionsButtonAuthoredStates", testBlockOptionsButtonAuthoredStates);
 		pr2.DeterministicTestMode.runTest("EditorSettingsTest.testAuthoredEditorToolGraphics", testAuthoredEditorToolGraphics);
 		pr2.DeterministicTestMode.runTest("EditorSettingsTest.testBrushSizePickerAuthoredLayout", testBrushSizePickerAuthoredLayout);
@@ -312,6 +313,19 @@ class EditorSettingsTest {
 		assertEquals(null, EditorSideBarCatalog.backgroundSpec("unknown"), "sidebar catalog rejects unknown backgrounds");
 	}
 
+	private static function testSideBarsInitializeLazily():Void {
+		var editor = new LevelEditor();
+		editor.initialize();
+		@:privateAccess assertNotNull(editor.menu.blocksSideBar, "initial editor view constructs the visible blocks sidebar");
+		@:privateAccess assertEquals(null, editor.menu.settingsSideBar, "initial editor view defers the settings sidebar");
+		@:privateAccess assertEquals(null, editor.menu.stampsSideBar, "initial editor view defers the stamps sidebar");
+		@:privateAccess assertEquals(null, editor.menu.toolsSideBar, "initial editor view defers the drawing-tools sidebar");
+		@:privateAccess assertEquals(null, editor.menu.backgroundSideBar, "initial editor view defers the background sidebar");
+		assertNotNull(editor.menu.settings, "first settings access constructs its sidebar");
+		@:privateAccess assertNotNull(editor.menu.settingsSideBar, "constructed settings sidebar is retained");
+		editor.remove();
+	}
+
 	private static function testDefaultSetters():Void {
 		var editor = new LevelEditor();
 		editor.setSong(null);
@@ -528,7 +542,7 @@ class EditorSettingsTest {
 		assertEquals(ColorPicker.LEFT, @:privateAccess button.picker.direction, "draw color picker opens to the left like Flash");
 
 		@:privateAccess button.picker.openPopup();
-		var popup = @:privateAccess button.picker.popup;
+		var popup:pr2.lobby.account.ColorPickerPopup = cast @:privateAccess button.picker.popup;
 		var eyedropper = @:privateAccess popup.eyedropper;
 		var stage = AppStage.stage;
 		if (stage != null) {

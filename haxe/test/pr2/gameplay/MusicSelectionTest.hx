@@ -22,6 +22,7 @@ class MusicSelectionTest {
 		pr2.DeterministicTestMode.runTest("MusicSelectionTest.testStreamingEndpoint", testStreamingEndpoint);
 		pr2.DeterministicTestMode.runTest("MusicSelectionTest.testPendingStreamCannotOutlivePlayer", testPendingStreamCannotOutlivePlayer);
 		pr2.DeterministicTestMode.runTest("MusicSelectionTest.testArtifactSong", testArtifactSong);
+		pr2.DeterministicTestMode.runTest("MusicSelectionTest.testArtifactSongCanBeUnchecked", testArtifactSongCanBeUnchecked);
 		trace('MusicSelectionTest passed $assertions assertions');
 	}
 
@@ -29,10 +30,10 @@ class MusicSelectionTest {
 		var music = new RecordingGameMusic();
 		var selection = new MusicSelection(music);
 		assertEquals("assets/svg/effects/music_selection_01.svg", MusicSelection.BACKGROUND_ASSET,
-			"music selection uses the exact authored XFL background");
-		var bounds = selection.exactBackground.getBounds(selection.exactBackground);
-		assertNear(214.02, bounds.width, 0.1, "authored background preserves XFL horizontal scale");
-		assertNear(35.0, bounds.height, 0.1, "authored background preserves XFL vertical scale");
+			"music selection retains its authored XFL background source");
+		assertTrue(selection.exactBackground.scale9Grid != null, "music selection background preserves the SquareBG scale grid");
+		assertNear(214.02, selection.exactBackground.width, 0.1, "authored background preserves XFL width");
+		assertNear(35.0, selection.exactBackground.height, 0.1, "authored background preserves XFL height");
 		assertNear(7.0, selection.dropdown.x, 0.001, "dropdown preserves Flash x position");
 		assertNear(7.0, selection.dropdown.y, 0.001, "dropdown preserves Flash y position");
 		selection.setSong("3", 0);
@@ -76,6 +77,20 @@ class MusicSelectionTest {
 		selection.remove();
 	}
 
+	private static function testArtifactSongCanBeUnchecked():Void {
+		Settings.setValue(Settings.DISABLED_SONGS, [16]);
+		var music = new RecordingGameMusic();
+		var selection = new MusicSelection(music);
+		selection.setSong("3", 0);
+		var count = selection.dropdown.length;
+		selection.gotArtifact();
+		assertEquals("3", selection.selectedSongId(), "disabled artifact song does not replace the current song");
+		assertEquals("3", music.lastSongId, "disabled artifact song never starts playing");
+		assertEquals(count, selection.dropdown.length, "disabled artifact song is not added to the picker");
+		selection.remove();
+		Settings.setValue(Settings.DISABLED_SONGS, []);
+	}
+
 	private static function testPendingStreamCannotOutlivePlayer():Void {
 		var pending = new RecordingSound();
 		var music = new GameMusic(function():Sound return pending);
@@ -103,6 +118,11 @@ class MusicSelectionTest {
 	private static function assertNear(expected:Float, actual:Float, tolerance:Float, message:String):Void {
 		assertions++;
 		if (Math.abs(expected - actual) > tolerance) throw '$message: expected $expected +/- $tolerance, got $actual';
+	}
+
+	private static function assertTrue(actual:Bool, message:String):Void {
+		assertions++;
+		if (!actual) throw '$message: expected true';
 	}
 }
 

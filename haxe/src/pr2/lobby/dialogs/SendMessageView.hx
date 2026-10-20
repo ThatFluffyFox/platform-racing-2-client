@@ -3,6 +3,7 @@ package pr2.lobby.dialogs;
 import openfl.text.TextField;
 import openfl.display.DisplayObject;
 import openfl.display.Graphics;
+import openfl.display.LineScaleMode;
 import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
 import pr2.assets.NativeAssetIds.FontAsset;
@@ -54,8 +55,8 @@ class SendMessageView extends NativeView {
 		messageInput.wordWrap = true;
 		addChild(messageInput);
 
-		warning = addLabel("NEVER give your password to ANYONE.", -152.25, 39, 197.2, 12.15, 10, false, TextFormatAlign.LEFT);
-		charsRemaining = addLabel("1000 / 1000", 85.55, 39.5, 65.5, 12.75, 10, false, TextFormatAlign.RIGHT);
+		warning = addLabel("NEVER give your password to ANYONE.", -152.25, 39, 197.2, 12.15, 10, false, TextFormatAlign.LEFT, 0x666666);
+		charsRemaining = addLabel("1000 / 1000", 85.55, 39.5, 65.5, 12.75, 8, false, TextFormatAlign.RIGHT, 0xAAAAAA);
 		charsRemaining.name = "messageCharsRemaining";
 		codesButton = ownControl(new SendMessageInfoButton());
 		codesButton.name = "codes_bt";
@@ -125,7 +126,7 @@ private class SendMessageInfoSkin implements ControlSkin {
 	public function new() {}
 	public function draw(graphics:Graphics, width:Float, height:Float, state:ControlState):Void {
 		graphics.clear();
-		graphics.lineStyle(0, 0x666666);
+		graphics.lineStyle(0, 0x666666, 1, false, LineScaleMode.NONE);
 		graphics.beginFill(state == Hovered || state == Pressed ? 0x43A398 : 0xAFAC94);
 		graphics.drawCircle(5, 5, 5);
 		graphics.endFill();

@@ -10,6 +10,7 @@ class MiniMapTest {
 	public static function main():Void {
 		pr2.DeterministicTestMode.runTest("MiniMapTest.testNumLimit", testNumLimit);
 		if (pr2.DeterministicTestMode.finishSmokeSuite("MiniMapTest")) return;
+		pr2.DeterministicTestMode.runTest("MiniMapTest.testBackgroundScaleGrid", testBackgroundScaleGrid);
 		pr2.DeterministicTestMode.runTest("MiniMapTest.testRasterizeScale", testRasterizeScale);
 		pr2.DeterministicTestMode.runTest("MiniMapTest.testFitScale", testFitScale);
 		pr2.DeterministicTestMode.runTest("MiniMapTest.testDotLabels", testDotLabels);
@@ -24,6 +25,15 @@ class MiniMapTest {
 		assertEquals(5.0, MiniMap.numLimit(5, 1, 10), "value inside range is unchanged");
 		assertEquals(1.0, MiniMap.numLimit(0, 1, 10), "value below minimum clamps up");
 		assertEquals(10.0, MiniMap.numLimit(99, 1, 10), "value above maximum clamps down");
+	}
+
+	private static function testBackgroundScaleGrid():Void {
+		var minimap = new MiniMap();
+		var background = minimap.getChildAt(0);
+		assertEquals(true, background.scale9Grid != null, "minimap background preserves the SquareBG scale grid");
+		assertNear(407.011413574219, background.width, 0.1, "minimap background preserves its authored width");
+		assertNear(50, background.height, 0.1, "minimap background preserves its authored height");
+		minimap.remove();
 	}
 
 	private static function testRasterizeScale():Void {
@@ -108,6 +118,13 @@ class MiniMapTest {
 		assertions++;
 		if (Math.abs(expected - actual) > 0.0001) {
 			throw '$message: expected $expected, got $actual';
+		}
+	}
+
+	private static function assertNear(expected:Float, actual:Float, tolerance:Float, message:String):Void {
+		assertions++;
+		if (Math.abs(expected - actual) > tolerance) {
+			throw '$message: expected $expected +/- $tolerance, got $actual';
 		}
 	}
 }
