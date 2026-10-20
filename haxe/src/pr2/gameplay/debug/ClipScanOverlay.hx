@@ -92,12 +92,19 @@ class ClipScanOverlay extends Shape {
 		for (portal in portals) {
 			var color = colorOf(kindOf(portal));
 			var corner = portal.corner;
-			var box = viewTile(corner.markX, corner.markY);
+			// The block the feet went into (not always the corner's wall: often its floor).
+			var box = viewTile(portal.blockX, portal.blockY);
 			var x = box.x, y = box.y;
 			g.lineStyle(3, color, 0.95);
 			g.beginFill(color, 0.25);
 			g.drawRect(x, y, t, t);
 			g.endFill();
+			if (corner.mine != null && (corner.markX != portal.blockX || corner.markY != portal.blockY)) {
+				// The mine whose blast did it.
+				var mine = viewTile(corner.markX, corner.markY);
+				g.lineStyle(1, color, 0.8);
+				g.drawRect(mine.x + 4, mine.y + 4, t - 8, t - 8);
+			}
 			// Run-up start (feet) to where the player ends up.
 			var start = view(portal.attempt.startX, portal.attempt.startY - 15);
 			g.lineStyle(2, color, 0.8);

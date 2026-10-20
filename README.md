@@ -411,22 +411,22 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
 - **Scan level...** (the menu under the title) has two stages; picking one
   runs it:
   - **Stage 1: map scan (every corner)** checks every inside corner in the
-    level, nearest first, with your own stats, gravity and hats. Besides a
-    floor meeting a wall it scans two more shapes (the panel says which):
-    the **bottom corner of a wall** or block with air under it, and a
-    **ceiling meeting a wall** (an overhang against a wall), both started
-    from the floor below. A bottom corner clips when you fall past it moving
-    into it with your feet 10-15 px below its bottom edge: the wall check
-    (10 px above the feet) is already below the block and nothing checks the
-    head while falling, so the body goes in. That window is only 5 px, so
-    these run-ups are also tried without fast-fall (a hop held 8 frames from
-    about 185 px clips a floating block at 100 speed). Ceilings meeting walls
-    are tried with run-ups too; in testing they didn't clip (the wall check
-    pushes you out before the head gets there), so they show as grey
-    crosses unless your level is different. For the usual corners, run-ups of
+    level, nearest first, with your own stats, gravity and hats. **A clip
+    is your feet going into a block** (2 px above the feet, so standing on
+    a floor doesn't count): the game only leaves your feet inside a block
+    when your body is stuck too, since a floor under the feet snaps you on
+    top of it unless the point 30 px up is in a block as well. A head or
+    body that only pokes into a block (jumping into a ceiling, falling past
+    a block's bottom corner with your feet just under it) is not a clip,
+    in any stage. The **bottom corner of a wall** and a **ceiling meeting a
+    wall** used to be scanned as well; they only ever put the body in, so
+    they are off now (`ClipScanSettings.wallClips` turns them back on).
+    For the usual corners, run-ups of
     0-260 px (short ones fit narrow shafts) into a full jump, a short hop or a super jump, each into
-    fast-fall. Each corner's wall tile is marked: a grey cross if it can't be
-    clipped, or a box if it can (green = you pass through and land beyond it,
+    fast-fall. A corner that can't be clipped gets a grey cross on its wall
+    tile; a clip gets a box on the block your feet went into (often the
+    corner's floor rather than its wall; a mine blast also outlines the mine)
+    (green = you pass through and land beyond it,
     yellow = you pop back out on the same side, orange = you fall out of the
     level), with a line from the run-up start to where you land. Found clips
     go into the Prev/Next list, so the ghost and **Replay on me** work on
@@ -458,12 +458,47 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     the charge, both running in and standing still until the release (with
     100 speed and the item on level 3460484 it found 42 corners this way). In testing on a plain corner only the laser opened it
     (the sword's 8 is about half the laser's 15), but every corner is tried
-    with whatever you hold, and with every one of those items (Laser Gun,
-    Super Jump, Speed Burst, Sword) the level's item blocks can give, even if
-    you hold nothing (a block without options gives any of the level's
-    items). A clip found with an item says so, and **Replay on me** hands you
-    that item. Trying them all makes Stage 1 several times slower on a level
-    with items; Stage 1.5 is the quick way to try them.
+    with whatever you hold, and with every item that moves you (Laser Gun,
+    Super Jump, Speed Burst, Sword, Mine, Jet Pack, Teleport) the level's
+    item blocks can give, even if you hold nothing (a block without options
+    gives any of the level's items). A clip found with an item says so, and
+    **Replay on me** hands you that item. Trying them all makes Stage 1
+    several times slower on a level with items; Stage 1.5 is the quick way to
+    try them. The other items:
+    - **Mine**: placed at your hand (always a little to your right, as in
+      Flash), it appears 33 frames later; touching it then blasts you away
+      from its centre at 50 (capped at 28 px a frame). Each corner tries
+      placing it 0-18 px off the wall, standing or at four points of a hop
+      or a jump, facing the wall or away, then staying, walking at the wall,
+      stepping away and back, or jumping up into it. At speed 50 (too slow
+      for any run-up) on the test corner, placing it standing 6 px off the
+      wall then stepping away and back blasts you through the 3-block wall.
+    - **Jet Pack**: run-ups every 10 px that jump, fly 4-30 frames, then
+      fast-fall into the corner.
+    - **Teleport**: 120 px toward the wall on a set frame of a run, hop or
+      jump. It only checks the spot 5 px above your feet, but a floor under
+      your feet still snaps you onto it, so in testing it never put the feet
+      in a block.
+    - **Lightning**, **Ice Wave** and **Snake** don't move you (the Snake digs
+      on its own, outside your physics), so they add nothing.
+
+    **Arrow blocks** act on you in every attempt (it runs the real physics),
+    and corners with arrows near them get arrow starts of their own. Standing
+    on an up arrow bounces you up (10 px a frame); a side arrow pushes 3 px a
+    frame on every frame you stand on it, more than your speed relaxes, so
+    riding a conveyor while holding its way builds up to 31 px a frame (it
+    bleeds off to about 12 within 12 frames in the air); a down arrow wall
+    drags you down 5 px a frame more while you slide on it. For each run of
+    arrows within 30 tiles before a corner's wall, from 8 rows above its
+    floor to 3 below (its far end, middle and near end, up to 6 starts), and
+    against an arrow wall, it waits 0-40 frames (still or holding toward the
+    wall), then jumps, hops, keeps jumping from the start, or just goes, with
+    fast-fall. On the test corner with a conveyor ledge 3 rows up, a hop off
+    its far end clips at speed 50, where no run-up can; on plain layouts the
+    arrow starts rarely add clips. Stage 1.5 doesn't solve starts on arrows
+    (or ice, mines, teleport, push and move blocks), since its programs are
+    played on plain ground; those corners get Stage 1's attempts, arrow
+    starts included.
     It also scans **mines**: a mine on the floor with room to stand beside
     it (walk, hop or jump at it from 2 px and 40 px), a mine set into the
     floor (step onto it or run across it), and a mine overhead (jump up into

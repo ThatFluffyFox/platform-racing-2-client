@@ -7,6 +7,7 @@ import pr2.gameplay.debug.ClipScanner.ClipScanSettings;
 import pr2.gameplay.debug.ClipSimulator.ClipArea;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSolver.ClipSolution;
+import pr2.level.BlockType;
 import pr2.level.Level.LevelBlock;
 
 /**
@@ -96,7 +97,8 @@ class ClipPredictor implements CornerScan {
 			gridH = y1 - y0 + 1;
 		}
 		grid = haxe.io.Bytes.alloc(gridW * gridH);
-		for (b in solids) grid.set((b.y - gridY) * gridW + (b.x - gridX), 1);
+		// 1 = solid, 2 = solid but not plain ground to stand on (it moves or bounces the player).
+		for (b in solids) grid.set((b.y - gridY) * gridW + (b.x - gridX), movesStander(b.type) ? 2 : 1);
 		corners = ClipScanner.findCorners(seen, 1).concat(ClipScanner.findCorners(seen, -1));
 		if (settings.wallClips) corners = corners.concat(ClipScanner.findWallCorners(seen));
 		// Mine spots have no landing to predict; they go straight to Stage 1's mine moves.
@@ -232,14 +234,29 @@ class ClipPredictor implements CornerScan {
 		return solidAt(col, floorRow - h - 1);
 	}
 
-	function solidAt(col:Int, row:Int):Bool {
+	function solidAt(col:Int, row:Int):Bool return gridAt(col, row) != 0;
+
+	inline function gridAt(col:Int, row:Int):Int {
 		var x = col - gridX, y = row - gridY;
-		return x >= 0 && y >= 0 && x < gridW && y < gridH && grid.get(y * gridW + x) == 1;
+		return x >= 0 && y >= 0 && x < gridW && y < gridH ? grid.get(y * gridW + x) : 0;
 	}
 
-	/** A solid floor tile with two air tiles above it. **/
+	/**
+		Plain ground with two air tiles above it. The solver's programs are
+		played on plain ground, so floors that move the player (arrows bounce
+		or push it, ice slides, push and move blocks shift, a teleport block
+		sends it away, a mine blows up) are left to Stage 1's own attempts,
+		which run the real physics on them (with arrow starts of their own).
+	**/
 	function standable(col:Int, floorRow:Int):Bool {
-		return solidAt(col, floorRow) && !solidAt(col, floorRow - 1) && !solidAt(col, floorRow - 2);
+		return gridAt(col, floorRow) == 1 && !solidAt(col, floorRow - 1) && !solidAt(col, floorRow - 2);
+	}
+
+	static function movesStander(type:BlockType):Bool {
+		return switch (type) {
+			case ArrowUp | ArrowDown | ArrowLeft | ArrowRight | Ice | Mine | Teleport | Move | Push: true;
+			default: false;
+		}
 	}
 
 	function nearCorner(corner:ClipCorner, x:Float, y:Float):Bool {

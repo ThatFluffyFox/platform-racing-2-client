@@ -81,13 +81,30 @@ class LocalCharacter extends Character {
 		return new PixelPoint(worldPoint.x, worldPoint.y);
 	}
 
+	/**
+		Hats whose start effects (moon gravity, cowboy and santa stats, the Jump
+		Start and Artifact bursts) `setHats` has applied. Flash reads "had" from
+		the flags `setHats` raised last time. Here `setHatId` (the race's
+		createLocalCharacter) also raises the flags for the art, so reading them
+		would make the server's first `setHats` think the hat was already on and
+		skip its effects until the hat was picked up again.
+	**/
+	private final appliedHatEffects:Map<String, Bool> = new Map();
+
+	private inline function hadHatEffect(flag:String):Bool {
+		return appliedHatEffects.exists(flag) && appliedHatEffects.get(flag);
+	}
+
 	override public function setHats(hatArray:Array<Int>):Void {
-		var hadMoon = hasHatFlag(Character.MOON);
-		var hadCowboy = hasHatFlag(Character.COWBOY);
-		var hadSanta = hasHatFlag(Character.SANTA);
-		var hadJumpStart = hasHatFlag(Character.JUMP_START);
-		var hadArtifact = hasHatFlag(Character.ARTIFACT);
+		var hadMoon = hadHatEffect(Character.MOON);
+		var hadCowboy = hadHatEffect(Character.COWBOY);
+		var hadSanta = hadHatEffect(Character.SANTA);
+		var hadJumpStart = hadHatEffect(Character.JUMP_START);
+		var hadArtifact = hadHatEffect(Character.ARTIFACT);
 		super.setHats(hatArray);
+		for (flag in [Character.MOON, Character.COWBOY, Character.SANTA, Character.JUMP_START, Character.ARTIFACT]) {
+			appliedHatEffects.set(flag, hasHatFlag(flag));
+		}
 		controller.santaHatActive = hasHatFlag(Character.SANTA);
 		controller.cowboyHatActive = hasHatFlag(Character.COWBOY);
 		controller.crownHatActive = hasHatFlag(Character.CROWN);
@@ -105,7 +122,8 @@ class LocalCharacter extends Character {
 			controller.cowboyHatActive = false;
 			controller.resetStats();
 		}
-		if (hasHatFlag(Character.COWBOY) && !hadCowboy) {
+		// Flash's LocalCharacter.setHats calls ensureCowboyStats every time.
+		if (hasHatFlag(Character.COWBOY)) {
 			controller.ensureCowboyStats();
 		}
 		if (hadSanta && !hasHatFlag(Character.SANTA)) {

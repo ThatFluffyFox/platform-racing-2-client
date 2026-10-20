@@ -590,7 +590,7 @@ class ClipRoutePlanner {
 		}
 		var level = player.level;
 		var sim = new RouteSim();
-		if (record) sim.ghost = [GhostFrame.capture(player, ClipSimulator.bodyInSolid(level, player))];
+		if (record) sim.ghost = [GhostFrame.capture(player, ClipSimulator.anyInSolid(level, player))];
 		// Positions are compared in the level's own space, which stays continuous when a rotate block turns the course.
 		var feet = ClipSimulator.toLevel(player.x, player.y, player.courseRotation);
 		var prevX = feet.x, prevY = feet.y;
@@ -649,7 +649,8 @@ class ClipRoutePlanner {
 				sim.gainX = at.x;
 				sim.gainY = at.y;
 			}
-			var inSolid = ClipSimulator.bodyInSolid(level, player);
+			var feetIn = ClipSimulator.feetInSolid(level, player);
+			var inSolid = feetIn || ClipSimulator.bodyInSolid(level, player);
 			if (sim.ghost != null) sim.ghost.push(GhostFrame.capture(player, inSolid));
 			feet = ClipSimulator.toLevel(player.x, player.y, player.courseRotation);
 			if (!area.containsPixel(feet.x, feet.y)) {
@@ -671,7 +672,8 @@ class ClipRoutePlanner {
 				if (frame >= checkFrom) sim.rotationsByMove++;
 			}
 			if (frame >= checkFrom) {
-				if (inSolid) sim.clipped = true;
+				// Through a block only when the feet go in (a head poking into a ceiling is not).
+				if (feetIn) sim.clipped = true;
 				if (touchesTarget(player)) {
 					sim.reachFrame = frame;
 					break;
@@ -709,7 +711,7 @@ class ClipRoutePlanner {
 		sim.restItem = player.itemId;
 		sim.picks = picks;
 		sim.restInWater = inWater(level, player);
-		sim.endInSolid = ClipSimulator.bodyInSolid(level, player);
+		sim.endInSolid = ClipSimulator.anyInSolid(level, player);
 		var minesAtEnd = countMines(level);
 		sim.minesHit = minesAtStart - minesAtEnd;
 		sim.minesHitByMove = minesAtCheck - minesAtEnd;
@@ -1043,6 +1045,9 @@ class ClipRoutePlanner {
 			scanSettings.courseRotation = spot.rotation;
 			scanSettings.passThroughOnly = true;
 			scanSettings.heldItem = item;
+			// A recipe is walked to on the corner's own floor; arrow starts may be on other
+			// floors (the planner rides arrows with its own moves).
+			scanSettings.arrowWaits = [];
 			if (settings.recipeDistances != null) scanSettings.distances = settings.recipeDistances;
 			if (settings.recipeJumpHolds != null) scanSettings.jumpHolds = settings.recipeJumpHolds;
 			if (settings.recipeSuperCharges != null) scanSettings.superCharges = settings.recipeSuperCharges;

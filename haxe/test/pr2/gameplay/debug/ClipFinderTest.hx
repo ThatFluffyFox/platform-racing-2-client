@@ -91,12 +91,13 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesSwordSuperJumpAndSpeedBurst", testScanTriesSwordSuperJumpAndSpeedBurst);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScansWorkOnATurnedCourse", testScansWorkOnATurnedCourse);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testWallAndCeilingCornersAreFound", testWallAndCeilingCornersAreFound);
-		pr2.DeterministicTestMode.runTest("ClipFinderTest.testHangingCornerClips", testHangingCornerClips);
-		pr2.DeterministicTestMode.runTest("ClipFinderTest.testHangingCornerClipsArePredicted", testHangingCornerClipsArePredicted);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testBodyPeekPastABlockIsNotAClip", testBodyPeekPastABlockIsNotAClip);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMovementGlitchesSkipHeadClips", testMovementGlitchesSkipHeadClips);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMovementGlitchStepSnap", testMovementGlitchStepSnap);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testLevelItemsFromItemBlocks", testLevelItemsFromItemBlocks);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testScanTriesTheLevelsItems", testScanTriesTheLevelsItems);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMineItemClipsThroughTheWall", testMineItemClipsThroughTheWall);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testArrowStartsRideAConveyorIntoTheCorner", testArrowStartsRideAConveyorIntoTheCorner);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPredictorFindsTheClipFromTheLanding", testPredictorFindsTheClipFromTheLanding);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSolverPredictsTheLandingFrame", testSolverPredictsTheLandingFrame);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
@@ -1119,33 +1120,28 @@ class ClipFinderTest {
 		assertEquals(0, new ClipScanner(floatingBlockBlocks(), settings).corners.length, "wall corners can be switched off");
 	}
 
-	private static function testHangingCornerClips():Void {
+	private static function testBodyPeekPastABlockIsNotAClip():Void {
 		// Stats 100/45/40: a hop (jump held 8) without fast-fall from about 185 px drops
 		// past the block's bottom corner with the feet 10-15 px below it, moving into it.
+		// The body goes into the block but the feet never do: not a clip.
 		var settings = new ClipScanSettings(100, 45, 40, 1);
-		settings.distances = [184, 185, 186];
+		settings.distances = [185];
 		settings.jumpHolds = [8];
 		settings.superCharges = [];
 		settings.hopHolds = [];
 		settings.mines = false;
+		settings.wallClips = true;
 		var scanner = new ClipScanner(floatingBlockBlocks(), settings);
+		// Attempt 1 at a hanging corner is the hop without fast-fall.
+		var attempt = scanner.attemptAt(scanner.corners[0], 1);
+		assertTrue(!attempt.down, "the hop without fast-fall");
+		var area = ClipArea.around(floatingBlockBlocks(), attempt.startX, attempt.startY, 30, 20, 6);
+		var ghost = ClipSimulator.run(area, attempt, true, null, 1).ghost;
+		assertTrue(Lambda.exists(ghost, f -> f.inSolid), "puts the body into the block");
 		while (!scanner.done) scanner.step(20);
-		assertEquals(2, scanner.portals.length, "Stage 1 clips both bottom corners");
-		for (p in scanner.portals) {
-			assertEquals(CornerKind.HangingWall, p.corner.kind, "as bottom corners of a wall");
-			assertTrue(!p.attempt.down, 'without fast-fall: ${p.attempt.describe()}');
-			assertTrue(p.passesThrough, 'and comes out past the block (${p.exitX}, ${p.exitY})');
-		}
+		assertEquals(0, scanner.portals.length, "but the feet stay out, so it is not a clip");
 	}
 
-	private static function testHangingCornerClipsArePredicted():Void {
-		var predict = predictSettings(100);
-		predict.wallClips = true;
-		var predictor = new ClipPredictor(floatingBlockBlocks(), predict);
-		while (!predictor.done) predictor.step(20);
-		assertEquals(2, predictor.portals.length, "Stage 1.5 predicts both");
-		assertEquals(0, predictor.fallbackFound, "from the flights alone");
-	}
 
 	private static function testMovementGlitchesSkipHeadClips():Void {
 		// A floor (row 20) and a pillar hanging over it (col 30, rows 15-17): a hop toward
@@ -1198,20 +1194,89 @@ class ClipFinderTest {
 	private static function testScanTriesTheLevelsItems():Void {
 		var corner = ClipScanner.findCorners(cornerBlocks(), 1)[0];
 		var settings = scanSettings(50);
-		// A Speed Burst and a Sword from the level's item blocks (a Mine has no clip moves).
-		settings.extraItems = [7, 2, 8];
+		// From the level's item blocks: every item that moves the player has attempts;
+		// Lightning (3), Ice Wave (9) and Snake (10) don't move it, so they have none.
+		settings.extraItems = [7, 2, 8, 3, 4, 6, 9, 10];
 		var scanner = new ClipScanner(cornerBlocks(), settings, corner);
 		var held:Map<String, Int> = new Map();
+		var labels:Map<String, String> = new Map();
 		for (i in 0...scanner.attemptsFor(corner)) {
-			var items = scanner.attemptAt(corner, i).items;
+			var attempt = scanner.attemptAt(corner, i);
+			var items = attempt.items;
 			var code = items == null || items.heldItem == null ? "none" : Std.string(items.heldItem);
 			held.set(code, (held.exists(code) ? held.get(code) : 0) + 1);
+			if (attempt.label != null) labels.set(code, attempt.label);
 		}
 		assertEquals(1, held.get("none"), "the one plain run-up");
 		assertTrue(held.get("7") > 0, "Speed Burst attempts though the player holds nothing");
 		assertTrue(held.get("8") > 0, "and Sword attempts");
-		assertTrue(!held.exists("2"), "but none for the Mine");
+		assertTrue(held.get("2") > 0 && labels.get("2").indexOf("mine item") == 0, 'Mine item attempts (${labels.get("2")})');
+		assertTrue(held.get("4") > 0 && labels.get("4").indexOf("teleport") == 0, 'Teleport attempts (${labels.get("4")})');
+		assertTrue(held.get("6") > 0 && labels.get("6").indexOf("jet pack") == 0, 'Jet Pack attempts (${labels.get("6")})');
+		for (code in ["3", "9", "10"]) assertTrue(!held.exists(code), 'none for item $code');
 	}
+
+
+	/**
+		Speed 50 can't run fast enough to clip the test corner, but the Mine
+		item can: placed standing 6 px off the wall, it appears in the player's
+		own tile; stepping away and back into it blasts the player into the
+		wall, and the feet go through to the ledge past it.
+	**/
+	private static function testMineItemClipsThroughTheWall():Void {
+		var blocks = cornerBlocks();
+		for (col in 22...32) blocks.push(new LevelBlock(col, 25, BlockType.Basic));
+		var corner = ClipScanner.findCorners(blocks, 1)[0];
+		var settings = scanSettings(50);
+		settings.passThroughOnly = true;
+		settings.mineGaps = [6];
+		settings.mineLaunches = [[0, 1]];
+		var plain = new ClipScanner(blocks, scanSettings(50), corner);
+		while (!plain.done) plain.step(50);
+		assertEquals(0, plain.portals.length, "no plain run-up clips at speed 50");
+		settings.heldItem = 2;
+		var scanner = new ClipScanner(blocks, settings, corner);
+		ClipSimulator.keepRealItem(() -> {
+			while (!scanner.done) scanner.step(50);
+			return true;
+		});
+		assertEquals(1, scanner.portals.length, "the mine item clips it");
+		var portal = scanner.portals[0];
+		assertTrue(portal.attempt.label.indexOf("mine item") == 0, 'with the mine: ${portal.attempt.describe()}');
+		assertEquals(2, portal.attempt.items.heldItem, "and Replay on me hands out the mine");
+		assertTrue(portal.passesThrough, 'it comes out past the wall (${portal.exitX}, ${portal.exitY})');
+	}
+
+
+	/**
+		A conveyor of right arrows on a ledge (row 14, cols 0-10) above the
+		test corner: riding it toward the wall builds up far more speed than
+		running (speed 50 runs at 7 px a frame), and a hop off it with
+		fast-fall lands deep in the corner fast enough to clip. Plain run-ups
+		from the corner's floor can't.
+	**/
+	private static function testArrowStartsRideAConveyorIntoTheCorner():Void {
+		var blocks = cornerBlocks();
+		for (col in 0...11) blocks.push(new LevelBlock(col, 14, BlockType.ArrowRight));
+		var corner = ClipScanner.findCorners(blocks, 1).filter(c -> c.x == 18 && c.y == 16)[0];
+		var plainSettings = scanSettings(50);
+		plainSettings.arrowWaits = [];
+		var plain = new ClipScanner(blocks, plainSettings, corner);
+		while (!plain.done) plain.step(50);
+		assertEquals(0, plain.portals.length, "no plain run-up clips at speed 50");
+		var settings = scanSettings(50);
+		settings.arrowWaits = [0];
+		var scanner = new ClipScanner(blocks, settings, corner);
+		assertTrue(scanner.attemptsFor(corner) > 1, "the conveyor adds arrow starts");
+		while (!scanner.done) scanner.step(50);
+		assertEquals(1, scanner.portals.length, "an arrow start clips it");
+		var attempt = scanner.portals[0].attempt;
+		assertTrue(attempt.label.indexOf("arrows: start at 15,420") == 0, 'from the far end of the conveyor: ${attempt.describe()}');
+		var cornerOnly = scanSettings(50);
+		assertEquals(1, new ClipScanner(cornerBlocks(), cornerOnly, ClipScanner.findCorners(cornerBlocks(), 1)[0]).attemptsFor(
+			ClipScanner.findCorners(cornerBlocks(), 1)[0]), "a corner with no arrows near gets no arrow starts");
+	}
+
 
 	/** Stage 1.5 narrowed to a short hop, with and without fast-fall, and running (no items). **/
 	private static function predictSettings(speed:Float):ClipScanSettings {

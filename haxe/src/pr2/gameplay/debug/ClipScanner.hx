@@ -118,10 +118,16 @@ class ClipPortal {
 	/** A jump this big between two frames is the game sending the player back to a safe spot. **/
 	public static inline var RESPAWN_JUMP:Float = 60;
 
+	/** The tile (course tiles, like the corner's) the feet went into: the block the clip goes through, which the overlay marks. **/
+	public final blockX:Int;
+	public final blockY:Int;
+
 	public function new(corner:ClipCorner, attempt:ClipAttempt, run:ClipRun) {
 		this.corner = corner;
 		this.attempt = attempt;
 		this.run = run;
+		blockX = run.clipped ? ClipSimulator.tileOf(run.x) : corner.markX;
+		blockY = run.clipped ? ClipSimulator.tileOf(run.y - ClipSimulator.FEET_DEPTH) : corner.markY;
 		var ghost = run.ghost;
 		var last = ghost == null || ghost.length == 0 ? null : ghost[ghost.length - 1];
 		if (last != null && last.grounded && !last.inSolid && !respawnedAfter(ghost, run.clipFrame)) {
@@ -182,17 +188,18 @@ class ClipPortal {
 	**/
 	public static function wentThrough(ghost:Null<Array<GhostFrame>>, clipFrame:Int):Bool {
 		if (ghost == null || clipFrame < 0 || clipFrame + 1 >= ghost.length) return false;
-		// ghost[i] is the pose after frame i - 1: in the block at clipFrame + 1, before it at clipFrame.
+		// ghost[i] is the pose after frame i - 1: feet in the block at clipFrame + 1, before it at clipFrame.
 		var before = ghost[clipFrame], inside = ghost[clipFrame + 1];
 		var t = ClipSimulator.TILE;
-		var bx = (ClipSimulator.tileOf(inside.x) + 0.5) * t, by = (ClipSimulator.tileOf(inside.y - 15) + 0.5) * t;
+		var feet = ClipSimulator.FEET_DEPTH;
+		var bx = (ClipSimulator.tileOf(inside.x) + 0.5) * t, by = (ClipSimulator.tileOf(inside.y - feet) + 0.5) * t;
 		for (i in clipFrame + 2...ghost.length) {
 			if (isRespawn(ghost, i)) return false;
 			var f = ghost[i];
 			if (f.inSolid || !f.grounded) continue;
-			// Came to rest: past the block, going the way it went in?
-			var inX = bx - before.x, inY = by - (before.y - 15);
-			var outX = f.x - bx, outY = (f.y - 15) - by;
+			// Came to rest: past the block the feet went into, going the way they went in?
+			var inX = bx - before.x, inY = by - (before.y - feet);
+			var outX = f.x - bx, outY = (f.y - feet) - by;
 			var moved = Math.sqrt((f.x - before.x) * (f.x - before.x) + (f.y - before.y) * (f.y - before.y));
 			return inX * outX + inY * outY > 0 && moved > t;
 		}
@@ -234,15 +241,44 @@ class ClipScanSettings {
 		facing the wall, since its lunge adds 8 px a frame forward; Super Jump
 		(5) run-ups that launch with the item (25 up, far above a jump) into
 		fast-fall; Speed Burst (7) run-ups that burst first (double speed and
-		acceleration) then jump or hop into fast-fall.
+		acceleration) then jump or hop into fast-fall; Mine (2) placing a mine
+		by the wall and getting blasted by it (up to 28 px a frame, into the
+		wall or the floor); Jet Pack (6) run-ups that fly up first, then dive
+		into the corner; Teleport (4) blinking 120 px toward the wall mid-jump.
+		Lightning (3), Ice Wave (9) and Snake (10) don't move the player, so
+		they have none.
 	**/
 	public var heldItem:Null<Int> = null;
 	/**
 		Other items to try at every corner as well (codes; e.g. every item the
-		level's item blocks can give). Only the ones with clip attempts count:
-		Laser Gun (1), Super Jump (5), Speed Burst (7) and Sword (8).
+		level's item blocks can give). Only the ones with clip attempts count
+		(`ClipScanner.CLIP_ITEMS`).
 	**/
 	public var extraItems:Array<Int> = [];
+	/** Mine item: px between the player's side and the wall when the mine is placed (they set which side of the player it lands). **/
+	public var mineGaps:Array<Float> = [0, 6, 12, 18];
+	/** Mine item: [frames jump is held, frame the mine is placed] (0 = placed standing). **/
+	public var mineLaunches:Array<Array<Int>> = [[0, 1], [4, 2], [4, 4], [4, 6], [999, 4], [999, 8], [999, 12], [999, 16]];
+	/** Jet Pack: frames it is held from the jump (then fast-fall into the corner), on run-ups every `jetStep` px. **/
+	public var jetFrames:Array<Int> = [4, 8, 16, 30];
+	public var jetStep:Int = 10;
+	/** Teleport: px from the wall at the start, frames jump is held, and the frame it is used on. **/
+	public var teleportGaps:Array<Float> = [0, 30, 90];
+	public var teleportHolds:Array<Int> = [0, 8, 999];
+	public var teleportFrames:Array<Int> = [for (f in 0...14) 1 + f * 3];
+	/**
+		Arrow blocks near a corner push the player: standing on an up arrow
+		bounces it up (10 px a frame), side arrows push 3 px a frame on every
+		frame stood on them (more than the speed relaxes, so riding a conveyor
+		while holding its way builds up to 31 px a frame; it bleeds off to
+		about 12 within 12 frames in the air), a down arrow wall drags a
+		falling player down 5 px a frame more. Starting on arrows near the
+		corner (see `arrowStarts`), the player waits this many frames (letting
+		them act) before going for the corner.
+	**/
+	public var arrowWaits:Array<Int> = [for (w in 0...21) w * 2];
+	/** Tiles before the wall searched for arrows (and started on). **/
+	public var arrowReach:Int = 30;
 	/** Px between the player's side and the wall at the start of a laser attempt. **/
 	public var laserGaps:Array<Float> = [0, 1, 2];
 	/** Frames jump is held for a laser attempt. **/
@@ -263,8 +299,13 @@ class ClipScanSettings {
 		coordinates (the player's own), and runs start the course turned.
 	**/
 	public var courseRotation:Int = 0;
-	/** Also scan the bottom corners of walls hanging in the air, and ceilings meeting walls (not only floors meeting walls). **/
-	public var wallClips:Bool = true;
+	/**
+		Also scan the bottom corners of walls hanging in the air, and ceilings
+		meeting walls (not only floors meeting walls). Off by default: in those
+		shapes only the head or body pokes into the block, never the feet, so
+		they don't clip (a clip is the feet going in).
+	**/
+	public var wallClips:Bool = false;
 	/**
 		Stage 1.5: a corner no predicted start clips is then tried with Stage 1's
 		own attempts (hop-backs and the rest), so it finds everything Stage 1
@@ -341,6 +382,10 @@ class ClipScanner implements CornerScan {
 		for (charge in settings.superCharges) if (charge > 0) launches.push(new ScanLaunch(0, charge));
 		// Corners as the player sees them on the turned course.
 		var seen = ClipSimulator.layoutFor(blocks, settings.courseRotation);
+		for (b in seen) {
+			if (!b.isMarker() && b.type.isSolid()) solidTiles.set(tileKey(b.x, b.y), true);
+			if (!b.isMarker() && isArrow(b.type)) arrowTiles.set(tileKey(b.x, b.y), true);
+		}
 		corners = onlyCorner != null ? [onlyCorner] : findCorners(seen, 1).concat(findCorners(seen, -1));
 		if (onlyCorner == null && settings.wallClips) corners = corners.concat(findWallCorners(seen));
 		if (onlyCorner == null && settings.mines) corners = corners.concat(findMineSpots(seen));
@@ -380,8 +425,27 @@ class ClipScanner implements CornerScan {
 	/** True for the first variant, which also has the plain run-ups and hops. **/
 	var baseVariant:Bool = true;
 
-	/** Items with clip attempts of their own. **/
-	public static final CLIP_ITEMS:Array<Int> = [LASER_GUN, SUPER_JUMP, SPEED_BURST, SWORD];
+	/**
+		Items with clip attempts of their own: every item that moves the
+		player. Lightning, Ice Wave and Snake don't (the Snake digs on its own,
+		outside the player's physics), so they have none.
+	**/
+	public static final CLIP_ITEMS:Array<Int> = [LASER_GUN, MINE_ITEM, TELEPORT, SUPER_JUMP, JET_PACK, SPEED_BURST, SWORD];
+
+	/** Solid and arrow tiles as the player sees them (course tiles). **/
+	final solidTiles:Map<String, Bool> = new Map();
+	final arrowTiles:Map<String, Bool> = new Map();
+	/** Arrow start spots per corner (course x of the feet), worked out once. **/
+	final arrowStartCache:haxe.ds.ObjectMap<ClipCorner, Array<ArrowStart>> = new haxe.ds.ObjectMap();
+
+	static inline function tileKey(x:Int, y:Int):String return x + "," + y;
+
+	static function isArrow(type:BlockType):Bool {
+		return switch (type) {
+			case ArrowUp | ArrowDown | ArrowLeft | ArrowRight: true;
+			default: false;
+		}
+	}
 
 	function useVariant(v:Int):Void {
 		item = variants[v];
@@ -391,8 +455,84 @@ class ClipScanner implements CornerScan {
 	/** Attempts for one item variant (with one stat set). **/
 	function variantAttempts(v:Int):Int {
 		useVariant(v);
-		return (baseVariant ? runUpAttempts + hopAttempts : 0) + laserAttempts + itemRunUpAttempts;
+		return (baseVariant ? runUpAttempts + hopAttempts : 0) + laserAttempts + itemRunUpAttempts + itemMoveAttempts;
 	}
+
+	/** The Mine, Jet Pack and Teleport attempts of the variant's item (at a floor-meets-wall corner). **/
+	var itemMoveAttempts(get, never):Int;
+	function get_itemMoveAttempts():Int {
+		var s = settings;
+		if (item == MINE_ITEM) return s.mineGaps.length * 2 * s.mineLaunches.length * MINE_APPROACHES;
+		if (item == JET_PACK) return jetDistances().length * s.jetFrames.length;
+		if (item == TELEPORT) return s.teleportGaps.length * s.teleportHolds.length * s.teleportFrames.length;
+		return 0;
+	}
+
+	/** What the player does once the mine is placed: stay, walk at the wall, step away and come back, or keep jumping. **/
+	static inline var MINE_APPROACHES:Int = 4;
+
+	function jetDistances():Array<Int> {
+		var every = [for (d in settings.distances) if (d % settings.jetStep == 0) d];
+		// A short list of run-ups (none on the step) is used as it is.
+		return every.length > 0 ? every : settings.distances;
+	}
+
+	/** Jump styles per arrow start and wait: a full jump after the wait, jumping all along, no jump, a short hop after the wait. **/
+	static inline var ARROW_LAUNCHES:Int = 4;
+
+	function arrowAttempts(corner:ClipCorner):Int {
+		return arrowStarts(corner).length * settings.arrowWaits.length * ARROW_LAUNCHES * 2;
+	}
+
+	/**
+		Feet positions of the arrow starts at a floor-meets-wall corner: each
+		arrow with room to stand on it within `arrowReach` tiles before the
+		wall, from `ARROW_RISE` rows above the corner's floor (a conveyor or
+		an up arrow on a ledge that carries the player down into the corner)
+		to `ARROW_DROP` rows below it (an up arrow bouncing it up); and
+		against the wall when the wall next to the player is an arrow. The
+		`MAX_ARROW_STARTS` nearest are kept. None when no arrow is near.
+	**/
+	function arrowStarts(corner:ClipCorner):Array<ArrowStart> {
+		var known = arrowStartCache.get(corner);
+		if (known != null) return known;
+		var t = ClipSimulator.TILE;
+		var starts:Array<ArrowStart> = [];
+		var floorRow = corner.y + 1;
+		for (row in floorRow - ARROW_RISE...floorRow + ARROW_DROP + 1) {
+			// Each run of arrows to stand on (a conveyor, or a single pad): its far end (the
+			// longest ride toward the wall), its middle and its near end.
+			var run:Array<Int> = [];
+			function endRun():Void {
+				if (run.length == 0) return;
+				var picks = [run[run.length - 1], run[Std.int(run.length / 2)], run[0]];
+				for (i in picks) {
+					var col = corner.x - corner.dir * i;
+					var start = new ArrowStart((col + 0.5) * t, row * t, i + Math.abs(row - floorRow));
+					if (!Lambda.exists(starts, s -> s.x == start.x && s.y == start.y)) starts.push(start);
+				}
+				run = [];
+			}
+			for (i in 0...settings.arrowReach) {
+				var col = corner.x - corner.dir * i;
+				var standOn = arrowTiles.exists(tileKey(col, row)) && !solidTiles.exists(tileKey(col, row - 1))
+					&& !solidTiles.exists(tileKey(col, row - 2));
+				if (standOn) run.push(i) else endRun();
+			}
+			endRun();
+		}
+		starts.sort((a, b) -> Reflect.compare(a.distance, b.distance));
+		if (starts.length > MAX_ARROW_STARTS) starts.resize(MAX_ARROW_STARTS);
+		var wallArrow = false;
+		for (row in corner.y - 2...corner.y + 1) if (arrowTiles.exists(tileKey(corner.wallTileX, row))) wallArrow = true;
+		if (wallArrow) starts.push(new ArrowStart(corner.wallFace - corner.dir * 10, corner.floorY, 0));
+		arrowStartCache.set(corner, starts);
+		return starts;
+	}
+
+	static inline var ARROW_RISE:Int = 8;
+	static inline var ARROW_DROP:Int = 3;
+	static inline var MAX_ARROW_STARTS:Int = 6;
 
 	/**
 		Attempts at a hanging or ceiling corner: run-ups only (no standing
@@ -424,7 +564,7 @@ class ClipScanner implements CornerScan {
 			for (v in 0...variants.length) total += wallCornerAttempts(v);
 			return total;
 		}
-		return cornerAttempts;
+		return cornerAttempts + arrowAttempts(corner);
 	}
 
 	public function attemptsFor(corner:ClipCorner):Int return attemptsPerSet(corner) * statSets.length;
@@ -545,18 +685,29 @@ class ClipScanner implements CornerScan {
 			if (index >= runs) return itemRunUpAttemptAt(corner, index - runs, stats);
 			return runUpAttemptAt(corner, index >> 1, stats, index % 2 == 0);
 		}
+		// The arrow starts come after every item variant's attempts.
+		var itemAttempts = cornerAttempts;
+		if (index >= itemAttempts) {
+			useVariant(0);
+			return arrowAttemptAt(corner, index - itemAttempts, stats);
+		}
 		while (v < variants.length - 1 && index >= variantAttempts(v)) {
 			index -= variantAttempts(v);
 			v++;
 		}
 		useVariant(v);
+		// Within a variant: plain run-ups (first variant only), laser or sword, item run-ups, the
+		// item's own moves (mine, jet pack, teleport), then hop-backs (first variant only).
 		var runUps = baseVariant ? runUpAttempts : 0;
-		var hopsFrom = runUps + laserAttempts + itemRunUpAttempts;
-		if (index >= hopsFrom) return hopAttemptAt(corner, index - hopsFrom, stats);
-		if (!baseVariant) return index >= laserAttempts ? itemRunUpAttemptAt(corner, index - laserAttempts, stats) : laserAttemptAt(corner, index, stats);
-		if (index >= runUpAttempts + laserAttempts) return itemRunUpAttemptAt(corner, index - runUpAttempts - laserAttempts, stats);
-		if (index >= runUpAttempts) return laserAttemptAt(corner, index - runUpAttempts, stats);
-		return runUpAttemptAt(corner, index, stats);
+		if (index < runUps) return runUpAttemptAt(corner, index, stats);
+		index -= runUps;
+		if (index < laserAttempts) return laserAttemptAt(corner, index, stats);
+		index -= laserAttempts;
+		if (index < itemRunUpAttempts) return itemRunUpAttemptAt(corner, index, stats);
+		index -= itemRunUpAttempts;
+		if (index < itemMoveAttempts) return itemMoveAttemptAt(corner, index, stats);
+		index -= itemMoveAttempts;
+		return hopAttemptAt(corner, index, stats);
 	}
 
 	/** A plain run-up at `corner`: distance-major, every launch at each distance. **/
@@ -667,9 +818,132 @@ class ClipScanner implements CornerScan {
 		return attempt;
 	}
 
+	/** The Mine, Jet Pack or Teleport attempt `index` of the variant's item. **/
+	function itemMoveAttemptAt(corner:ClipCorner, index:Int, stats:Array<Float>):ClipAttempt {
+		var attempt = item == MINE_ITEM ? mineItemAttemptAt(corner, index, stats)
+			: (item == JET_PACK ? jetAttemptAt(corner, index, stats) : teleportAttemptAt(corner, index, stats));
+		attempt.items = new ClipItems(item);
+		attempt.hats = settings.hats;
+		return attempt;
+	}
+
+	/**
+		Mine item: from `gap` px off the wall, jump (or not), and on the
+		placing frame face toward or away from the wall and place the mine. It
+		lands in the tile at the player's hand (always a little to the right,
+		as in Flash) and appears 33 frames later; touching it then blasts the
+		player away from its centre (50, capped at 28 px a frame). Then stay,
+		walk at the wall, step away and come back, or keep jumping (up into a
+		mine placed overhead blasts the player down into the floor).
+	**/
+	function mineItemAttemptAt(corner:ClipCorner, index:Int, stats:Array<Float>):ClipAttempt {
+		var s = settings;
+		var launches = s.mineLaunches.length;
+		var approach = index % MINE_APPROACHES;
+		var launch = s.mineLaunches[Std.int(index / MINE_APPROACHES) % launches];
+		var facing = Std.int(index / (MINE_APPROACHES * launches)) % 2;
+		var gap = s.mineGaps[Std.int(index / (MINE_APPROACHES * launches * 2))];
+		var hold = launch[0], place = launch[1];
+		var dir = corner.dir;
+		var face = facing == 0 ? dir : -dir;
+		var appear = place + MINE_APPEAR_FRAMES;
+		var length = appear + 70;
+		var script = [for (f in 0...length) {
+			var jump = f < Std.int(Math.min(hold, 20)) || (approach == 3 && f >= appear - 10);
+			var move = 0;
+			if (f == place) move = face;
+			else if (f > place) move = switch (approach) {
+				case 1: dir;
+				case 2: f <= place + 10 ? -dir : dir;
+				default: 0;
+			}
+			new LocalPlayerInput(move == -1, move == 1, jump, false, f == place);
+		}];
+		var attempt = new ClipAttempt(corner.wallFace - dir * (10 + gap), corner.floorY, stats[0], stats[1], stats[2], s.gravity, dir, 0, 0, false, length);
+		attempt.script = script;
+		var then = switch (approach) {
+			case 1: "walk at the wall";
+			case 2: "step away and come back";
+			case 3: "keep jumping";
+			default: "stay";
+		}
+		var jumpText = hold == 0 ? "standing" : 'jump held ${hold >= 999 ? "all" : Std.string(hold)}';
+		attempt.label = 'mine item ($jumpText, ${gap}px from the wall, place it facing ${face == dir ? "the wall" : "away"} on frame $place, then $then)';
+		return attempt;
+	}
+
+	/** Jet Pack: run from each `jetStep` px, jump, fly for `jetFrames`, then fast-fall into the corner. **/
+	function jetAttemptAt(corner:ClipCorner, index:Int, stats:Array<Float>):ClipAttempt {
+		var s = settings;
+		var fly = s.jetFrames[index % s.jetFrames.length];
+		var distance = jetDistances()[Std.int(index / s.jetFrames.length)];
+		var attempt = new ClipAttempt(corner.wallFace - corner.dir * (10 + distance), corner.floorY, stats[0], stats[1], stats[2], s.gravity, corner.dir,
+			0, 999, true, s.frames + fly);
+		attempt.itemFrom = 1;
+		attempt.itemUntil = fly;
+		attempt.downFrom = fly + 1;
+		attempt.label = 'jet pack: run from ${distance}px, jump, fly $fly frames, then fast-fall';
+		return attempt;
+	}
+
+	/** Teleport: from `gap` px off the wall, run at it (jumping or not) and teleport 120 px toward it on a set frame, then fast-fall. **/
+	function teleportAttemptAt(corner:ClipCorner, index:Int, stats:Array<Float>):ClipAttempt {
+		var s = settings;
+		var frames = s.teleportFrames.length, holds = s.teleportHolds.length;
+		var at = s.teleportFrames[index % frames];
+		var hold = s.teleportHolds[Std.int(index / frames) % holds];
+		var gap = s.teleportGaps[Std.int(index / (frames * holds))];
+		var attempt = new ClipAttempt(corner.wallFace - corner.dir * (10 + gap), corner.floorY, stats[0], stats[1], stats[2], s.gravity, corner.dir, 0,
+			hold, true, s.frames);
+		attempt.itemAt = at;
+		var jumpText = hold == 0 ? "no jump" : 'jump held ${hold >= 999 ? "all" : Std.string(hold)}';
+		attempt.label = 'teleport toward the wall on frame $at (${gap}px from it, $jumpText), fast-fall';
+		return attempt;
+	}
+
+	/**
+		An arrow start: stand on an arrow near the corner (or against an arrow
+		wall), wait while it acts (holding toward the wall or not), then go for
+		the corner: a full jump from the end of the wait, a full jump held all
+		along (bouncing higher on an up arrow), or no jump; fast-fall once the
+		wait is over.
+	**/
+	function arrowAttemptAt(corner:ClipCorner, index:Int, stats:Array<Float>):ClipAttempt {
+		var s = settings;
+		var waits = s.arrowWaits.length;
+		var launch = index % ARROW_LAUNCHES;
+		var holdWhileWaiting = Std.int(index / ARROW_LAUNCHES) % 2 == 1;
+		var wait = s.arrowWaits[Std.int(index / (ARROW_LAUNCHES * 2)) % waits];
+		var start = arrowStarts(corner)[Std.int(index / (ARROW_LAUNCHES * 2 * waits))];
+		var jumpFrame = launch == 1 ? 0 : wait;
+		var hold = switch (launch) {
+			case 2: 0;
+			case 3: 4;
+			default: 999;
+		}
+		var attempt = new ClipAttempt(start.x, start.y, stats[0], stats[1], stats[2], s.gravity, corner.dir, jumpFrame, hold, true, s.frames + wait);
+		attempt.downFrom = wait;
+		attempt.moveStart = holdWhileWaiting ? 0 : wait;
+		attempt.hats = s.hats;
+		var then = switch (launch) {
+			case 0: "jump";
+			case 1: "keep jumping from the start";
+			case 3: "hop";
+			default: "no jump";
+		}
+		attempt.label = 'arrows: start at ${Math.round(start.x)},${Math.round(start.y)}, wait $wait frames '
+			+ '${holdWhileWaiting ? "holding toward the wall" : "still"}, then $then, fast-fall';
+		return attempt;
+	}
+
 	static inline var SWORD:Int = 8;
 	static inline var SUPER_JUMP:Int = 5;
 	static inline var SPEED_BURST:Int = 7;
+	static inline var MINE_ITEM:Int = 2;
+	static inline var TELEPORT:Int = 4;
+	static inline var JET_PACK:Int = 6;
+	/** Frames a placed mine takes to appear (LocalPlayerController.MINE_APPEAR_FRAMES). **/
+	static inline var MINE_APPEAR_FRAMES:Int = 33;
 
 	static inline var LASER_GUN:Int = 1;
 
@@ -885,6 +1159,19 @@ private class ScanLaunch {
 	public function new(hold:Int, superCharge:Int) {
 		this.hold = hold;
 		this.superCharge = superCharge;
+	}
+}
+
+/** Where an arrow attempt starts (the feet, in course pixels), and how far that is from its corner (tiles, for ordering). **/
+private class ArrowStart {
+	public final x:Float;
+	public final y:Float;
+	public final distance:Float;
+
+	public function new(x:Float, y:Float, distance:Float) {
+		this.x = x;
+		this.y = y;
+		this.distance = distance;
 	}
 }
 

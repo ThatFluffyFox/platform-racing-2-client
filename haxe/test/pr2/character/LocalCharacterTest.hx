@@ -21,7 +21,8 @@ class LocalCharacterTest {
 		if (pr2.DeterministicTestMode.finishSmokeSuite("LocalCharacterTest")) return;
 		pr2.DeterministicTestMode.runTest("LocalCharacterTest.testUnchangedHeldItemDoesNotResetUseAnimation", testUnchangedHeldItemDoesNotResetUseAnimation);
 		pr2.DeterministicTestMode.runTest("LocalCharacterTest.testCowboyHatBoostsStatsAndForcesAirborneWaterModeUntilRemoved", testCowboyHatBoostsStatsAndForcesAirborneWaterModeUntilRemoved);
-		pr2.DeterministicTestMode.runTest("LocalCharacterTest.testCowboyHatFlightDoesNotRepeatWaterExitBoost", testCowboyHatFlightDoesNotRepeatWaterExitBoost);
+		pr2.DeterministicTestMode.runTest("LocalCharacterTest.testStartingHatAppliesItsEffects", testStartingHatAppliesItsEffects);
+		pr2.DeterministicTestMode.runTest("LocalCharacterTest.testCowboyHatFlightDoesNotRepeatWaterExitBoost",testCowboyHatFlightDoesNotRepeatWaterExitBoost);
 		pr2.DeterministicTestMode.runTest("LocalCharacterTest.testTopHatPassesThroughVanishBlocks", testTopHatPassesThroughVanishBlocks);
 		pr2.DeterministicTestMode.runTest("LocalCharacterTest.testAprilFirstReversesControlsUntilArtifactRemoved", testAprilFirstReversesControlsUntilArtifactRemoved);
 		pr2.DeterministicTestMode.runTest("LocalCharacterTest.testNormalRaceMineHitDropsHighestHat", testNormalRaceMineHitDropsHighestHat);
@@ -102,6 +103,26 @@ class LocalCharacterTest {
 		assertClose(50, removed.speedStat, "cowboy hat removal restores starting speed");
 		assertClose(50, removed.accelerationStat, "cowboy hat removal restores starting acceleration");
 		assertClose(50, removed.jumpStat, "cowboy hat removal restores starting jump");
+	}
+
+	/**
+		The race start sets the hat with setHatId (createLocalCharacter), then
+		the server's setHats arrives with the same hat: its effects must apply
+		then, not only after the hat is lost and picked up again.
+	**/
+	private static function testStartingHatAppliesItsEffects():Void {
+		var local = new LocalCharacter(airborneLevel());
+		var gravityBefore:Float = @:privateAccess local.controller.gravity;
+		var speedBefore:Float = @:privateAccess local.controller.maxVelX;
+		local.setHatId(7);
+		local.setHats([7, 0xFFFFFF, -1, 11, 0xFFFFFF, -1]);
+		assertClose(speedBefore + 1, @:privateAccess local.controller.maxVelX, "starting santa hat adds its speed");
+		assertClose(gravityBefore * 0.85, @:privateAccess local.controller.gravity, "starting moon hat lowers gravity");
+		local.setHats([7, 0xFFFFFF, -1, 11, 0xFFFFFF, -1]);
+		assertClose(speedBefore + 1, @:privateAccess local.controller.maxVelX, "the same santa hat again adds nothing more");
+		assertClose(gravityBefore * 0.85, @:privateAccess local.controller.gravity, "the same moon hat again lowers nothing more");
+		local.setHats([7, 0xFFFFFF, -1, 11, 0xFFFFFF, -1, 10, 0xFFFFFF, -1]);
+		assertAbove(@:privateAccess local.controller.speedBurstFramesRemaining, 0, "a jump start hat gives its speed burst");
 	}
 
 	private static function testCowboyHatFlightDoesNotRepeatWaterExitBoost():Void {

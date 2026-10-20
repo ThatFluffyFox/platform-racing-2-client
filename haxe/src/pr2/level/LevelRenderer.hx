@@ -869,12 +869,18 @@ class LevelRenderer extends Sprite {
 		}
 	}
 
-	public function moveBlockDisplay(fromWorldX:Int, fromWorldY:Int, toWorldX:Int, toWorldY:Int):Void {
+	/**
+		Moves the block display at `from` to `to`. With `block`, only that
+		block's own display moves: when another block has since moved into
+		`from` (one move block stepping into the tile another just left), the
+		top display there is the newcomer's and must stay.
+	**/
+	public function moveBlockDisplay(fromWorldX:Int, fromWorldY:Int, toWorldX:Int, toWorldY:Int, ?block:LevelBlock):Void {
 		if (fromWorldX == toWorldX && fromWorldY == toWorldY) {
 			return;
 		}
 		var fromKey = blockKey(fromWorldX, fromWorldY);
-		var display = blockDisplays.get(fromKey);
+		var display = block != null ? blockDisplaysByBlock.get(block) : blockDisplays.get(fromKey);
 		if (display == null) {
 			return;
 		}
@@ -888,19 +894,29 @@ class LevelRenderer extends Sprite {
 				}
 			}
 		}
+		var ownsTile = blockDisplays.get(fromKey) == display;
 		var bounceVelocity = blockBounceVelocities.get(fromKey);
 		var moveArrow = moveArrowDisplays.get(fromKey);
+		// The arrow is drawn inside its block's display: it leaves with that display only.
+		var arrowLeaves = moveArrow != null && moveArrow.parent == display;
 		if (entry == null || !detachBlockDisplay(fromKey, fromWorldX, fromWorldY, display, false)) {
 			return;
+		}
+		// A display left behind at `from` stays that tile's display, with its own arrow and bounce.
+		var remaining = blockDisplayStacks.get(fromKey);
+		if (remaining != null && remaining.length > 0) {
+			if (!blockDisplays.exists(fromKey)) blockDisplays.set(fromKey, remaining[remaining.length - 1].display);
+			if (moveArrow != null && !arrowLeaves) moveArrowDisplays.set(fromKey, moveArrow);
+			if (bounceVelocity != null && !ownsTile) blockBounceVelocities.set(fromKey, bounceVelocity);
 		}
 
 		display.x = toWorldX;
 		display.y = toWorldY;
 		var toKey = blockKey(toWorldX, toWorldY);
-		if (bounceVelocity != null) {
+		if (bounceVelocity != null && ownsTile) {
 			blockBounceVelocities.set(toKey, bounceVelocity);
 		}
-		if (moveArrow != null) {
+		if (moveArrow != null && arrowLeaves) {
 			moveArrowDisplays.set(toKey, moveArrow);
 		}
 		addBlockDisplayToStack(entry.block, display, toWorldX, toWorldY);

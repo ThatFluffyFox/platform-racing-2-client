@@ -48,6 +48,7 @@ class LevelRendererTest {
 		pr2.DeterministicTestMode.runTest("LevelRendererTest.testTeleportBlockColorBackground", testTeleportBlockColorBackground);
 		pr2.DeterministicTestMode.runTest("LevelRendererTest.testBlockBumpAnimation", testBlockBumpAnimation);
 		pr2.DeterministicTestMode.runTest("LevelRendererTest.testMoveBlockDisplay", testMoveBlockDisplay);
+		pr2.DeterministicTestMode.runTest("LevelRendererTest.testMoveBlockDisplayKeepsEachBlocksOwnDisplay", testMoveBlockDisplayKeepsEachBlocksOwnDisplay);
 		pr2.DeterministicTestMode.runTest("LevelRendererTest.testMoveBlockArrowDisplay", testMoveBlockArrowDisplay);
 		pr2.DeterministicTestMode.runTest("LevelRendererTest.testIncrementalBlockDrawing", testIncrementalBlockDrawing);
 		pr2.DeterministicTestMode.runTest("LevelRendererTest.testRuntimeBlockAppendPreservesDrawingCompletion", testRuntimeBlockAppendPreservesDrawingCompletion);
@@ -396,6 +397,30 @@ class LevelRendererTest {
 		assertEquals(10050.0, display.y, "move block display keeps new world y");
 		assertEquals(null, renderer.blockAlphaAt(10020, 10050), "old move block coordinate is no longer keyed");
 		assertEquals(1.0, renderer.blockAlphaAt(10050, 10050), "new move block coordinate is keyed");
+	}
+
+	/**
+		Two move blocks in a row both step right: the front one leaves 10050,
+		the back one steps into it. A later sync of the front block (from its
+		last drawn tile) must not drag the back block's display along.
+	**/
+	private static function testMoveBlockDisplayKeepsEachBlocksOwnDisplay():Void {
+		var back = new DecodedBlock(ObjectCodes.BLOCK_MOVE, 10020, 10050);
+		var front = new DecodedBlock(ObjectCodes.BLOCK_MOVE, 10050, 10050);
+		var renderer = new LevelRenderer(new TestLevel(0xFFFFFF, [back, front]), back);
+
+		renderer.moveBlockDisplay(10050, 10050, 10080, 10050);
+		renderer.moveBlockDisplay(10020, 10050, 10050, 10050);
+		renderer.moveBlockDisplay(10050, 10050, 10080, 10050, front);
+		renderer.moveBlockDisplay(10020, 10050, 10050, 10050, back);
+
+		assertEquals(null, renderer.blockAlphaAt(10020, 10050), "the back block left 10020");
+		assertEquals(1.0, renderer.blockAlphaAt(10050, 10050), "the back block's display stays at 10050");
+		assertEquals(1.0, renderer.blockAlphaAt(10080, 10050), "the front block's display is at 10080");
+		var blockLayer = worldLayer(renderer, 1);
+		var xs = [for (i in 0...blockLayer.numChildren) blockLayer.getChildAt(i).x];
+		xs.sort((a, b) -> Reflect.compare(a, b));
+		assertEquals("10050,10080", xs.join(","), "one display on each block's tile");
 	}
 
 	private static function testMoveBlockArrowDisplay():Void {

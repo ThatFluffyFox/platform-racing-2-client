@@ -16,8 +16,8 @@ import pr2.level.Level.TilePosition;
 
 	A run simulates the real `LocalPlayerController` from a start position with
 	fixed stats and a scripted input sequence, inside a cropped copy of the
-	level, and reports the first frame where the player's body midpoint (the
-	point Flash samples for `bodyTouch`) is inside a solid block. Every run
+	level, and reports the first frame where the player's feet are inside a
+	solid block (a head or body poking into a block is not a clip). Every run
 	builds its own player, and its own blocks whenever they can break or move,
 	so one attempt never affects the next.
 **/
@@ -94,7 +94,7 @@ class ClipSimulator {
 		var player = preparePlayer(area, level, attempt.startX, attempt.startY, attempt.speed, attempt.accel, attempt.jump, attempt.gravity,
 			attempt.hats, attempt.items, attempt.courseRotation);
 
-		var ghost:Null<Array<GhostFrame>> = recordGhost ? [GhostFrame.capture(player, bodyInSolid(level, player))] : null;
+		var ghost:Null<Array<GhostFrame>> = recordGhost ? [GhostFrame.capture(player, anyInSolid(level, player))] : null;
 		var settledFrames = 0;
 		var longTail = tailFrames > GHOST_TAIL_FRAMES;
 		var clipFrame = -1;
@@ -104,10 +104,12 @@ class ClipSimulator {
 		while (frame < stopAt) {
 			var input = attempt.inputAt(frame, player.grounded);
 			player.step(input);
-			var inSolid = bodyInSolid(level, player);
+			var feetIn = feetInSolid(level, player);
+			var inSolid = feetIn || bodyInSolid(level, player);
 			if (ghost != null) ghost.push(GhostFrame.capture(player, inSolid));
 			if (onFrame != null) onFrame(frame, input, player, inSolid);
-			if (clipFrame < 0 && inSolid && attempt.hitsTarget(player.x, player.y)) {
+			// A clip is the feet going into a block; the head or body poking in is not.
+			if (clipFrame < 0 && feetIn && attempt.hitsTarget(player.x, player.y)) {
 				clipFrame = frame;
 				clipX = player.x;
 				clipY = player.y;
@@ -135,13 +137,42 @@ class ClipSimulator {
 			}
 			frame++;
 		}
+		area.release(level);
 		return new ClipRun(clipFrame, clipX, clipY, clipVx, clipVy, ghost);
 	}
 
 	/** True when the body midpoint (Flash's `bodyTouch` point) is inside a live solid block. **/
 	public static function bodyInSolid(level:Level, player:LocalPlayerController):Bool {
-		var body = toLevel(player.x, player.y - 15, player.courseRotation);
-		var block = level.blockAt(tileOf(body.x), tileOf(body.y));
+		return pointInSolid(level, player, player.y - 15);
+	}
+
+	/**
+		How far above the feet the feet point is: a player standing on a floor
+		has its feet exactly on the floor's top, so the point just above them
+		is in the open tile.
+	**/
+	public static inline var FEET_DEPTH:Float = 2;
+
+	/**
+		True when the feet are inside a live solid block. This is what makes a
+		clip: the collision code only leaves the feet inside a block when the
+		body is stuck as well (a floor under the feet snaps the player on top
+		of it unless the point 30 px up is in a block too). A head or body that
+		only pokes into a block (jumping into a ceiling, falling past a block's
+		bottom corner) leaves the feet outside, so it is not a clip.
+	**/
+	public static function feetInSolid(level:Level, player:LocalPlayerController):Bool {
+		return pointInSolid(level, player, player.y - FEET_DEPTH);
+	}
+
+	/** Feet or body inside a block (a recorded pose that is not standing clear). **/
+	public static function anyInSolid(level:Level, player:LocalPlayerController):Bool {
+		return feetInSolid(level, player) || bodyInSolid(level, player);
+	}
+
+	static function pointInSolid(level:Level, player:LocalPlayerController, courseY:Float):Bool {
+		var point = toLevel(player.x, courseY, player.courseRotation);
+		var block = level.blockAt(tileOf(point.x), tileOf(point.y));
 		return block != null && block.type.isSolid() && !player.blockController.isBlockRemoved(block);
 	}
 
@@ -293,6 +324,11 @@ class ClipAttempt {
 	public var label:Null<String> = null;
 	/** Frame the item key is pressed (-1 = never), e.g. a Speed Burst before the run-up. **/
 	public var itemAt:Int = -1;
+	/** Frames the item key is held from and until (inclusive; -1 = never), e.g. flying a Jet Pack. **/
+	public var itemFrom:Int = -1;
+	public var itemUntil:Int = -1;
+	/** With `down`: fast-fall starts no sooner than this frame (-1 = from the launch). **/
+	public var downFrom:Int = -1;
 	/** Launch with the held item (the Super Jump item) on `jumpFrame` instead of the jump key. **/
 	public var jumpWithItem:Bool = false;
 	/** Frame the direction starts being held; before it the player stands or jumps in place. **/
@@ -324,10 +360,12 @@ class ClipAttempt {
 	public var targetTileX:Null<Int> = null;
 	public var targetTileY:Null<Int> = null;
 
-	/** True when the body point at (x, y - 15) is in the target tile, or there is no target. **/
+	/** True when the feet point or the body point at (x, y - 15) is in the target tile, or there is no target. **/
 	public function hitsTarget(x:Float, y:Float):Bool {
-		if (targetTileX == null || targetTileY == null) return true;
-		return ClipSimulator.tileOf(x) == targetTileX && ClipSimulator.tileOf(y - 15) == targetTileY;
+		var tx = targetTileX, ty = targetTileY;
+		if (tx == null || ty == null) return true;
+		if (ClipSimulator.tileOf(x) != tx) return false;
+		return ClipSimulator.tileOf(y - ClipSimulator.FEET_DEPTH) == ty || ClipSimulator.tileOf(y - 15) == ty;
 	}
 
 	/** Shortest charge that launches (charge 26 > 25) and the frames to the 100 cap. **/
@@ -367,8 +405,8 @@ class ClipAttempt {
 		} else if (!jumpWithItem) {
 			jumping = frame >= jumpFrame && frame < jumpFrame + hold;
 		}
-		if (down && frame >= launchFrame() && !grounded) holdDown = true;
-		var item = frame == itemAt || (jumpWithItem && frame == jumpFrame);
+		if (down && frame >= launchFrame() && frame >= downFrom && !grounded) holdDown = true;
+		var item = frame == itemAt || (jumpWithItem && frame == jumpFrame) || (itemFrom >= 0 && frame >= itemFrom && frame <= itemUntil);
 		return new LocalPlayerInput(heldDir == -1, heldDir == 1, jumping, holdDown, item);
 	}
 
@@ -701,6 +739,14 @@ class ClipArea {
 			sharedGravity = gravity;
 		}
 		return level;
+	}
+
+	/**
+		After a run on `level`: a shared level the run added blocks to (a mine
+		placed with the Mine item) is dropped, so the next run gets a clean one.
+	**/
+	public function release(level:Level):Void {
+		if (level == sharedLevel && level.blocks.length != template.length) sharedLevel = null;
 	}
 
 	/** A start position (course coordinates for a course turned by `rotation`) is unusable if the standing player would overlap a block. **/
