@@ -217,6 +217,11 @@ Sharp rendering in the browser:
   drawn unsmoothed when the stage is scaled up, like Flash, instead of
   OpenFL smoothing every bitmap on a scaled stage. Re-copy it when OpenFL is
   upgraded.
+- `haxe/src/openfl/display/_internal/Context3DTextField.hx` is OpenFL 9.5.2's
+  file with one change (marked in it): text is rasterized at the full output
+  scale (devicePixelRatio times the stage scale). OpenFL used devicePixelRatio
+  alone, so text on the scaled-up stage was drawn small and stretched. Re-copy
+  it when OpenFL is upgraded.
 
 Browser development path:
 
