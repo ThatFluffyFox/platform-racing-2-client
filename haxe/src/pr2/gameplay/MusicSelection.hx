@@ -51,6 +51,9 @@ class MusicSelection extends Removable {
 	}
 
 	public function gotArtifact():Void {
+		if (Settings.disabledSongs().indexOf(MusicCatalog.ARTIFACT.id) >= 0) {
+			return;
+		}
 		for (song in songs) {
 			if (song.id == MusicCatalog.ARTIFACT.id) {
 				setSong(song.id);

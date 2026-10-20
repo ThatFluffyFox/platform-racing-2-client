@@ -7,7 +7,7 @@ class OptionsSettings {
 	public static final SONGS:Map<Int,String> = [
 		1=>"Orbital Trance", 2=>"Code", 3=>"Paradise on E", 4=>"Crying Soul", 5=>"My Vision", 6=>"Switchblade",
 		7=>"The Wires", 8=>"Before Mydnite", 10=>"Broked It", 11=>"Hello?", 12=>"Pyrokinesis", 13=>"Flowers 'n' Herbs",
-		14=>"Instrumental #4", 15=>"Prismatic", 17=>"Toodaloo", 18=>"Night Shade", 19=>"Blizzard!", 20=>"Pasture", 21=>"Sunset Raiders"
+		14=>"Instrumental #4", 15=>"Prismatic", 16=>"We Are Loud", 17=>"Toodaloo", 18=>"Night Shade", 19=>"Blizzard!", 20=>"Pasture", 21=>"Sunset Raiders"
 	];
 	private function new() {}
 	public static function setMusic(value:Float):Void { Settings.setValue(Settings.MUSIC_VOLUME, Std.int(value)); AudioManager.musicLevelChanged(); }

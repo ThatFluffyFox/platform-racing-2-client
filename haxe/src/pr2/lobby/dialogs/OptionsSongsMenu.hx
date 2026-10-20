@@ -43,7 +43,7 @@ class OptionsSongsMenu extends AutoDismissPopup {
 		}
 		var disabled:Array<Int> = [];
 		for (i in 1...22) {
-			if (i == 9 || i == 16) {
+			if (i == 9) {
 				continue;
 			}
 			var check = songCheck(i);
