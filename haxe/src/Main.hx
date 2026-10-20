@@ -77,6 +77,10 @@ class Main extends Sprite {
 		var query = currentQuery();
 		frameRateSettings = FrameRateSettings.fromQuery(query, frameStrategiesSupportedOnCurrentTarget());
 		configureStage(query);
+		#if (js && html5)
+		// Re-render at the new density after browser zoom or a move to another monitor.
+		pr2.runtime.Html5PixelRatioSync.install(stage);
+		#end
 		applyPresentationFrameRate();
 		pr2.app.AppStage.stage = stage;
 		KeyboardFocusManager.install(stage);

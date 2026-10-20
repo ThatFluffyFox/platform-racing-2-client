@@ -1,6 +1,7 @@
 package com.jiggmin.data;
 
 import openfl.display.Bitmap;
+import openfl.display.PixelSnapping;
 import openfl.display.DisplayObject;
 import openfl.display.Shape;
 import openfl.display.Sprite;
@@ -178,6 +179,7 @@ class Objects {
 			var bitmap = new Bitmap(data);
 			bitmap.name = blockBitmapName(code);
 			bitmap.smoothing = false;
+			bitmap.pixelSnapping = PixelSnapping.ALWAYS; // Flash Block: unsmoothed, snapped (drawn crisp when scaled)
 			bitmap.width = TILE_SIZE;
 			bitmap.height = TILE_SIZE;
 			holder.addChild(bitmap);
