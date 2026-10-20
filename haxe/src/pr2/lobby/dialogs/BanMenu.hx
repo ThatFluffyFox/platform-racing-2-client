@@ -13,6 +13,7 @@ import pr2.assets.NativeAssets;
 import pr2.lobby.LobbyArt;
 import pr2.lobby.LobbyArt.Binding;
 import pr2.lobby.LobbySession;
+import pr2.lobby.players.StaffActions;
 import pr2.lobby.Memory;
 import pr2.lobby.chat.ChatText;
 import pr2.lobby.tabs.ChatTab;
@@ -82,7 +83,7 @@ class BanMenu extends Sprite {
 
 	private function viewPriors():Void {
 		if (LobbySocket.isConnected()) {
-			LobbySocket.write("view_priors`" + userName);
+			LobbySocket.write(StaffActions.priorsCommand(userName));
 		} else {
 			new MessagePopup("Error: You are not connected to a server. Please log in and try again.");
 		}
@@ -106,16 +107,8 @@ class BanMenu extends Sprite {
 	}
 
 	private function banUser():Void {
-		var fields:Map<String, String> = [
-			"banned_name" => userName,
-			"duration" => Std.string(banSecs),
-			"reason" => reasonText(),
-			"type" => selectedData(combo("type"), "both"),
-			"scope" => selectedData(combo("scope"), "social")
-		];
-		if (shouldIncludeChatRecord()) {
-			fields.set("record", chatRecordProvider());
-		}
+		var record:Null<String>=StaffActions.shouldIncludeChatRecord(Memory.getString("chatRoom",""))?chatRecordProvider():null;
+		var fields=StaffActions.banFields(userName,banSecs,reasonText(),selectedData(combo("type"),"both"),selectedData(combo("scope"),"social"),record);
 		uploadActive = true;
 		var popup = uploadFactory(ServerConfig.banUserUrl(), fields, "Banning...", onBanSuccess, onBanError);
 		if (uploadActive) {
@@ -148,12 +141,12 @@ class BanMenu extends Sprite {
 				banId = parsed;
 			}
 		}
-		LobbySocket.write("ban`" + userName + "`" + banSecs + "`" + selectedData(combo("scope"), "social") + "`" + banId + "`" + reasonText());
+		LobbySocket.write(StaffActions.banCommand(userName,banSecs,selectedData(combo("scope"),"social"),banId,reasonText()));
 		target.startFadeOut();
 	}
 
 	private function warnUser(warnLevel:Int):Void {
-		LobbySocket.write("warn`" + userName + "`" + warnLevel);
+		LobbySocket.write(StaffActions.warningCommand(userName,warnLevel));
 		target.startFadeOut();
 	}
 
@@ -163,13 +156,8 @@ class BanMenu extends Sprite {
 	}
 
 	private function kickUser():Void {
-		LobbySocket.write("kick`" + userName);
+		LobbySocket.write(StaffActions.kickCommand(userName));
 		target.startFadeOut();
-	}
-
-	private static function shouldIncludeChatRecord():Bool {
-		var room = Memory.getString("chatRoom", "");
-		return room != "mod" && room != "admin";
 	}
 
 	public static function defaultChatRecord():String {
@@ -293,7 +281,7 @@ private class BanMenuView extends NativeView {
 		reason.backgroundColor = 0xFFFFFF;
 		reason.border = true;
 		reason.borderColor = 0x777777;
-		reason.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x222222);
+		reason.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x000000);
 		addChild(reason);
 		button("banButton", "Ban", -50, 140, 100);
 	}
@@ -326,7 +314,7 @@ private class BanMenuView extends NativeView {
 		field.width = width;
 		field.height = height;
 		field.selectable = false;
-		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0x222222, bold, null, null, null, null, align);
+		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0x000000, bold, null, null, null, null, align);
 		field.text = value;
 		addChild(field);
 	}

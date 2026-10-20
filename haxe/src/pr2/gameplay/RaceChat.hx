@@ -5,6 +5,7 @@ import openfl.display.Stage;
 import openfl.events.Event;
 import openfl.events.KeyboardEvent;
 import openfl.events.MouseEvent;
+import openfl.geom.ColorTransform;
 import openfl.text.TextField;
 import openfl.text.TextFieldType;
 import openfl.text.TextFormat;
@@ -25,6 +26,7 @@ import pr2.net.LobbySocket;
 	Port of Flash `gameplay.RaceChat` around the authored `RaceChatGraphic`.
 **/
 class RaceChat extends Sprite {
+	public var keyboardShortcutEnabled:Bool = true;
 	public static var textBox:Null<TextField>;
 
 	private static inline final MAX_MESSAGES:Int = 7;
@@ -157,6 +159,25 @@ class RaceChat extends Sprite {
 		];
 	}
 
+	/** Exact XFL color transforms for the overlapping transcript layers. */
+	public function authoredTranscriptColors():Array<Float> {
+		if (art == null) return [];
+		var top = art.topText.parent.transform.colorTransform;
+		var bg = art.bgText.parent.transform.colorTransform;
+		return [
+			top.redMultiplier,
+			top.greenMultiplier,
+			top.blueMultiplier,
+			top.redOffset,
+			bg.redMultiplier,
+			bg.greenMultiplier,
+			bg.blueMultiplier,
+			bg.redOffset,
+			bg.greenOffset,
+			bg.blueOffset
+		];
+	}
+
 	public function remove():Void {
 		removed = true;
 		commandHandler.defineCommand("systemChat", null);
@@ -214,6 +235,7 @@ class RaceChat extends Sprite {
 	}
 
 	private function focusOrSend(event:KeyboardEvent):Void {
+		if (!keyboardShortcutEnabled) return;
 		if (event.keyCode != Keyboard.ENTER || chatInput == null || stage == null || isMultilineInputTarget(event.target)) {
 			return;
 		}
@@ -317,10 +339,12 @@ private class RaceChatView extends Sprite {
 		bg.x = 1;
 		bg.y = 1;
 		bg.scaleY = 1.00079345703125;
+		bg.transform.colorTransform = new ColorTransform(0.5, 0.5, 0.5, 1, 128, 128, 128);
 		bg.addChild(bgText);
 		topText = makeOutput("textBox1", OUTPUT_X, OUTPUT_Y, OUTPUT_WIDTH, OUTPUT_HEIGHT, 0x000000);
 		var top = new Sprite();
 		top.name = "top";
+		top.transform.colorTransform = new ColorTransform(0.5, 0.5, 0.5);
 		top.addChild(topText);
 
 		var whiteLabel = makeLabel(5, 130.9, 0xFFFFFF);

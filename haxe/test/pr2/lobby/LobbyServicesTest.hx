@@ -57,7 +57,7 @@ import pr2.lobby.dialogs.ConfirmPopup;
 import pr2.lobby.dialogs.Popup;
 import pr2.lobby.account.Presets;
 import pr2.page.EditorBlockOptions;
-import pr2.page.LoginPage;
+import pr2.page.LoginFlow;
 import pr2.page.LobbyPage;
 import pr2.levelEditor.LevelEditor;
 import pr2.levelEditor.ChooseLevelsModePopup;
@@ -130,12 +130,6 @@ class LobbyServicesTest {
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testMemoryAndSecureData", testMemoryAndSecureData);
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testPmNotificationLifecycle", testPmNotificationLifecycle);
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLobbySidePanelDimensions", testLobbySidePanelDimensions);
-		var loginPageWarmupFetchFactory = ServerStatusClient.fetchFactory;
-		ServerStatusClient.fetchFactory = function(_onResult, _onError):Void {};
-		var loginPageWarmup = new LoginPage();
-		loginPageWarmup.initialize();
-		loginPageWarmup.remove();
-		ServerStatusClient.fetchFactory = loginPageWarmupFetchFactory;
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testCheckServersComboPrompts", testCheckServersComboPrompts);
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testCheckServersGuildSelectionRules", testCheckServersGuildSelectionRules);
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLoginServerMessageDoesNotAbortHandshake", testLoginServerMessageDoesNotAbortHandshake);
@@ -227,12 +221,18 @@ class LobbyServicesTest {
 
 	private static function testLevelEditorRoute():Void {
 		var previousFactory = LobbyPage.createLevelEditorPage;
+		var previousLoginFactory = LobbyPage.createLoginPage;
 		var previousLogoutPostFactory = LobbyPage.logoutPostFactory;
 		var launchedAsMod:Null<Bool> = null;
+		var loginRoutes = 0;
 		var logoutPosts:Array<{url:String, fields:Map<String, String>}> = [];
 		LobbyPage.createLevelEditorPage = function(isMod:Bool):Page {
 			launchedAsMod = isMod;
 			return new TestPage("level-editor");
+		};
+		LobbyPage.createLoginPage = function():Page {
+			loginRoutes++;
+			return new TestPage("login");
 		};
 		LobbyPage.logoutPostFactory = function(url:String, fields:Map<String, String>):Void {
 			logoutPosts.push({url: url, fields: fields});
@@ -304,6 +304,7 @@ class LobbyServicesTest {
 		assertEquals(0, LobbySession.group, "confirmed temporary moderator logout clears session");
 		assertEquals(2, logoutPosts.length, "confirmed non-remembered temporary moderator logout posts logout");
 		assertNotNull(lastMessagePopup(), "confirmed temporary moderator logout shows logged-out message");
+		assertEquals(1, loginRoutes, "confirmed temporary moderator logout routes to login");
 
 		LobbySession.group = 1;
 		LobbySession.isTempMod = false;
@@ -316,6 +317,7 @@ class LobbyServicesTest {
 		assertEquals(3, logoutPosts.length, "non-remembered regular logout posts logout");
 		assertEquals(ServerConfig.logoutUrl(), logoutPosts[2].url, "regular logout endpoint");
 		assertEquals(0, mapSize(logoutPosts[2].fields), "regular logout posts empty fields");
+		assertEquals(2, loginRoutes, "regular logout routes to login");
 
 		LobbySession.group = 1;
 		LobbySession.isTempMod = false;
@@ -326,8 +328,10 @@ class LobbyServicesTest {
 		page.pageHolder = holder;
 		Reflect.callMethod(page, Reflect.field(page, "clickLogout"), []);
 		assertEquals(3, logoutPosts.length, "remembered regular logout skips logout post");
+		assertEquals(3, loginRoutes, "remembered regular logout routes to login");
 
 		LobbyPage.createLevelEditorPage = previousFactory;
+		LobbyPage.createLoginPage = previousLoginFactory;
 		LobbyPage.logoutPostFactory = previousLogoutPostFactory;
 		LobbySession.clear();
 		closeAllPopups();
@@ -2077,7 +2081,12 @@ class LobbyServicesTest {
 		assertEquals(379, Math.round(leftBg.height), "left lobby panel renders background height");
 		var leftPanel = Std.downcast(leftBg, DisplayObjectContainer);
 		assertEquals(null, leftBg.scale9Grid, "left lobby panel wrapper is not scaled as one stretched surface");
-		assertNotNull(leftPanel.getChildAt(0).scale9Grid, "left lobby panel nine-slices the authored vector");
+		var leftArt = leftPanel.getChildAt(0);
+		assertNotNull(leftArt.scale9Grid, "left lobby panel nine-slices the authored vector");
+		assertEquals(1, leftBg.scaleX, "left lobby panel wrapper remains at unit scale");
+		assertEquals(1, leftBg.scaleY, "left lobby panel wrapper remains at unit scale");
+		assertEquals(194, Math.round(leftArt.width), "left lobby panel resizes the nine-sliced vector width");
+		assertEquals(379, Math.round(leftArt.height), "left lobby panel resizes the nine-sliced vector height");
 		left.remove();
 
 		var right = new LobbyRight();
@@ -2086,7 +2095,12 @@ class LobbyServicesTest {
 		assertEquals(341, Math.round(rightBg.height), "right lobby panel renders background height");
 		var rightPanel = Std.downcast(rightBg, DisplayObjectContainer);
 		assertEquals(null, rightBg.scale9Grid, "right lobby panel wrapper is not scaled as one stretched surface");
-		assertNotNull(rightPanel.getChildAt(0).scale9Grid, "right lobby panel nine-slices the authored vector");
+		var rightArt = rightPanel.getChildAt(0);
+		assertNotNull(rightArt.scale9Grid, "right lobby panel nine-slices the authored vector");
+		assertEquals(1, rightBg.scaleX, "right lobby panel wrapper remains at unit scale");
+		assertEquals(1, rightBg.scaleY, "right lobby panel wrapper remains at unit scale");
+		assertEquals(347, Math.round(rightArt.width), "right lobby panel resizes the nine-sliced vector width");
+		assertEquals(341, Math.round(rightArt.height), "right lobby panel resizes the nine-sliced vector height");
 		right.remove();
 		LobbySession.clear();
 	}
@@ -2097,8 +2111,7 @@ class LobbyServicesTest {
 		ServerStatusClient.fetchFactory = function(onResult:ServerStatusResult->Void, onError:Null<String->Void>):Void {
 			fetches.push({onResult: onResult, onError: onError});
 		};
-		var page = new LoginPage();
-		page.initialize();
+		var page = new LoginFlow();
 		Reflect.callMethod(page, Reflect.field(page, "openCredentialDialog"), []);
 		var popup:Dynamic = Reflect.field(page, "activePopup");
 		var combo = Std.downcast(DisplayUtil.findByName(popup, "dropdown"), GameSelect);
@@ -2121,9 +2134,9 @@ class LobbyServicesTest {
 		};
 		LobbySession.clear();
 		LobbySession.guildId = 42;
-		var page = new LoginPage();
-		page.initialize();
+		var page = new LoginFlow();
 		Reflect.callMethod(page, Reflect.field(page, "openCredentialDialog"), []);
+		Reflect.callMethod(page, Reflect.field(page, "loadServers"), []);
 		fetches[0].onResult(new ServerStatusResult([
 			server(2, 9002, 0, 25, "open", "Public"),
 			server(7, 9007, 9, 80, "open", "Other Guild"),
@@ -2142,7 +2155,7 @@ class LobbyServicesTest {
 	}
 
 	private static function testLoginServerMessageDoesNotAbortHandshake():Void {
-		var page = new LoginPage();
+		var page = new LoginFlow();
 		var gate = new pr2.net.LoginSessionGate(function(_):Void {});
 		Reflect.setField(page, "loginGate", gate);
 		Reflect.callMethod(page, Reflect.field(page, "receiveLoginServerMessage"), ["Welcome, guest!"]);
@@ -2170,7 +2183,7 @@ class LobbyServicesTest {
 		LobbySession.begin("Stale", 1, serverInfo(0));
 		UnreadNotif.setLastRead(0);
 		UnreadNotif.notifyUser(99);
-		var page = new LoginPage();
+		var page = new LoginFlow();
 		Reflect.setField(page, "loginToken", "expired-token");
 		Reflect.callMethod(page, Reflect.field(page, "openLoggingInPopup"), ["1234", "Alice", "", true, serverInfo(0)]);
 
@@ -2191,7 +2204,7 @@ class LobbyServicesTest {
 		UnreadNotif.reset();
 		Settings.clear();
 		Presets.resetForTests();
-		var page = new LoginPage();
+		var page = new LoginFlow();
 		Reflect.setField(page, "loginServer", serverInfo(42));
 		Reflect.setField(page, "loginRemember", true);
 		var session = new LoginSessionResult(2, "Player", {
@@ -2232,7 +2245,7 @@ class LobbyServicesTest {
 	}
 
 	private static function testLoginMessagesUseMessagePopup():Void {
-		var page = new LoginPage();
+		var page = new LoginFlow();
 		Reflect.callMethod(page, Reflect.field(page, "openLoginMessage"), ["Login failed."]);
 		var open = Popup.getOpen();
 		var message = Std.downcast(open[open.length - 1], pr2.lobby.dialogs.MessagePopup);

@@ -10,6 +10,7 @@ import openfl.text.TextFormat;
 import pr2.display.Removable;
 import pr2.runtime.FontResolver;
 import pr2.runtime.SvgAsset;
+import pr2.ui.AuthoredScale9;
 import pr2.util.DisplayUtil;
 
 /**
@@ -75,6 +76,12 @@ class ItemDisplay extends Removable {
 				dot.visible = index <= ammo;
 			}
 		}
+	}
+
+	/** Reuse the animated item and ammo inside a different control surface. */
+	public function compact():Void {
+		art.backgroundPanel.visible = false;
+		darkLabel.visible = lightLabel.visible = false;
 	}
 
 	private function createLabel(x:Float, y:Float, color:Int):TextField {
@@ -154,6 +161,8 @@ class ItemDisplay extends Removable {
 }
 
 private class ItemDisplayView extends Sprite {
+	private static inline final BACKGROUND_LAYER = "ui_popups_outside_levels_bg_d14a954e12/t00_l000_f0000_r00.svg";
+	public final backgroundPanel:Shape;
 	public final timeline:TimelineClip;
 	private var frameStart:Int = 1;
 	private var frameSpan:Int = 5;
@@ -161,7 +170,10 @@ private class ItemDisplayView extends Sprite {
 
 	public function new() {
 		super();
-		timeline = new TimelineClip("assets/effects/item_display.lottie.json");
+		backgroundPanel = AuthoredScale9.squarePanel({scaleX: 0.749847412109375, scaleY: 0.499862670898438});
+		backgroundPanel.name = "backgroundPanel";
+		addChild(backgroundPanel);
+		timeline = new TimelineClip("assets/effects/item_display.lottie.json", [BACKGROUND_LAYER]);
 		timeline.stop();
 		addChild(timeline);
 		redraw();

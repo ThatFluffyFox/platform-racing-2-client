@@ -8,9 +8,9 @@ import pr2.audio.MusicCatalog;
 import pr2.audio.MusicCatalog.MusicTrack;
 import pr2.display.Removable;
 import pr2.lobby.account.Settings;
+import pr2.ui.AuthoredScale9;
 import pr2.ui.StageFocus;
 import pr2.ui.controls.GameSelect;
-import pr2.runtime.SvgAsset;
 
 /**
 	Port of Flash `gameplay.MusicSelection` and its `ui.GameSound` dropdown.
@@ -28,7 +28,7 @@ class MusicSelection extends Removable {
 	public function new(?music:GameMusic) {
 		super();
 		art = new Sprite();
-		exactBackground = SvgAsset.create(BACKGROUND_ASSET);
+		exactBackground = AuthoredScale9.squarePanel({scaleX: 2.14022827148438, scaleY: 0.349990844726562});
 		art.addChild(exactBackground);
 		addChild(art);
 
@@ -51,6 +51,9 @@ class MusicSelection extends Removable {
 	}
 
 	public function gotArtifact():Void {
+		if (Settings.disabledSongs().indexOf(MusicCatalog.ARTIFACT.id) >= 0) {
+			return;
+		}
 		for (song in songs) {
 			if (song.id == MusicCatalog.ARTIFACT.id) {
 				setSong(song.id);
@@ -66,6 +69,8 @@ class MusicSelection extends Removable {
 		var selected = dropdown.selectedItem;
 		return selected == null ? "" : selected.id;
 	}
+
+	public function availableSongs():Array<MusicTrack> return songs.copy();
 
 	private function changeSong(_:Event):Void {
 		var selected = dropdown.selectedItem;

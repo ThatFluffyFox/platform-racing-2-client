@@ -37,7 +37,9 @@ typedef SearchFetchFactory = Map<String, String>->(LevelListResult->Void)->(Stri
 	immediately.
 **/
 class SearchTab extends LevelListingPage {
-	public static var searchFactory:SearchFetchFactory = defaultSearch;
+	public static var searchFactory(get, set):SearchFetchFactory;
+	private static function get_searchFactory():SearchFetchFactory return pr2.lobby.level.LevelBrowserData.searchFactory;
+	private static function set_searchFactory(value:SearchFetchFactory):SearchFetchFactory return pr2.lobby.level.LevelBrowserData.searchFactory = value;
 
 	private var art:SearchView;
 	private var searchBox:Null<TextField>;
@@ -291,7 +293,7 @@ class SearchView extends NativeView {
 		field.width = width;
 		field.height = 18;
 		field.selectable = false;
-		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x222222, false, null, null, null, null,
+		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x000000, false, null, null, null, null,
 			TextFormatAlign.LEFT);
 		field.text = value;
 		addChild(field);

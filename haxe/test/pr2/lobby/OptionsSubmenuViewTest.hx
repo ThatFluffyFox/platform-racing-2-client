@@ -12,14 +12,14 @@ class OptionsSubmenuViewTest {
 		assertNear(1.01100158691406, songs.panel.scaleX, "songs ShadowBG keeps XFL horizontal scale");
 		assertNear(1.30888366699219, songs.panel.scaleY, "songs ShadowBG keeps XFL vertical scale");
 		assertEquals("-- Songs --", songs.title.text, "songs title keeps exact authored copy");
-		assertEquals(19, countChecks(songs), "song menu includes every authored checkbox except retired 9 and 16");
+		assertEquals(20, countChecks(songs), "song menu includes every authored checkbox except retired 9");
 		assertNear(-127.95, songs.checks.get(1).x, "left song column keeps XFL X");
 		assertNear(-86, songs.checks.get(1).y, "first left song keeps XFL Y");
 		assertNear(-127.95, songs.checks.get(11).x, "last left song keeps XFL X");
 		assertNear(94, songs.checks.get(11).y, "last left song keeps XFL Y");
 		assertNear(5.65, songs.checks.get(12).x, "right song column keeps XFL X");
 		assertNear(-86, songs.checks.get(12).y, "first right song keeps XFL Y");
-		assertNear(74, songs.checks.get(21).y, "last right song keeps XFL Y");
+		assertNear(94, songs.checks.get(21).y, "last right song keeps XFL Y");
 		assertNear(125, songs.checks.get(21).controlWidth, "song checkboxes keep XFL horizontal scale");
 		assertNear(13.7469787597656, songs.checks.get(21).controlHeight, "song checkboxes keep XFL vertical scale");
 		assertEquals(false, songs.checks.get(2).selected, "disabled song blacklist clears authored selection");
