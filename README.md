@@ -222,6 +222,10 @@ Sharp rendering in the browser:
   scale (devicePixelRatio times the stage scale). OpenFL used devicePixelRatio
   alone, so text on the scaled-up stage was drawn small and stretched. Re-copy
   it when OpenFL is upgraded.
+- `haxe/src/openfl/display/_internal/Context3DGraphics.hx` is OpenFL 9.5.2's
+  file with one change (marked in it): shapes with a scale9Grid (the panels
+  and buttons) are rasterized at the full output scale too, so their outlines
+  stay sharp. Re-copy it when OpenFL is upgraded.
 
 Browser development path:
 
