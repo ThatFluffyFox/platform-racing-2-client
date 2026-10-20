@@ -38,6 +38,10 @@ typedef RigPartChannels = {
 	var fixed:String;
 	var primary:String;
 	var secondary:String;
+	/** Static art the Flash part stacks under `primary` (colorMC). **/
+	@:optional var fixedBelow:String;
+	/** Static art the Flash part stacks over `secondary` (colorMC2): outlines, shading, eyes. **/
+	@:optional var fixedAbove:String;
 	@:optional var channelAnimations:Array<RigPartChannelAnimation>;
 	@:optional var overlayAnimation:RigPartOverlayAnimation;
 }

@@ -14,350 +14,401 @@
           "name": "classic",
           "fixed": "assets/svg/character/head/001_classic/static.svg",
           "primary": "assets/svg/character/head/001_classic/primary.svg",
-          "secondary": "assets/svg/character/head/001_classic/secondary.svg"
+          "secondary": "assets/svg/character/head/001_classic/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/001_classic/static_above.svg"
         },
         {
           "id": 2,
           "name": "tired",
           "fixed": "assets/svg/character/head/002_tired/static.svg",
           "primary": "assets/svg/character/head/002_tired/primary.svg",
-          "secondary": "assets/svg/character/head/002_tired/secondary.svg"
+          "secondary": "assets/svg/character/head/002_tired/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/002_tired/static_above.svg"
         },
         {
           "id": 3,
           "name": "smiler",
           "fixed": "assets/svg/character/head/003_smiler/static.svg",
           "primary": "assets/svg/character/head/003_smiler/primary.svg",
-          "secondary": "assets/svg/character/head/003_smiler/secondary.svg"
+          "secondary": "assets/svg/character/head/003_smiler/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/003_smiler/static_above.svg"
         },
         {
           "id": 4,
           "name": "flower",
           "fixed": "assets/svg/character/head/004_flower/static.svg",
           "primary": "assets/svg/character/head/004_flower/primary.svg",
-          "secondary": "assets/svg/character/head/004_flower/secondary.svg"
+          "secondary": "assets/svg/character/head/004_flower/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/004_flower/static_above.svg"
         },
         {
           "id": 5,
           "name": "classic_girl",
           "fixed": "assets/svg/character/head/005_classic_girl/static.svg",
           "primary": "assets/svg/character/head/005_classic_girl/primary.svg",
-          "secondary": "assets/svg/character/head/005_classic_girl/secondary.svg"
+          "secondary": "assets/svg/character/head/005_classic_girl/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/005_classic_girl/static_above.svg"
         },
         {
           "id": 6,
           "name": "goof",
           "fixed": "assets/svg/character/head/006_goof/static.svg",
           "primary": "assets/svg/character/head/006_goof/primary.svg",
-          "secondary": "assets/svg/character/head/006_goof/secondary.svg"
+          "secondary": "assets/svg/character/head/006_goof/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/006_goof/static_above.svg"
         },
         {
           "id": 7,
           "name": "downer",
           "fixed": "assets/svg/character/head/007_downer/static.svg",
           "primary": "assets/svg/character/head/007_downer/primary.svg",
-          "secondary": "assets/svg/character/head/007_downer/secondary.svg"
+          "secondary": "assets/svg/character/head/007_downer/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/007_downer/static_above.svg"
         },
         {
           "id": 8,
           "name": "balloon",
           "fixed": "assets/svg/character/head/008_balloon/static.svg",
           "primary": "assets/svg/character/head/008_balloon/primary.svg",
-          "secondary": "assets/svg/character/head/008_balloon/secondary.svg"
+          "secondary": "assets/svg/character/head/008_balloon/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/008_balloon/static_above.svg"
         },
         {
           "id": 9,
           "name": "worm",
           "fixed": "assets/svg/character/head/009_worm/static.svg",
           "primary": "assets/svg/character/head/009_worm/primary.svg",
-          "secondary": "assets/svg/character/head/009_worm/secondary.svg"
+          "secondary": "assets/svg/character/head/009_worm/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/009_worm/static_above.svg"
         },
         {
           "id": 10,
           "name": "unicorn",
           "fixed": "assets/svg/character/head/010_unicorn/static.svg",
           "primary": "assets/svg/character/head/010_unicorn/primary.svg",
-          "secondary": "assets/svg/character/head/010_unicorn/secondary.svg"
+          "secondary": "assets/svg/character/head/010_unicorn/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/010_unicorn/static_above.svg"
         },
         {
           "id": 11,
           "name": "bird",
           "fixed": "assets/svg/character/head/011_bird/static.svg",
           "primary": "assets/svg/character/head/011_bird/primary.svg",
-          "secondary": "assets/svg/character/head/011_bird/secondary.svg"
+          "secondary": "assets/svg/character/head/011_bird/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/011_bird/static_above.svg"
         },
         {
           "id": 12,
           "name": "sun",
           "fixed": "assets/svg/character/head/012_sun/static.svg",
           "primary": "assets/svg/character/head/012_sun/primary.svg",
-          "secondary": "assets/svg/character/head/012_sun/secondary.svg"
+          "secondary": "assets/svg/character/head/012_sun/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/012_sun/static_above.svg"
         },
         {
           "id": 13,
           "name": "candy",
           "fixed": "assets/svg/character/head/013_candy/static.svg",
           "primary": "assets/svg/character/head/013_candy/primary.svg",
-          "secondary": "assets/svg/character/head/013_candy/secondary.svg"
+          "secondary": "assets/svg/character/head/013_candy/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/013_candy/static_above.svg"
         },
         {
           "id": 14,
           "name": "invisible",
           "fixed": "assets/svg/character/head/014_invisible/static.svg",
           "primary": "assets/svg/character/head/014_invisible/primary.svg",
-          "secondary": "assets/svg/character/head/014_invisible/secondary.svg"
+          "secondary": "assets/svg/character/head/014_invisible/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/014_invisible/static_above.svg"
         },
         {
           "id": 15,
           "name": "football_helmet",
           "fixed": "assets/svg/character/head/015_football_helmet/static.svg",
           "primary": "assets/svg/character/head/015_football_helmet/primary.svg",
-          "secondary": "assets/svg/character/head/015_football_helmet/secondary.svg"
+          "secondary": "assets/svg/character/head/015_football_helmet/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/015_football_helmet/static_above.svg"
         },
         {
           "id": 16,
           "name": "basketball",
           "fixed": "assets/svg/character/head/016_basketball/static.svg",
           "primary": "assets/svg/character/head/016_basketball/primary.svg",
-          "secondary": "assets/svg/character/head/016_basketball/secondary.svg"
+          "secondary": "assets/svg/character/head/016_basketball/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/016_basketball/static_above.svg"
         },
         {
           "id": 17,
           "name": "stick",
           "fixed": "assets/svg/character/head/017_stick/static.svg",
           "primary": "assets/svg/character/head/017_stick/primary.svg",
-          "secondary": "assets/svg/character/head/017_stick/secondary.svg"
+          "secondary": "assets/svg/character/head/017_stick/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/017_stick/static_above.svg"
         },
         {
           "id": 18,
           "name": "cat",
           "fixed": "assets/svg/character/head/018_cat/static.svg",
           "primary": "assets/svg/character/head/018_cat/primary.svg",
-          "secondary": "assets/svg/character/head/018_cat/secondary.svg"
+          "secondary": "assets/svg/character/head/018_cat/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/018_cat/static_above.svg"
         },
         {
           "id": 19,
           "name": "elephant",
           "fixed": "assets/svg/character/head/019_elephant/static.svg",
           "primary": "assets/svg/character/head/019_elephant/primary.svg",
-          "secondary": "assets/svg/character/head/019_elephant/secondary.svg"
+          "secondary": "assets/svg/character/head/019_elephant/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/019_elephant/static_above.svg"
         },
         {
           "id": 20,
           "name": "ant",
           "fixed": "assets/svg/character/head/020_ant/static.svg",
           "primary": "assets/svg/character/head/020_ant/primary.svg",
-          "secondary": "assets/svg/character/head/020_ant/secondary.svg"
+          "secondary": "assets/svg/character/head/020_ant/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/020_ant/static_above.svg"
         },
         {
           "id": 21,
           "name": "astronaut",
           "fixed": "assets/svg/character/head/021_astronaut/static.svg",
           "primary": "assets/svg/character/head/021_astronaut/primary.svg",
-          "secondary": "assets/svg/character/head/021_astronaut/secondary.svg"
+          "secondary": "assets/svg/character/head/021_astronaut/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/021_astronaut/static_above.svg"
         },
         {
           "id": 22,
           "name": "alien",
           "fixed": "assets/svg/character/head/022_alien/static.svg",
           "primary": "assets/svg/character/head/022_alien/primary.svg",
-          "secondary": "assets/svg/character/head/022_alien/secondary.svg"
+          "secondary": "assets/svg/character/head/022_alien/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/022_alien/static_above.svg"
         },
         {
           "id": 23,
           "name": "dino",
           "fixed": "assets/svg/character/head/023_dino/static.svg",
           "primary": "assets/svg/character/head/023_dino/primary.svg",
-          "secondary": "assets/svg/character/head/023_dino/secondary.svg"
+          "secondary": "assets/svg/character/head/023_dino/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/023_dino/static_above.svg"
         },
         {
           "id": 24,
           "name": "armor",
           "fixed": "assets/svg/character/head/024_armor/static.svg",
           "primary": "assets/svg/character/head/024_armor/primary.svg",
-          "secondary": "assets/svg/character/head/024_armor/secondary.svg"
+          "secondary": "assets/svg/character/head/024_armor/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/024_armor/static_above.svg"
         },
         {
           "id": 25,
           "name": "fairy",
           "fixed": "assets/svg/character/head/025_fairy/static.svg",
           "primary": "assets/svg/character/head/025_fairy/primary.svg",
-          "secondary": "assets/svg/character/head/025_fairy/secondary.svg"
+          "secondary": "assets/svg/character/head/025_fairy/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/025_fairy/static_above.svg"
         },
         {
           "id": 26,
           "name": "gingerbread",
           "fixed": "assets/svg/character/head/026_gingerbread/static.svg",
           "primary": "assets/svg/character/head/026_gingerbread/primary.svg",
-          "secondary": "assets/svg/character/head/026_gingerbread/secondary.svg"
+          "secondary": "assets/svg/character/head/026_gingerbread/secondary.svg",
+          "fixedBelow": "assets/svg/character/head/026_gingerbread/static_below.svg",
+          "fixedAbove": "assets/svg/character/head/026_gingerbread/static_above.svg"
         },
         {
           "id": 27,
           "name": "bubble",
           "fixed": "assets/svg/character/head/027_bubble/static.svg",
           "primary": "assets/svg/character/head/027_bubble/primary.svg",
-          "secondary": "assets/svg/character/head/027_bubble/secondary.svg"
+          "secondary": "assets/svg/character/head/027_bubble/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/027_bubble/static_above.svg"
         },
         {
           "id": 28,
           "name": "king",
           "fixed": "assets/svg/character/head/028_king/static.svg",
           "primary": "assets/svg/character/head/028_king/primary.svg",
-          "secondary": "assets/svg/character/head/028_king/secondary.svg"
+          "secondary": "assets/svg/character/head/028_king/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/028_king/static_above.svg"
         },
         {
           "id": 29,
           "name": "queen",
           "fixed": "assets/svg/character/head/029_queen/static.svg",
           "primary": "assets/svg/character/head/029_queen/primary.svg",
-          "secondary": "assets/svg/character/head/029_queen/secondary.svg"
+          "secondary": "assets/svg/character/head/029_queen/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/029_queen/static_above.svg"
         },
         {
           "id": 30,
           "name": "sir",
           "fixed": "assets/svg/character/head/030_sir/static.svg",
           "primary": "assets/svg/character/head/030_sir/primary.svg",
-          "secondary": "assets/svg/character/head/030_sir/secondary.svg"
+          "secondary": "assets/svg/character/head/030_sir/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/030_sir/static_above.svg"
         },
         {
           "id": 31,
           "name": "very_invisible",
           "fixed": "assets/svg/character/head/031_very_invisible/static.svg",
           "primary": "assets/svg/character/head/031_very_invisible/primary.svg",
-          "secondary": "assets/svg/character/head/031_very_invisible/secondary.svg"
+          "secondary": "assets/svg/character/head/031_very_invisible/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/031_very_invisible/static_above.svg"
         },
         {
           "id": 32,
           "name": "taco",
           "fixed": "assets/svg/character/head/032_taco/static.svg",
           "primary": "assets/svg/character/head/032_taco/primary.svg",
-          "secondary": "assets/svg/character/head/032_taco/secondary.svg"
+          "secondary": "assets/svg/character/head/032_taco/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/032_taco/static_above.svg"
         },
         {
           "id": 33,
           "name": "slender",
           "fixed": "assets/svg/character/head/033_slender/static.svg",
           "primary": "assets/svg/character/head/033_slender/primary.svg",
-          "secondary": "assets/svg/character/head/033_slender/secondary.svg"
+          "secondary": "assets/svg/character/head/033_slender/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/033_slender/static_above.svg"
         },
         {
           "id": 34,
           "name": "santa",
           "fixed": "assets/svg/character/head/034_santa/static.svg",
           "primary": "assets/svg/character/head/034_santa/primary.svg",
-          "secondary": "assets/svg/character/head/034_santa/secondary.svg"
+          "secondary": "assets/svg/character/head/034_santa/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/034_santa/static_above.svg"
         },
         {
           "id": 35,
           "name": "frost_djinn",
           "fixed": "assets/svg/character/head/035_frost_djinn/static.svg",
           "primary": "assets/svg/character/head/035_frost_djinn/primary.svg",
-          "secondary": "assets/svg/character/head/035_frost_djinn/secondary.svg"
+          "secondary": "assets/svg/character/head/035_frost_djinn/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/035_frost_djinn/static_above.svg"
         },
         {
           "id": 36,
           "name": "reindeer",
           "fixed": "assets/svg/character/head/036_reindeer/static.svg",
           "primary": "assets/svg/character/head/036_reindeer/primary.svg",
-          "secondary": "assets/svg/character/head/036_reindeer/secondary.svg"
+          "secondary": "assets/svg/character/head/036_reindeer/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/036_reindeer/static_above.svg"
         },
         {
           "id": 37,
           "name": "crocodile",
           "fixed": "assets/svg/character/head/037_crocodile/static.svg",
           "primary": "assets/svg/character/head/037_crocodile/primary.svg",
-          "secondary": "assets/svg/character/head/037_crocodile/secondary.svg"
+          "secondary": "assets/svg/character/head/037_crocodile/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/037_crocodile/static_above.svg"
         },
         {
           "id": 38,
           "name": "valentine",
           "fixed": "assets/svg/character/head/038_valentine/static.svg",
           "primary": "assets/svg/character/head/038_valentine/primary.svg",
-          "secondary": "assets/svg/character/head/038_valentine/secondary.svg"
+          "secondary": "assets/svg/character/head/038_valentine/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/038_valentine/static_above.svg"
         },
         {
           "id": 39,
           "name": "bunny",
           "fixed": "assets/svg/character/head/039_bunny/static.svg",
           "primary": "assets/svg/character/head/039_bunny/primary.svg",
-          "secondary": "assets/svg/character/head/039_bunny/secondary.svg"
+          "secondary": "assets/svg/character/head/039_bunny/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/039_bunny/static_above.svg"
         },
         {
           "id": 40,
           "name": "gecko",
           "fixed": "assets/svg/character/head/040_gecko/static.svg",
           "primary": "assets/svg/character/head/040_gecko/primary.svg",
-          "secondary": "assets/svg/character/head/040_gecko/secondary.svg"
+          "secondary": "assets/svg/character/head/040_gecko/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/040_gecko/static_above.svg"
         },
         {
           "id": 41,
           "name": "bat",
           "fixed": "assets/svg/character/head/041_bat/static.svg",
           "primary": "assets/svg/character/head/041_bat/primary.svg",
-          "secondary": "assets/svg/character/head/041_bat/secondary.svg"
+          "secondary": "assets/svg/character/head/041_bat/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/041_bat/static_above.svg"
         },
         {
           "id": 42,
           "name": "sea",
           "fixed": "assets/svg/character/head/042_sea/static.svg",
           "primary": "assets/svg/character/head/042_sea/primary.svg",
-          "secondary": "assets/svg/character/head/042_sea/secondary.svg"
+          "secondary": "assets/svg/character/head/042_sea/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/042_sea/static_above.svg"
         },
         {
           "id": 43,
           "name": "brew",
           "fixed": "assets/svg/character/head/043_brew/static.svg",
           "primary": "assets/svg/character/head/043_brew/primary.svg",
-          "secondary": "assets/svg/character/head/043_brew/secondary.svg"
+          "secondary": "assets/svg/character/head/043_brew/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/043_brew/static_above.svg"
         },
         {
           "id": 44,
           "name": "jackolantern",
           "fixed": "assets/svg/character/head/044_jackolantern/static.svg",
           "primary": "assets/svg/character/head/044_jackolantern/primary.svg",
-          "secondary": "assets/svg/character/head/044_jackolantern/secondary.svg"
+          "secondary": "assets/svg/character/head/044_jackolantern/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/044_jackolantern/static_above.svg"
         },
         {
           "id": 45,
           "name": "xmas",
           "fixed": "assets/svg/character/head/045_xmas/static.svg",
           "primary": "assets/svg/character/head/045_xmas/primary.svg",
-          "secondary": "assets/svg/character/head/045_xmas/secondary.svg"
+          "secondary": "assets/svg/character/head/045_xmas/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/045_xmas/static_above.svg"
         },
         {
           "id": 46,
           "name": "snowman",
           "fixed": "assets/svg/character/head/046_snowman/static.svg",
           "primary": "assets/svg/character/head/046_snowman/primary.svg",
-          "secondary": "assets/svg/character/head/046_snowman/secondary.svg"
+          "secondary": "assets/svg/character/head/046_snowman/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/046_snowman/static_above.svg"
         },
         {
           "id": 47,
           "name": "blobfish",
           "fixed": "assets/svg/character/head/047_blobfish/static.svg",
           "primary": "assets/svg/character/head/047_blobfish/primary.svg",
-          "secondary": "assets/svg/character/head/047_blobfish/secondary.svg"
+          "secondary": "assets/svg/character/head/047_blobfish/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/047_blobfish/static_above.svg"
         },
         {
           "id": 48,
           "name": "turkey",
           "fixed": "assets/svg/character/head/048_turkey/static.svg",
           "primary": "assets/svg/character/head/048_turkey/primary.svg",
-          "secondary": "assets/svg/character/head/048_turkey/secondary.svg"
+          "secondary": "assets/svg/character/head/048_turkey/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/048_turkey/static_above.svg"
         },
         {
           "id": 49,
           "name": "dog",
           "fixed": "assets/svg/character/head/049_dog/static.svg",
           "primary": "assets/svg/character/head/049_dog/primary.svg",
-          "secondary": "assets/svg/character/head/049_dog/secondary.svg"
+          "secondary": "assets/svg/character/head/049_dog/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/049_dog/static_above.svg"
         },
         {
           "id": 50,
           "name": "gladiator",
           "fixed": "assets/svg/character/head/050_gladiator/static.svg",
           "primary": "assets/svg/character/head/050_gladiator/primary.svg",
-          "secondary": "assets/svg/character/head/050_gladiator/secondary.svg"
+          "secondary": "assets/svg/character/head/050_gladiator/secondary.svg",
+          "fixedAbove": "assets/svg/character/head/050_gladiator/static_above.svg"
         }
       ]
     },
@@ -372,84 +423,96 @@
           "name": "classic",
           "fixed": "assets/svg/character/body/001_classic/static.svg",
           "primary": "assets/svg/character/body/001_classic/primary.svg",
-          "secondary": "assets/svg/character/body/001_classic/secondary.svg"
+          "secondary": "assets/svg/character/body/001_classic/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/001_classic/static_above.svg"
         },
         {
           "id": 2,
           "name": "strap",
           "fixed": "assets/svg/character/body/002_strap/static.svg",
           "primary": "assets/svg/character/body/002_strap/primary.svg",
-          "secondary": "assets/svg/character/body/002_strap/secondary.svg"
+          "secondary": "assets/svg/character/body/002_strap/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/002_strap/static_above.svg"
         },
         {
           "id": 3,
           "name": "dress",
           "fixed": "assets/svg/character/body/003_dress/static.svg",
           "primary": "assets/svg/character/body/003_dress/primary.svg",
-          "secondary": "assets/svg/character/body/003_dress/secondary.svg"
+          "secondary": "assets/svg/character/body/003_dress/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/003_dress/static_above.svg"
         },
         {
           "id": 4,
           "name": "pec",
           "fixed": "assets/svg/character/body/004_pec/static.svg",
           "primary": "assets/svg/character/body/004_pec/primary.svg",
-          "secondary": "assets/svg/character/body/004_pec/secondary.svg"
+          "secondary": "assets/svg/character/body/004_pec/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/004_pec/static_above.svg"
         },
         {
           "id": 5,
           "name": "gut",
           "fixed": "assets/svg/character/body/005_gut/static.svg",
           "primary": "assets/svg/character/body/005_gut/primary.svg",
-          "secondary": "assets/svg/character/body/005_gut/secondary.svg"
+          "secondary": "assets/svg/character/body/005_gut/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/005_gut/static_above.svg"
         },
         {
           "id": 6,
           "name": "collar",
           "fixed": "assets/svg/character/body/006_collar/static.svg",
           "primary": "assets/svg/character/body/006_collar/primary.svg",
-          "secondary": "assets/svg/character/body/006_collar/secondary.svg"
+          "secondary": "assets/svg/character/body/006_collar/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/006_collar/static_above.svg"
         },
         {
           "id": 7,
           "name": "miss_pr2",
           "fixed": "assets/svg/character/body/007_miss_pr2/static.svg",
           "primary": "assets/svg/character/body/007_miss_pr2/primary.svg",
-          "secondary": "assets/svg/character/body/007_miss_pr2/secondary.svg"
+          "secondary": "assets/svg/character/body/007_miss_pr2/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/007_miss_pr2/static_above.svg"
         },
         {
           "id": 8,
           "name": "belt",
           "fixed": "assets/svg/character/body/008_belt/static.svg",
           "primary": "assets/svg/character/body/008_belt/primary.svg",
-          "secondary": "assets/svg/character/body/008_belt/secondary.svg"
+          "secondary": "assets/svg/character/body/008_belt/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/008_belt/static_above.svg"
         },
         {
           "id": 9,
           "name": "snake",
           "fixed": "assets/svg/character/body/009_snake/static.svg",
           "primary": "assets/svg/character/body/009_snake/primary.svg",
-          "secondary": "assets/svg/character/body/009_snake/secondary.svg"
+          "secondary": "assets/svg/character/body/009_snake/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/009_snake/static_above.svg"
         },
         {
           "id": 10,
           "name": "bird",
           "fixed": "assets/svg/character/body/010_bird/static.svg",
           "primary": "assets/svg/character/body/010_bird/primary.svg",
-          "secondary": "assets/svg/character/body/010_bird/secondary.svg"
+          "secondary": "assets/svg/character/body/010_bird/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/010_bird/static_above.svg"
         },
         {
           "id": 11,
           "name": "invisible",
           "fixed": "assets/svg/character/body/011_invisible/static.svg",
           "primary": "assets/svg/character/body/011_invisible/primary.svg",
-          "secondary": "assets/svg/character/body/011_invisible/secondary.svg"
+          "secondary": "assets/svg/character/body/011_invisible/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/011_invisible/static_above.svg"
         },
         {
           "id": 12,
           "name": "bee",
           "fixed": "assets/svg/character/body/012_bee/static.svg",
           "primary": "assets/svg/character/body/012_bee/primary.svg",
-          "secondary": "assets/svg/character/body/012_bee/secondary.svg"
+          "secondary": "assets/svg/character/body/012_bee/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/012_bee/static_above.svg"
         },
         {
           "id": 13,
@@ -463,49 +526,56 @@
           "name": "cat",
           "fixed": "assets/svg/character/body/014_cat/static.svg",
           "primary": "assets/svg/character/body/014_cat/primary.svg",
-          "secondary": "assets/svg/character/body/014_cat/secondary.svg"
+          "secondary": "assets/svg/character/body/014_cat/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/014_cat/static_above.svg"
         },
         {
           "id": 15,
           "name": "car",
           "fixed": "assets/svg/character/body/015_car/static.svg",
           "primary": "assets/svg/character/body/015_car/primary.svg",
-          "secondary": "assets/svg/character/body/015_car/secondary.svg"
+          "secondary": "assets/svg/character/body/015_car/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/015_car/static_above.svg"
         },
         {
           "id": 16,
           "name": "elephant",
           "fixed": "assets/svg/character/body/016_elephant/static.svg",
           "primary": "assets/svg/character/body/016_elephant/primary.svg",
-          "secondary": "assets/svg/character/body/016_elephant/secondary.svg"
+          "secondary": "assets/svg/character/body/016_elephant/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/016_elephant/static_above.svg"
         },
         {
           "id": 17,
           "name": "ant",
           "fixed": "assets/svg/character/body/017_ant/static.svg",
           "primary": "assets/svg/character/body/017_ant/primary.svg",
-          "secondary": "assets/svg/character/body/017_ant/secondary.svg"
+          "secondary": "assets/svg/character/body/017_ant/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/017_ant/static_above.svg"
         },
         {
           "id": 18,
           "name": "astronaut",
           "fixed": "assets/svg/character/body/018_astronaut/static.svg",
           "primary": "assets/svg/character/body/018_astronaut/primary.svg",
-          "secondary": "assets/svg/character/body/018_astronaut/secondary.svg"
+          "secondary": "assets/svg/character/body/018_astronaut/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/018_astronaut/static_above.svg"
         },
         {
           "id": 19,
           "name": "alien",
           "fixed": "assets/svg/character/body/019_alien/static.svg",
           "primary": "assets/svg/character/body/019_alien/primary.svg",
-          "secondary": "assets/svg/character/body/019_alien/secondary.svg"
+          "secondary": "assets/svg/character/body/019_alien/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/019_alien/static_above.svg"
         },
         {
           "id": 20,
           "name": "galaxy",
           "fixed": "assets/svg/character/body/020_galaxy/static.svg",
           "primary": "assets/svg/character/body/020_galaxy/primary.svg",
-          "secondary": "assets/svg/character/body/020_galaxy/secondary.svg"
+          "secondary": "assets/svg/character/body/020_galaxy/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/020_galaxy/static_above.svg"
         },
         {
           "id": 21,
@@ -577,56 +647,66 @@
           "name": "dino",
           "fixed": "assets/svg/character/body/022_dino/static.svg",
           "primary": "assets/svg/character/body/022_dino/primary.svg",
-          "secondary": "assets/svg/character/body/022_dino/secondary.svg"
+          "secondary": "assets/svg/character/body/022_dino/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/022_dino/static_above.svg"
         },
         {
           "id": 23,
           "name": "armor",
           "fixed": "assets/svg/character/body/023_armor/static.svg",
           "primary": "assets/svg/character/body/023_armor/primary.svg",
-          "secondary": "assets/svg/character/body/023_armor/secondary.svg"
+          "secondary": "assets/svg/character/body/023_armor/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/023_armor/static_above.svg"
         },
         {
           "id": 24,
           "name": "fairy",
           "fixed": "assets/svg/character/body/024_fairy/static.svg",
           "primary": "assets/svg/character/body/024_fairy/primary.svg",
-          "secondary": "assets/svg/character/body/024_fairy/secondary.svg"
+          "secondary": "assets/svg/character/body/024_fairy/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/024_fairy/static_above.svg"
         },
         {
           "id": 25,
           "name": "gingerbread",
           "fixed": "assets/svg/character/body/025_gingerbread/static.svg",
           "primary": "assets/svg/character/body/025_gingerbread/primary.svg",
-          "secondary": "assets/svg/character/body/025_gingerbread/secondary.svg"
+          "secondary": "assets/svg/character/body/025_gingerbread/secondary.svg",
+          "fixedBelow": "assets/svg/character/body/025_gingerbread/static_below.svg",
+          "fixedAbove": "assets/svg/character/body/025_gingerbread/static_above.svg"
         },
         {
           "id": 26,
           "name": "king",
           "fixed": "assets/svg/character/body/026_king/static.svg",
           "primary": "assets/svg/character/body/026_king/primary.svg",
-          "secondary": "assets/svg/character/body/026_king/secondary.svg"
+          "secondary": "assets/svg/character/body/026_king/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/026_king/static_above.svg"
         },
         {
           "id": 27,
           "name": "queen",
           "fixed": "assets/svg/character/body/027_queen/static.svg",
           "primary": "assets/svg/character/body/027_queen/primary.svg",
-          "secondary": "assets/svg/character/body/027_queen/secondary.svg"
+          "secondary": "assets/svg/character/body/027_queen/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/027_queen/static_above.svg"
         },
         {
           "id": 28,
           "name": "sir",
           "fixed": "assets/svg/character/body/028_sir/static.svg",
           "primary": "assets/svg/character/body/028_sir/primary.svg",
-          "secondary": "assets/svg/character/body/028_sir/secondary.svg"
+          "secondary": "assets/svg/character/body/028_sir/secondary.svg",
+          "fixedBelow": "assets/svg/character/body/028_sir/static_below.svg",
+          "fixedAbove": "assets/svg/character/body/028_sir/static_above.svg"
         },
         {
           "id": 29,
           "name": "fred",
           "fixed": "assets/svg/character/body/029_fred/static.svg",
           "primary": "assets/svg/character/body/029_fred/primary.svg",
-          "secondary": "assets/svg/character/body/029_fred/secondary.svg"
+          "secondary": "assets/svg/character/body/029_fred/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/029_fred/static_above.svg"
         },
         {
           "id": 30,
@@ -640,21 +720,25 @@
           "name": "taco",
           "fixed": "assets/svg/character/body/031_taco/static.svg",
           "primary": "assets/svg/character/body/031_taco/primary.svg",
-          "secondary": "assets/svg/character/body/031_taco/secondary.svg"
+          "secondary": "assets/svg/character/body/031_taco/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/031_taco/static_above.svg"
         },
         {
           "id": 32,
           "name": "slender",
           "fixed": "assets/svg/character/body/032_slender/static.svg",
           "primary": "assets/svg/character/body/032_slender/primary.svg",
-          "secondary": "assets/svg/character/body/032_slender/secondary.svg"
+          "secondary": "assets/svg/character/body/032_slender/secondary.svg",
+          "fixedBelow": "assets/svg/character/body/032_slender/static_below.svg",
+          "fixedAbove": "assets/svg/character/body/032_slender/static_above.svg"
         },
         {
           "id": 34,
           "name": "santa",
           "fixed": "assets/svg/character/body/034_santa/static.svg",
           "primary": "assets/svg/character/body/034_santa/primary.svg",
-          "secondary": "assets/svg/character/body/034_santa/secondary.svg"
+          "secondary": "assets/svg/character/body/034_santa/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/034_santa/static_above.svg"
         },
         {
           "id": 35,
@@ -668,91 +752,104 @@
           "name": "reindeer",
           "fixed": "assets/svg/character/body/036_reindeer/static.svg",
           "primary": "assets/svg/character/body/036_reindeer/primary.svg",
-          "secondary": "assets/svg/character/body/036_reindeer/secondary.svg"
+          "secondary": "assets/svg/character/body/036_reindeer/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/036_reindeer/static_above.svg"
         },
         {
           "id": 37,
           "name": "crocodile",
           "fixed": "assets/svg/character/body/037_crocodile/static.svg",
           "primary": "assets/svg/character/body/037_crocodile/primary.svg",
-          "secondary": "assets/svg/character/body/037_crocodile/secondary.svg"
+          "secondary": "assets/svg/character/body/037_crocodile/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/037_crocodile/static_above.svg"
         },
         {
           "id": 38,
           "name": "valentine",
           "fixed": "assets/svg/character/body/038_valentine/static.svg",
           "primary": "assets/svg/character/body/038_valentine/primary.svg",
-          "secondary": "assets/svg/character/body/038_valentine/secondary.svg"
+          "secondary": "assets/svg/character/body/038_valentine/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/038_valentine/static_above.svg"
         },
         {
           "id": 39,
           "name": "bunny",
           "fixed": "assets/svg/character/body/039_bunny/static.svg",
           "primary": "assets/svg/character/body/039_bunny/primary.svg",
-          "secondary": "assets/svg/character/body/039_bunny/secondary.svg"
+          "secondary": "assets/svg/character/body/039_bunny/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/039_bunny/static_above.svg"
         },
         {
           "id": 40,
           "name": "gecko",
           "fixed": "assets/svg/character/body/040_gecko/static.svg",
           "primary": "assets/svg/character/body/040_gecko/primary.svg",
-          "secondary": "assets/svg/character/body/040_gecko/secondary.svg"
+          "secondary": "assets/svg/character/body/040_gecko/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/040_gecko/static_above.svg"
         },
         {
           "id": 41,
           "name": "bat",
           "fixed": "assets/svg/character/body/041_bat/static.svg",
           "primary": "assets/svg/character/body/041_bat/primary.svg",
-          "secondary": "assets/svg/character/body/041_bat/secondary.svg"
+          "secondary": "assets/svg/character/body/041_bat/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/041_bat/static_above.svg"
         },
         {
           "id": 42,
           "name": "sea",
           "fixed": "assets/svg/character/body/042_sea/static.svg",
           "primary": "assets/svg/character/body/042_sea/primary.svg",
-          "secondary": "assets/svg/character/body/042_sea/secondary.svg"
+          "secondary": "assets/svg/character/body/042_sea/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/042_sea/static_above.svg"
         },
         {
           "id": 43,
           "name": "brew",
           "fixed": "assets/svg/character/body/043_brew/static.svg",
           "primary": "assets/svg/character/body/043_brew/primary.svg",
-          "secondary": "assets/svg/character/body/043_brew/secondary.svg"
+          "secondary": "assets/svg/character/body/043_brew/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/043_brew/static_above.svg"
         },
         {
           "id": 45,
           "name": "xmas",
           "fixed": "assets/svg/character/body/045_xmas/static.svg",
           "primary": "assets/svg/character/body/045_xmas/primary.svg",
-          "secondary": "assets/svg/character/body/045_xmas/secondary.svg"
+          "secondary": "assets/svg/character/body/045_xmas/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/045_xmas/static_above.svg"
         },
         {
           "id": 46,
           "name": "snowman",
           "fixed": "assets/svg/character/body/046_snowman/static.svg",
           "primary": "assets/svg/character/body/046_snowman/primary.svg",
-          "secondary": "assets/svg/character/body/046_snowman/secondary.svg"
+          "secondary": "assets/svg/character/body/046_snowman/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/046_snowman/static_above.svg"
         },
         {
           "id": 48,
           "name": "turkey",
           "fixed": "assets/svg/character/body/048_turkey/static.svg",
           "primary": "assets/svg/character/body/048_turkey/primary.svg",
-          "secondary": "assets/svg/character/body/048_turkey/secondary.svg"
+          "secondary": "assets/svg/character/body/048_turkey/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/048_turkey/static_above.svg"
         },
         {
           "id": 49,
           "name": "dog",
           "fixed": "assets/svg/character/body/049_dog/static.svg",
           "primary": "assets/svg/character/body/049_dog/primary.svg",
-          "secondary": "assets/svg/character/body/049_dog/secondary.svg"
+          "secondary": "assets/svg/character/body/049_dog/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/049_dog/static_above.svg"
         },
         {
           "id": 50,
           "name": "gladiator",
           "fixed": "assets/svg/character/body/050_gladiator/static.svg",
           "primary": "assets/svg/character/body/050_gladiator/primary.svg",
-          "secondary": "assets/svg/character/body/050_gladiator/secondary.svg"
+          "secondary": "assets/svg/character/body/050_gladiator/secondary.svg",
+          "fixedAbove": "assets/svg/character/body/050_gladiator/static_above.svg"
         }
       ]
     },
@@ -767,77 +864,88 @@
           "name": "classic",
           "fixed": "assets/svg/character/feet/001_classic/static.svg",
           "primary": "assets/svg/character/feet/001_classic/primary.svg",
-          "secondary": "assets/svg/character/feet/001_classic/secondary.svg"
+          "secondary": "assets/svg/character/feet/001_classic/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/001_classic/static_above.svg"
         },
         {
           "id": 2,
           "name": "heel",
           "fixed": "assets/svg/character/feet/002_heel/static.svg",
           "primary": "assets/svg/character/feet/002_heel/primary.svg",
-          "secondary": "assets/svg/character/feet/002_heel/secondary.svg"
+          "secondary": "assets/svg/character/feet/002_heel/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/002_heel/static_above.svg"
         },
         {
           "id": 3,
           "name": "loafer",
           "fixed": "assets/svg/character/feet/003_loafer/static.svg",
           "primary": "assets/svg/character/feet/003_loafer/primary.svg",
-          "secondary": "assets/svg/character/feet/003_loafer/secondary.svg"
+          "secondary": "assets/svg/character/feet/003_loafer/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/003_loafer/static_above.svg"
         },
         {
           "id": 4,
           "name": "cleat",
           "fixed": "assets/svg/character/feet/004_cleat/static.svg",
           "primary": "assets/svg/character/feet/004_cleat/primary.svg",
-          "secondary": "assets/svg/character/feet/004_cleat/secondary.svg"
+          "secondary": "assets/svg/character/feet/004_cleat/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/004_cleat/static_above.svg"
         },
         {
           "id": 5,
           "name": "magnet",
           "fixed": "assets/svg/character/feet/005_magnet/static.svg",
           "primary": "assets/svg/character/feet/005_magnet/primary.svg",
-          "secondary": "assets/svg/character/feet/005_magnet/secondary.svg"
+          "secondary": "assets/svg/character/feet/005_magnet/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/005_magnet/static_above.svg"
         },
         {
           "id": 6,
           "name": "tiny",
           "fixed": "assets/svg/character/feet/006_tiny/static.svg",
           "primary": "assets/svg/character/feet/006_tiny/primary.svg",
-          "secondary": "assets/svg/character/feet/006_tiny/secondary.svg"
+          "secondary": "assets/svg/character/feet/006_tiny/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/006_tiny/static_above.svg"
         },
         {
           "id": 7,
           "name": "sandal",
           "fixed": "assets/svg/character/feet/007_sandal/static.svg",
           "primary": "assets/svg/character/feet/007_sandal/primary.svg",
-          "secondary": "assets/svg/character/feet/007_sandal/secondary.svg"
+          "secondary": "assets/svg/character/feet/007_sandal/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/007_sandal/static_above.svg"
         },
         {
           "id": 8,
           "name": "bare",
           "fixed": "assets/svg/character/feet/008_bare/static.svg",
           "primary": "assets/svg/character/feet/008_bare/primary.svg",
-          "secondary": "assets/svg/character/feet/008_bare/secondary.svg"
+          "secondary": "assets/svg/character/feet/008_bare/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/008_bare/static_above.svg"
         },
         {
           "id": 9,
           "name": "nice",
           "fixed": "assets/svg/character/feet/009_nice/static.svg",
           "primary": "assets/svg/character/feet/009_nice/primary.svg",
-          "secondary": "assets/svg/character/feet/009_nice/secondary.svg"
+          "secondary": "assets/svg/character/feet/009_nice/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/009_nice/static_above.svg"
         },
         {
           "id": 10,
           "name": "bird",
           "fixed": "assets/svg/character/feet/010_bird/static.svg",
           "primary": "assets/svg/character/feet/010_bird/primary.svg",
-          "secondary": "assets/svg/character/feet/010_bird/secondary.svg"
+          "secondary": "assets/svg/character/feet/010_bird/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/010_bird/static_above.svg"
         },
         {
           "id": 11,
           "name": "invisible",
           "fixed": "assets/svg/character/feet/011_invisible/static.svg",
           "primary": "assets/svg/character/feet/011_invisible/primary.svg",
-          "secondary": "assets/svg/character/feet/011_invisible/secondary.svg"
+          "secondary": "assets/svg/character/feet/011_invisible/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/011_invisible/static_above.svg"
         },
         {
           "id": 12,
@@ -851,105 +959,121 @@
           "name": "cat",
           "fixed": "assets/svg/character/feet/013_cat/static.svg",
           "primary": "assets/svg/character/feet/013_cat/primary.svg",
-          "secondary": "assets/svg/character/feet/013_cat/secondary.svg"
+          "secondary": "assets/svg/character/feet/013_cat/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/013_cat/static_above.svg"
         },
         {
           "id": 14,
           "name": "tire",
           "fixed": "assets/svg/character/feet/014_tire/static.svg",
           "primary": "assets/svg/character/feet/014_tire/primary.svg",
-          "secondary": "assets/svg/character/feet/014_tire/secondary.svg"
+          "secondary": "assets/svg/character/feet/014_tire/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/014_tire/static_above.svg"
         },
         {
           "id": 15,
           "name": "elephant",
           "fixed": "assets/svg/character/feet/015_elephant/static.svg",
           "primary": "assets/svg/character/feet/015_elephant/primary.svg",
-          "secondary": "assets/svg/character/feet/015_elephant/secondary.svg"
+          "secondary": "assets/svg/character/feet/015_elephant/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/015_elephant/static_above.svg"
         },
         {
           "id": 16,
           "name": "ant",
           "fixed": "assets/svg/character/feet/016_ant/static.svg",
           "primary": "assets/svg/character/feet/016_ant/primary.svg",
-          "secondary": "assets/svg/character/feet/016_ant/secondary.svg"
+          "secondary": "assets/svg/character/feet/016_ant/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/016_ant/static_above.svg"
         },
         {
           "id": 17,
           "name": "astronaut",
           "fixed": "assets/svg/character/feet/017_astronaut/static.svg",
           "primary": "assets/svg/character/feet/017_astronaut/primary.svg",
-          "secondary": "assets/svg/character/feet/017_astronaut/secondary.svg"
+          "secondary": "assets/svg/character/feet/017_astronaut/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/017_astronaut/static_above.svg"
         },
         {
           "id": 18,
           "name": "alien",
           "fixed": "assets/svg/character/feet/018_alien/static.svg",
           "primary": "assets/svg/character/feet/018_alien/primary.svg",
-          "secondary": "assets/svg/character/feet/018_alien/secondary.svg"
+          "secondary": "assets/svg/character/feet/018_alien/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/018_alien/static_above.svg"
         },
         {
           "id": 19,
           "name": "galaxy",
           "fixed": "assets/svg/character/feet/019_galaxy/static.svg",
           "primary": "assets/svg/character/feet/019_galaxy/primary.svg",
-          "secondary": "assets/svg/character/feet/019_galaxy/secondary.svg"
+          "secondary": "assets/svg/character/feet/019_galaxy/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/019_galaxy/static_above.svg"
         },
         {
           "id": 20,
           "name": "dino",
           "fixed": "assets/svg/character/feet/020_dino/static.svg",
           "primary": "assets/svg/character/feet/020_dino/primary.svg",
-          "secondary": "assets/svg/character/feet/020_dino/secondary.svg"
+          "secondary": "assets/svg/character/feet/020_dino/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/020_dino/static_above.svg"
         },
         {
           "id": 21,
           "name": "armor",
           "fixed": "assets/svg/character/feet/021_armor/static.svg",
           "primary": "assets/svg/character/feet/021_armor/primary.svg",
-          "secondary": "assets/svg/character/feet/021_armor/secondary.svg"
+          "secondary": "assets/svg/character/feet/021_armor/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/021_armor/static_above.svg"
         },
         {
           "id": 22,
           "name": "fairy",
           "fixed": "assets/svg/character/feet/022_fairy/static.svg",
           "primary": "assets/svg/character/feet/022_fairy/primary.svg",
-          "secondary": "assets/svg/character/feet/022_fairy/secondary.svg"
+          "secondary": "assets/svg/character/feet/022_fairy/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/022_fairy/static_above.svg"
         },
         {
           "id": 23,
           "name": "gingerbread",
           "fixed": "assets/svg/character/feet/023_gingerbread/static.svg",
           "primary": "assets/svg/character/feet/023_gingerbread/primary.svg",
-          "secondary": "assets/svg/character/feet/023_gingerbread/secondary.svg"
+          "secondary": "assets/svg/character/feet/023_gingerbread/secondary.svg",
+          "fixedBelow": "assets/svg/character/feet/023_gingerbread/static_below.svg",
+          "fixedAbove": "assets/svg/character/feet/023_gingerbread/static_above.svg"
         },
         {
           "id": 24,
           "name": "king",
           "fixed": "assets/svg/character/feet/024_king/static.svg",
           "primary": "assets/svg/character/feet/024_king/primary.svg",
-          "secondary": "assets/svg/character/feet/024_king/secondary.svg"
+          "secondary": "assets/svg/character/feet/024_king/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/024_king/static_above.svg"
         },
         {
           "id": 25,
           "name": "queen",
           "fixed": "assets/svg/character/feet/025_queen/static.svg",
           "primary": "assets/svg/character/feet/025_queen/primary.svg",
-          "secondary": "assets/svg/character/feet/025_queen/secondary.svg"
+          "secondary": "assets/svg/character/feet/025_queen/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/025_queen/static_above.svg"
         },
         {
           "id": 26,
           "name": "sir",
           "fixed": "assets/svg/character/feet/026_sir/static.svg",
           "primary": "assets/svg/character/feet/026_sir/primary.svg",
-          "secondary": "assets/svg/character/feet/026_sir/secondary.svg"
+          "secondary": "assets/svg/character/feet/026_sir/secondary.svg",
+          "fixedBelow": "assets/svg/character/feet/026_sir/static_below.svg"
         },
         {
           "id": 27,
           "name": "very_invisible",
           "fixed": "assets/svg/character/feet/027_very_invisible/static.svg",
           "primary": "assets/svg/character/feet/027_very_invisible/primary.svg",
-          "secondary": "assets/svg/character/feet/027_very_invisible/secondary.svg"
+          "secondary": "assets/svg/character/feet/027_very_invisible/secondary.svg",
+          "fixedBelow": "assets/svg/character/feet/027_very_invisible/static_below.svg"
         },
         {
           "id": 28,
@@ -963,21 +1087,25 @@
           "name": "taco",
           "fixed": "assets/svg/character/feet/029_taco/static.svg",
           "primary": "assets/svg/character/feet/029_taco/primary.svg",
-          "secondary": "assets/svg/character/feet/029_taco/secondary.svg"
+          "secondary": "assets/svg/character/feet/029_taco/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/029_taco/static_above.svg"
         },
         {
           "id": 30,
           "name": "slender",
           "fixed": "assets/svg/character/feet/030_slender/static.svg",
           "primary": "assets/svg/character/feet/030_slender/primary.svg",
-          "secondary": "assets/svg/character/feet/030_slender/secondary.svg"
+          "secondary": "assets/svg/character/feet/030_slender/secondary.svg",
+          "fixedBelow": "assets/svg/character/feet/030_slender/static_below.svg",
+          "fixedAbove": "assets/svg/character/feet/030_slender/static_above.svg"
         },
         {
           "id": 34,
           "name": "santa",
           "fixed": "assets/svg/character/feet/034_santa/static.svg",
           "primary": "assets/svg/character/feet/034_santa/primary.svg",
-          "secondary": "assets/svg/character/feet/034_santa/secondary.svg"
+          "secondary": "assets/svg/character/feet/034_santa/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/034_santa/static_above.svg"
         },
         {
           "id": 35,
@@ -991,42 +1119,48 @@
           "name": "reindeer",
           "fixed": "assets/svg/character/feet/036_reindeer/static.svg",
           "primary": "assets/svg/character/feet/036_reindeer/primary.svg",
-          "secondary": "assets/svg/character/feet/036_reindeer/secondary.svg"
+          "secondary": "assets/svg/character/feet/036_reindeer/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/036_reindeer/static_above.svg"
         },
         {
           "id": 37,
           "name": "crocodile",
           "fixed": "assets/svg/character/feet/037_crocodile/static.svg",
           "primary": "assets/svg/character/feet/037_crocodile/primary.svg",
-          "secondary": "assets/svg/character/feet/037_crocodile/secondary.svg"
+          "secondary": "assets/svg/character/feet/037_crocodile/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/037_crocodile/static_above.svg"
         },
         {
           "id": 38,
           "name": "valentine",
           "fixed": "assets/svg/character/feet/038_valentine/static.svg",
           "primary": "assets/svg/character/feet/038_valentine/primary.svg",
-          "secondary": "assets/svg/character/feet/038_valentine/secondary.svg"
+          "secondary": "assets/svg/character/feet/038_valentine/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/038_valentine/static_above.svg"
         },
         {
           "id": 39,
           "name": "bunny",
           "fixed": "assets/svg/character/feet/039_bunny/static.svg",
           "primary": "assets/svg/character/feet/039_bunny/primary.svg",
-          "secondary": "assets/svg/character/feet/039_bunny/secondary.svg"
+          "secondary": "assets/svg/character/feet/039_bunny/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/039_bunny/static_above.svg"
         },
         {
           "id": 40,
           "name": "gecko",
           "fixed": "assets/svg/character/feet/040_gecko/static.svg",
           "primary": "assets/svg/character/feet/040_gecko/primary.svg",
-          "secondary": "assets/svg/character/feet/040_gecko/secondary.svg"
+          "secondary": "assets/svg/character/feet/040_gecko/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/040_gecko/static_above.svg"
         },
         {
           "id": 41,
           "name": "bat",
           "fixed": "assets/svg/character/feet/041_bat/static.svg",
           "primary": "assets/svg/character/feet/041_bat/primary.svg",
-          "secondary": "assets/svg/character/feet/041_bat/secondary.svg"
+          "secondary": "assets/svg/character/feet/041_bat/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/041_bat/static_above.svg"
         },
         {
           "id": 42,
@@ -1040,42 +1174,48 @@
           "name": "brew",
           "fixed": "assets/svg/character/feet/043_brew/static.svg",
           "primary": "assets/svg/character/feet/043_brew/primary.svg",
-          "secondary": "assets/svg/character/feet/043_brew/secondary.svg"
+          "secondary": "assets/svg/character/feet/043_brew/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/043_brew/static_above.svg"
         },
         {
           "id": 45,
           "name": "xmas",
           "fixed": "assets/svg/character/feet/045_xmas/static.svg",
           "primary": "assets/svg/character/feet/045_xmas/primary.svg",
-          "secondary": "assets/svg/character/feet/045_xmas/secondary.svg"
+          "secondary": "assets/svg/character/feet/045_xmas/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/045_xmas/static_above.svg"
         },
         {
           "id": 46,
           "name": "snowman",
           "fixed": "assets/svg/character/feet/046_snowman/static.svg",
           "primary": "assets/svg/character/feet/046_snowman/primary.svg",
-          "secondary": "assets/svg/character/feet/046_snowman/secondary.svg"
+          "secondary": "assets/svg/character/feet/046_snowman/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/046_snowman/static_above.svg"
         },
         {
           "id": 48,
           "name": "turkey",
           "fixed": "assets/svg/character/feet/048_turkey/static.svg",
           "primary": "assets/svg/character/feet/048_turkey/primary.svg",
-          "secondary": "assets/svg/character/feet/048_turkey/secondary.svg"
+          "secondary": "assets/svg/character/feet/048_turkey/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/048_turkey/static_above.svg"
         },
         {
           "id": 49,
           "name": "dog",
           "fixed": "assets/svg/character/feet/049_dog/static.svg",
           "primary": "assets/svg/character/feet/049_dog/primary.svg",
-          "secondary": "assets/svg/character/feet/049_dog/secondary.svg"
+          "secondary": "assets/svg/character/feet/049_dog/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/049_dog/static_above.svg"
         },
         {
           "id": 50,
           "name": "gladiator",
           "fixed": "assets/svg/character/feet/050_gladiator/static.svg",
           "primary": "assets/svg/character/feet/050_gladiator/primary.svg",
-          "secondary": "assets/svg/character/feet/050_gladiator/secondary.svg"
+          "secondary": "assets/svg/character/feet/050_gladiator/secondary.svg",
+          "fixedAbove": "assets/svg/character/feet/050_gladiator/static_above.svg"
         }
       ]
     },
@@ -1097,14 +1237,16 @@
           "name": "exp",
           "fixed": "assets/svg/character/hat/002_exp/static.svg",
           "primary": "assets/svg/character/hat/002_exp/primary.svg",
-          "secondary": "assets/svg/character/hat/002_exp/secondary.svg"
+          "secondary": "assets/svg/character/hat/002_exp/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/002_exp/static_above.svg"
         },
         {
           "id": 3,
           "name": "kong",
           "fixed": "assets/svg/character/hat/003_kong/static.svg",
           "primary": "assets/svg/character/hat/003_kong/primary.svg",
-          "secondary": "assets/svg/character/hat/003_kong/secondary.svg"
+          "secondary": "assets/svg/character/hat/003_kong/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/003_kong/static_above.svg"
         },
         {
           "id": 4,
@@ -1112,6 +1254,7 @@
           "fixed": "assets/svg/character/hat/004_prop/static_base.svg",
           "primary": "assets/svg/character/hat/004_prop/primary.svg",
           "secondary": "assets/svg/character/hat/004_prop/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/004_prop/static_base_above.svg",
           "overlayAnimation": {
             "frameRate": 30,
             "endBehavior": "loop",
@@ -1128,56 +1271,64 @@
           "name": "cowboy",
           "fixed": "assets/svg/character/hat/005_cowboy/static.svg",
           "primary": "assets/svg/character/hat/005_cowboy/primary.svg",
-          "secondary": "assets/svg/character/hat/005_cowboy/secondary.svg"
+          "secondary": "assets/svg/character/hat/005_cowboy/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/005_cowboy/static_above.svg"
         },
         {
           "id": 6,
           "name": "crown",
           "fixed": "assets/svg/character/hat/006_crown/static.svg",
           "primary": "assets/svg/character/hat/006_crown/primary.svg",
-          "secondary": "assets/svg/character/hat/006_crown/secondary.svg"
+          "secondary": "assets/svg/character/hat/006_crown/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/006_crown/static_above.svg"
         },
         {
           "id": 7,
           "name": "santa",
           "fixed": "assets/svg/character/hat/007_santa/static.svg",
           "primary": "assets/svg/character/hat/007_santa/primary.svg",
-          "secondary": "assets/svg/character/hat/007_santa/secondary.svg"
+          "secondary": "assets/svg/character/hat/007_santa/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/007_santa/static_above.svg"
         },
         {
           "id": 8,
           "name": "party",
           "fixed": "assets/svg/character/hat/008_party/static.svg",
           "primary": "assets/svg/character/hat/008_party/primary.svg",
-          "secondary": "assets/svg/character/hat/008_party/secondary.svg"
+          "secondary": "assets/svg/character/hat/008_party/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/008_party/static_above.svg"
         },
         {
           "id": 9,
           "name": "top",
           "fixed": "assets/svg/character/hat/009_top/static.svg",
           "primary": "assets/svg/character/hat/009_top/primary.svg",
-          "secondary": "assets/svg/character/hat/009_top/secondary.svg"
+          "secondary": "assets/svg/character/hat/009_top/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/009_top/static_above.svg"
         },
         {
           "id": 10,
           "name": "jump_start",
           "fixed": "assets/svg/character/hat/010_jump_start/static.svg",
           "primary": "assets/svg/character/hat/010_jump_start/primary.svg",
-          "secondary": "assets/svg/character/hat/010_jump_start/secondary.svg"
+          "secondary": "assets/svg/character/hat/010_jump_start/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/010_jump_start/static_above.svg"
         },
         {
           "id": 11,
           "name": "moon",
           "fixed": "assets/svg/character/hat/011_moon/static.svg",
           "primary": "assets/svg/character/hat/011_moon/primary.svg",
-          "secondary": "assets/svg/character/hat/011_moon/secondary.svg"
+          "secondary": "assets/svg/character/hat/011_moon/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/011_moon/static_above.svg"
         },
         {
           "id": 12,
           "name": "thief",
           "fixed": "assets/svg/character/hat/012_thief/static.svg",
           "primary": "assets/svg/character/hat/012_thief/primary.svg",
-          "secondary": "assets/svg/character/hat/012_thief/secondary.svg"
+          "secondary": "assets/svg/character/hat/012_thief/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/012_thief/static_above.svg"
         },
         {
           "id": 13,
@@ -1185,6 +1336,7 @@
           "fixed": "assets/svg/character/hat/013_jigg/static_base.svg",
           "primary": "assets/svg/character/hat/013_jigg/primary.svg",
           "secondary": "assets/svg/character/hat/013_jigg/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/013_jigg/static_base_above.svg",
           "overlayAnimation": {
             "frameRate": 30,
             "endBehavior": "loop",
@@ -1206,21 +1358,24 @@
           "name": "artifact",
           "fixed": "assets/svg/character/hat/014_artifact/static.svg",
           "primary": "assets/svg/character/hat/014_artifact/primary.svg",
-          "secondary": "assets/svg/character/hat/014_artifact/secondary.svg"
+          "secondary": "assets/svg/character/hat/014_artifact/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/014_artifact/static_above.svg"
         },
         {
           "id": 15,
           "name": "jellyfish",
           "fixed": "assets/svg/character/hat/015_jellyfish/static.svg",
           "primary": "assets/svg/character/hat/015_jellyfish/primary.svg",
-          "secondary": "assets/svg/character/hat/015_jellyfish/secondary.svg"
+          "secondary": "assets/svg/character/hat/015_jellyfish/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/015_jellyfish/static_above.svg"
         },
         {
           "id": 16,
           "name": "cheese",
           "fixed": "assets/svg/character/hat/016_cheese/static.svg",
           "primary": "assets/svg/character/hat/016_cheese/primary.svg",
-          "secondary": "assets/svg/character/hat/016_cheese/secondary.svg"
+          "secondary": "assets/svg/character/hat/016_cheese/secondary.svg",
+          "fixedAbove": "assets/svg/character/hat/016_cheese/static_above.svg"
         }
       ]
     }

@@ -330,6 +330,20 @@ This was verified with the smoke export. The command stays attached while
 Animate remains open, so unattended automation still needs a quit/wrapper
 decision.
 
+The static channel export flattens every layer except `colorMC` and `colorMC2`.
+In the XFL most parts stack outlines, shading and eyes above `colorMC2`, so
+after a re-export (or after `tools/generate_character_hat_overlays.py`) split
+each part's static art back into its Flash layer bands. The runtime draws
+`static_below.svg`, primary, `static.svg`, secondary, then `static_above.svg`:
+
+```sh
+python3 tools/split_character_static_layers.py
+python3 tools/split_character_static_layers.py --check
+```
+
+Then add the new files to the rig (`tools/generate_character_rig.py`) and
+rebuild the SVG packs (`tools/generate_svg_packs.py`).
+
 Other generated JSFL entry points:
 
 ```sh

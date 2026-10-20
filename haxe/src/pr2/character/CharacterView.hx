@@ -343,6 +343,7 @@ class CharacterView extends Sprite {
 		container.setChildIndex(artwork, 0);
 		if (isEmptyPart(kind, partId(kind))) return;
 		var channels = partVariant(kind, partId(kind));
+		addFixedLayer(artwork, channels.fixedBelow, "staticBelow");
 		var primary = SvgAsset.create(partChannelAsset(channels, "primary"));
 		primary.name = "primary";
 		artwork.addChild(primary);
@@ -352,6 +353,7 @@ class CharacterView extends Sprite {
 		var secondary = SvgAsset.create(partChannelAsset(channels, "secondary"));
 		secondary.name = "secondary";
 		artwork.addChild(secondary);
+		addFixedLayer(artwork, channels.fixedAbove, "staticAbove");
 		applyPartColorToArtwork(kind, artwork);
 	}
 
@@ -377,6 +379,7 @@ class CharacterView extends Sprite {
 		var artwork = new Sprite();
 		artwork.name = "artwork";
 		slot.addChild(artwork);
+		addFixedLayer(artwork, channels.fixedBelow, "staticBelow");
 		var primary = SvgAsset.create(channels.primary);
 		primary.name = "primary";
 		artwork.addChild(primary);
@@ -386,6 +389,7 @@ class CharacterView extends Sprite {
 		var secondary = SvgAsset.create(channels.secondary);
 		secondary.name = "secondary";
 		artwork.addChild(secondary);
+		addFixedLayer(artwork, channels.fixedAbove, "staticAbove");
 		applyHatColorToArtwork(index, artwork);
 		if (channels.overlayAnimation != null) {
 			var overlay = new Sprite();
@@ -603,6 +607,14 @@ class CharacterView extends Sprite {
 		var replacement = SvgAsset.create(animation.frames[bodyChannelAnimationFrame - 1]);
 		replacement.name = animation.channel;
 		artwork.addChildAt(replacement, index);
+	}
+
+	/** Adds static art from above or below the tinted channels; parts without any skip it. **/
+	public static function addFixedLayer(parent:Sprite, asset:Null<String>, name:String):Void {
+		if (asset == null) return;
+		var shape = SvgAsset.create(asset);
+		shape.name = name;
+		parent.addChild(shape);
 	}
 
 	private function partChannelAsset(channels:RigPartChannels, channel:String):String {
