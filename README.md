@@ -203,6 +203,18 @@ git -C .haxelib/hxcpp/git describe --tags --exact-match
 This should print `v4.3.146`. The Git checkout's `haxelib.json` reports the
 API-series version `4.3.0`; the Git tag is the authoritative pinned release.
 
+Sharp rendering in the browser:
+
+- `pr2.runtime.Html5PixelRatioSync` follows `devicePixelRatio` after load.
+  Lime and OpenFL read it once, so browser zoom or a move to another monitor
+  left the canvas at the old density, stretched and blurry.
+- `haxe/src/openfl/display/_internal/Context3DBitmap.hx` is OpenFL 9.5.2's
+  file with one change (marked in it): a bitmap with smoothing off and
+  `PixelSnapping.ALWAYS` (every block, as Flash's `Block` makes them) is
+  drawn unsmoothed when the stage is scaled up, like Flash, instead of
+  OpenFL smoothing every bitmap on a scaled stage. Re-copy it when OpenFL is
+  upgraded.
+
 Browser development path:
 
 ```sh
