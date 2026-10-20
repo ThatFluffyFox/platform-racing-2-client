@@ -42,17 +42,17 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    data = json.loads(MANIFEST.read_text())
+    data = json.loads(MANIFEST.read_text(encoding="utf-8"))
     missing = [value for kind in ("svg", "bitmap", "sound") for value in data[kind].values() if not source_path(value).is_file()]
     if missing:
         raise SystemExit("Missing native assets: " + ", ".join(missing))
     expected = render(data)
     if args.check:
-        if not OUTPUT.is_file() or OUTPUT.read_text() != expected:
+        if not OUTPUT.is_file() or OUTPUT.read_text(encoding="utf-8") != expected:
             raise SystemExit("Native asset identifiers are stale; run tools/generate_native_assets.py")
         return 0
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(expected)
+    OUTPUT.write_text(expected, encoding="utf-8")
     return 0
 
 
