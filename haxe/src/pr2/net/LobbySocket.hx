@@ -60,6 +60,7 @@ class LobbySocket {
 		socket = new WebSocket(server.websocketUrl(secure));
 		socket.onopen = function(_):Void {
 			connected = true;
+			openedAtMs = lastSendMs = lastCommandMs = nowMs();
 			startPingInterval();
 			if (onOpen != null) {
 				onOpen();
@@ -70,13 +71,49 @@ class LobbySocket {
 				CommandHandler.commandHandler.handleServerFrame(frame);
 			}
 		};
+		openedAtMs = -1;
 		socket.onerror = function(_):Void {
-			handleConnectionError();
+			// An error on an open connection is always followed by `close`, which
+			// says why; only a socket that never opened couldn't connect.
+			if (openedAtMs < 0) handleConnectionError();
 		};
-		socket.onclose = function(_):Void {
+		socket.onclose = function(event:js.html.CloseEvent):Void {
+			if (openedAtMs < 0) {
+				handleConnectionError();
+				return;
+			}
+			lastCloseText = describeClose(event.code);
 			handleConnectionClose();
 		};
 		#end
+	}
+
+	/** When the connection opened (-1 = not open yet), and when anything / a non-ping command was last sent. **/
+	private static var openedAtMs:Float = -1;
+	private static var lastSendMs:Float = 0;
+	private static var lastCommandMs:Float = 0;
+	private static var lastPingMs:Float = -1e12;
+	/** Why the last connection closed, for the "Disconnected." message. **/
+	private static var lastCloseText:String = "";
+
+	/** Milliseconds since the last command other than a ping was sent (the server drops players after 30 minutes without one). **/
+	public static function msSinceLastCommand():Float {
+		return nowMs() - lastCommandMs;
+	}
+
+	/**
+		The server (PR2Client.onTimer) drops a connection after 60 s without any
+		command, or 30 minutes with only pings, and closes it at once on a bad
+		command hash or an out-of-order command number.
+	**/
+	private static function describeClose(code:Int):String {
+		var t = nowMs();
+		var open = Math.round((t - openedAtMs) / 60000);
+		var sent = Math.round((t - lastSendMs) / 1000);
+		var command = Math.round((t - lastCommandMs) / 60000);
+		var cause = sent >= 55 ? " Nothing was sent for a minute (the tab may have been asleep)."
+			: (command >= 29 ? " Only pings were sent for 30 minutes, so the server counted you as away." : "");
+		return '(code $code after $open min connected; last sent ${sent}s ago, last game command $command min ago.$cause)';
 	}
 
 	public static function write(command:String):Void {
@@ -89,6 +126,8 @@ class LobbySocket {
 		Browser.document.body.setAttribute("data-pr2-last-command", command);
 		if (socket != null && socket.readyState == WebSocket.OPEN && protocol != null) {
 			socket.send(protocol.commandFrame(command));
+			lastSendMs = nowMs();
+			if (!StringTools.startsWith(command, "ping`")) lastCommandMs = lastSendMs;
 		}
 		#end
 	}
@@ -204,14 +243,20 @@ class LobbySocket {
 		// The worker-driven ticker keeps pinging in a background tab, where page
 		// timers are throttled to once a minute and the server (60 s of silence)
 		// would drop the player. Without workers, a normal timer.
-		stopBackgroundPing = pr2.runtime.BackgroundTicker.every(10000, sendPing);
-		if (!pr2.runtime.BackgroundTicker.running()) {
-			stopBackgroundPing();
-			stopBackgroundPing = null;
-			pingTimer = new Timer(10000);
-			pingTimer.run = sendPing;
-		}
+		// Both the worker and a page timer ask; whichever comes first pings, so a
+		// stalled one (a throttled timer, a worker the browser paused) can't
+		// leave the connection silent.
+		lastPingMs = nowMs();
+		stopBackgroundPing = pr2.runtime.BackgroundTicker.every(2000, pingIfDue);
+		pingTimer = new Timer(2000);
+		pingTimer.run = pingIfDue;
 		#end
+	}
+
+	private static function pingIfDue():Void {
+		if (nowMs() - lastPingMs < 10000) return;
+		lastPingMs = nowMs();
+		sendPing();
 	}
 
 	private static var stopBackgroundPing:Null<Void->Void> = null;
@@ -234,14 +279,17 @@ class LobbySocket {
 		stopPingInterval();
 		connected = false;
 		clearRuntimeState();
+		var why = lastCloseText;
+		lastCloseText = "";
+		var text = why == "" ? "Disconnected." : 'Disconnected from the server $why';
 		if (onConnectionClose != null) {
 			onConnectionClose();
 		} else {
 			var rootHolder = PageHolder.getRootHolder();
 			if (rootHolder == null) {
-				pr2.app.ScreenFactory.message("Disconnected.");
+				pr2.app.ScreenFactory.message(text);
 			} else if (rootHolder.getCurrentPage() == null || !rootHolder.getCurrentPage().isLoginScreen) {
-				pr2.app.ScreenFactory.message("Disconnected.");
+				pr2.app.ScreenFactory.message(text);
 				rootHolder.changePage(pr2.app.ScreenFactory.login());
 			}
 		}

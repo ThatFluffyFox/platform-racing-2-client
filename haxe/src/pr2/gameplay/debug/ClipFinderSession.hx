@@ -184,6 +184,7 @@ class ClipFinderSession {
 			return true;
 		});
 		ghost.tick();
+		keepActive();
 		// The overlay turns with the course: redraw it for the course's turn now.
 		if (overlay != null) overlay.setViewRotation(player.controller.courseRotation);
 	}
@@ -202,6 +203,25 @@ class ClipFinderSession {
 			}
 			updateStatus();
 			if (search.done) panel.setRunning(false);
+		}
+	}
+
+	/** A search is running (you are using the Clip Finder, not away from the game). **/
+	public function searching():Bool {
+		return (finder != null && !finder.done) || scanner != null || planner != null || glitchFinder != null || mechanicsSearch != null;
+	}
+
+	/**
+		The server drops a player after 30 minutes with nothing but pings, and
+		standing still while a search runs sends nothing else. While a search
+		runs, the player's position (an ordinary exact_pos) is sent every 4
+		minutes, so a long scan isn't counted as being away.
+	**/
+	function keepActive():Void {
+		if (!searching()) return;
+		// During a race the game sends it every 5 s anyway; after finishing it stops.
+		if (pr2.net.LobbySocket.isConnected() && pr2.net.LobbySocket.msSinceLastCommand() > 4 * 60 * 1000) {
+			pr2.net.LobbySocket.write('exact_pos`${Math.round(player.x)}`${Math.round(player.y)}');
 		}
 	}
 
