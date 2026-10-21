@@ -213,6 +213,103 @@ def split_composed_base(directory: Path, bands: list[str], check: bool) -> str:
     return "split base " + "/".join(str(len(expected[name])) for name in pieces)
 
 
+COVERED = "static_under_secondary.svg"
+XLINK_HREF = "{" + XLINK_NS + "}href"
+MATRIX = re.compile(r"matrix\(\s*([^)]*)\)")
+
+
+def multiply(m, n):
+    a, b, c, d, e, f = m
+    a2, b2, c2, d2, e2, f2 = n
+    return (a * a2 + c * b2, b * a2 + d * b2, a * c2 + c * d2, b * c2 + d * d2, a * e2 + c * f2 + e, b * e2 + d * f2 + f)
+
+
+def placed_paths(svg: ET.Element) -> list[tuple[ET.Element, ET.Element, tuple]]:
+    """(def group, path, key) for every path drawn through a <use>; key = (d, matrix)."""
+    defs = {}
+    for defs_element in svg.findall(f"{SVG}defs"):
+        for element in defs_element:
+            if element.get("id"):
+                defs[element.get("id")] = element
+    found = []
+
+    def walk(node, matrix):
+        match = MATRIX.match(node.get("transform", ""))
+        if match:
+            matrix = multiply(matrix, tuple(float(v) for v in match.group(1).replace(",", " ").split()))
+        if node.tag == f"{SVG}use":
+            target = defs.get((node.get(XLINK_HREF) or "").lstrip("#"))
+            if target is not None:
+                for path in target.iter(f"{SVG}path"):
+                    key = (" ".join(path.get("d", "").split()), tuple(round(v, 3) for v in matrix))
+                    found.append((target, path, key))
+        for child in node:
+            if child.tag != f"{SVG}defs":
+                walk(child, matrix)
+
+    walk(svg, (1.0, 0.0, 0.0, 1.0, 0.0, 0.0))
+    return found
+
+
+def merge_covered(directory: Path) -> None:
+    """Put paths moved to static_under_secondary.svg back into static.svg."""
+    covered_path = directory / COVERED
+    if not covered_path.exists():
+        return
+    static = ET.parse(directory / "static.svg").getroot()
+    groups = {g.get("id"): g for defs in static.findall(f"{SVG}defs") for g in defs if g.get("id")}
+    for defs in ET.parse(covered_path).getroot().findall(f"{SVG}defs"):
+        for group in defs:
+            paths = list(group.iter(f"{SVG}path"))
+            if paths and group.get("id") in groups:
+                for path in paths:
+                    groups[group.get("id")].append(path)
+    write_svg(directory / "static.svg", static)
+    covered_path.unlink()
+
+
+def split_covered(directory: Path, check: bool) -> str:
+    """Move static paths that exactly duplicate a secondary path (the black stand-in
+    Flash shows when colorMC2 is hidden) to their own file. With colorMC2 visible
+    Flash covers them exactly; drawn underneath here their anti-aliased edges
+    leaked out as a dark fringe around every second-colour area."""
+    secondary_path = directory / "secondary.svg"
+    if not secondary_path.exists():
+        return "no secondary"
+    if (directory / "static_frames").exists():
+        # The bubble body animates its static art frame by frame; leave it whole.
+        return "animated static"
+    secondary_keys = {key for _, _, key in placed_paths(ET.parse(secondary_path).getroot())}
+    static = ET.parse(directory / "static.svg").getroot()
+    placed = placed_paths(static)
+    covered = {id(path) for _, path, key in placed if key in secondary_keys}
+    # A def drawn more than once must be covered at every placement.
+    for _, path, key in placed:
+        if id(path) in covered and key not in secondary_keys:
+            covered.discard(id(path))
+    if check:
+        has_file = (directory / COVERED).exists()
+        if covered or (has_file and not len(placed_paths(ET.parse(directory / COVERED).getroot()))):
+            return f"stale: {len(covered)} covered paths left in static.svg"
+        return "ok"
+    if not covered:
+        return "covered 0"
+    keep = copy.deepcopy(static)
+    for group, path, _ in placed:
+        if id(path) in covered and path in list(group):
+            group.remove(path)
+    for (group, path, _), (keep_group, keep_path, _) in zip(placed, placed_paths(keep)):
+        if id(path) not in covered and keep_path in list(keep_group):
+            keep_group.remove(keep_path)
+    write_svg(directory / "static.svg", static)
+    write_svg(directory / COVERED, keep)
+    return f"covered {len(covered)}"
+
+
+def write_svg(path: Path, svg: ET.Element) -> None:
+    path.write_text('<?xml version="1.0" encoding="utf-8"?>\n' + ET.tostring(svg, encoding="unicode") + "\n", encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--xfl", type=Path, default=ROOT / "flash/platform-racing-2-xfl", help="extracted XFL folder")
@@ -230,7 +327,9 @@ def main() -> int:
             bands = frame_bands(source, int(prefix) - 1)
             if bands is None:
                 continue
-            results = [split_part(directory, bands, args.check)]
+            if not args.check:
+                merge_covered(directory)
+            results = [split_part(directory, bands, args.check), split_covered(directory, args.check)]
             if (directory / "static_base.svg").exists():
                 # Animated hats: the base leaves out the animated layer, and
                 # the composer keeps each element as one group.

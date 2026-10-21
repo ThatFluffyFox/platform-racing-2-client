@@ -62,6 +62,7 @@ class GuildMemberName extends Sprite {
 		var secondary = SvgAsset.create(channels.secondary);
 		secondary.name = "colorMC2";
 		result.addChild(secondary);
+		pr2.runtime.StandInSvgShape.addUnder(channels.fixedUnderSecondary, secondary, "fixedUnderSecondary");
 		pr2.character.CharacterView.addFixedLayer(result, channels.fixedAbove, "fixedAbove");
 		return result;
 	}

@@ -14,6 +14,7 @@ class CharacterViewTest {
 		pr2.DeterministicTestMode.runTest("CharacterViewTest.testExplicitHierarchyAndColors", testExplicitHierarchyAndColors);
 		pr2.DeterministicTestMode.runTest("CharacterViewTest.testPartRegistrationFollowsSlotRotation", testPartRegistrationFollowsSlotRotation);
 		pr2.DeterministicTestMode.runTest("CharacterViewTest.testAppearanceSelectionAndPerPartColors", testAppearanceSelectionAndPerPartColors);
+		pr2.DeterministicTestMode.runTest("CharacterViewTest.testSecondaryStandInFollowsEpicColor", testSecondaryStandInFollowsEpicColor);
 		pr2.DeterministicTestMode.runTest("CharacterViewTest.testStandardHatStack", testStandardHatStack);
 		pr2.DeterministicTestMode.runTest("CharacterViewTest.testFredBodyHierarchy", testFredBodyHierarchy);
 		pr2.DeterministicTestMode.runTest("CharacterViewTest.testStableEffectTargetsAndJetState", testStableEffectTargetsAndJetState);
@@ -185,10 +186,21 @@ class CharacterViewTest {
 	}
 
 	private static function assertHatChannelColor(view:CharacterView, index:Int, channelName:String, color:Int, message:String):Void {
-		var transform = hatChannel(view, index, channelName).transform.colorTransform;
-		assertEquals((color >> 16) & 0xFF, Std.int(transform.redOffset), '$message (red)');
-		assertEquals((color >> 8) & 0xFF, Std.int(transform.greenOffset), '$message (green)');
-		assertEquals(color & 0xFF, Std.int(transform.blueOffset), '$message (blue)');
+		assertSolidTint(hatChannel(view, index, channelName), color, message);
+	}
+
+	/** Moon hat: the black eye copy under colorMC2 shows only while the epic colour is off, and art stacks like the XFL. **/
+	private static function testSecondaryStandInFollowsEpicColor():Void {
+		var view = new CharacterView();
+		view.setHatIds([11, 1, 1, 1]);
+		var artwork = cast(view.hatSlot(0).getChildByName("artwork"), openfl.display.Sprite);
+		var names = [for (index in 0...artwork.numChildren) artwork.getChildAt(index).name];
+		assertEquals("primary,static,staticUnderSecondary,secondary,staticAbove", names.join(","), "moon hat stacks its art in the XFL layer order");
+		view.setHatSlotColor(0, 0xC8E8F4, -1);
+		assertEquals(true, artwork.getChildByName("staticUnderSecondary").visible, "black eye shows without an epic colour");
+		view.setHatSlotColor(0, 0xC8E8F4, 0xF0E0A0);
+		assertEquals(false, artwork.getChildByName("staticUnderSecondary").visible, "epic colour replaces the black eye instead of covering it");
+		assertSolidTint(artwork.getChildByName("secondary"), 0xF0E0A0, "moon eye takes the epic colour");
 	}
 
 	private static function testAppearanceSelectionAndPerPartColors():Void {
@@ -225,10 +237,17 @@ class CharacterViewTest {
 	}
 
 	private static function assertChannelColor(view:CharacterView, slotName:String, channelName:String, color:Int, message:String):Void {
-		var transform = partChannel(view, slotName, channelName).transform.colorTransform;
-		assertEquals((color >> 16) & 0xFF, Std.int(transform.redOffset), '$message (red)');
-		assertEquals((color >> 8) & 0xFF, Std.int(transform.greenOffset), '$message (green)');
-		assertEquals(color & 0xFF, Std.int(transform.blueOffset), '$message (blue)');
+		assertSolidTint(partChannel(view, slotName, channelName), color, message);
+	}
+
+	/** Channels are drawn pre-tinted (no colour transform, so HTML5 keeps them in the vector pass). **/
+	private static function assertSolidTint(channel:openfl.display.DisplayObject, color:Int, message:String):Void {
+		var tinted = Std.downcast(channel, pr2.runtime.TintedSvgShape);
+		assertTrue(tinted != null, '$message (pre-tinted SVG channel)');
+		assertEquals(color, tinted.tintColor, message);
+		var transform = channel.transform.colorTransform;
+		assertEquals(1.0, transform.redMultiplier, '$message (no colour transform)');
+		assertEquals(0.0, transform.redOffset, '$message (no colour offset)');
 	}
 
 	private static function testExplicitHierarchyAndColors():Void {
@@ -242,10 +261,7 @@ class CharacterViewTest {
 		assertEquals(0x123456, view.primaryColor, "primary color is retained");
 		assertEquals(0xABCDEF, view.secondaryColor, "secondary color is retained");
 		var primary = cast(view.slot("head").getChildByName("artwork"), openfl.display.Sprite).getChildByName("primary");
-		var transform = primary.transform.colorTransform;
-		assertEquals(0x12, Std.int(transform.redOffset), "primary red channel uses a solid offset");
-		assertEquals(0x34, Std.int(transform.greenOffset), "primary green channel uses a solid offset");
-		assertEquals(0x56, Std.int(transform.blueOffset), "primary blue channel uses a solid offset");
+		assertSolidTint(primary, 0x123456, "primary channel takes the solid colour");
 		view.setColors(0x010203, -1);
 		var bodyArtwork = cast(view.slot("body").getChildByName("artwork"), openfl.display.Sprite);
 		assertEquals(false, bodyArtwork.getChildByName("secondary").visible, "negative epic color hides the secondary channel");

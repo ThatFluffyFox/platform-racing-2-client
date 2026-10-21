@@ -341,6 +341,13 @@ python3 tools/split_character_static_layers.py
 python3 tools/split_character_static_layers.py --check
 ```
 
+The same tool moves black stand-in shapes that exactly duplicate a secondary
+shape (the default look when a part has no epic colour) into
+`static_under_secondary.svg`, drawn only while colorMC2 is hidden; drawn under
+the tinted copy, their anti-aliased edges leaked out as a dark fringe. Tinted
+channels are drawn as recoloured SVG (`TintedSvgShape`) rather than through a
+colour transform, which on HTML5 rasterizes them into a separate bitmap.
+
 Then add the new files to the rig (`tools/generate_character_rig.py`) and
 rebuild the SVG packs (`tools/generate_svg_packs.py`).
 

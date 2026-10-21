@@ -42,6 +42,11 @@ typedef RigPartChannels = {
 	@:optional var fixedBelow:String;
 	/** Static art the Flash part stacks over `secondary` (colorMC2): outlines, shading, eyes. **/
 	@:optional var fixedAbove:String;
+	/**
+		Black stand-in shapes that `secondary` covers exactly in Flash; draw them
+		only while the secondary channel is hidden (no epic colour).
+	**/
+	@:optional var fixedUnderSecondary:String;
 	@:optional var channelAnimations:Array<RigPartChannelAnimation>;
 	@:optional var overlayAnimation:RigPartOverlayAnimation;
 }

@@ -177,6 +177,37 @@ class SvgAsset {
 		return shape.getBounds(shape);
 	}
 
+	/**
+		Recolours `shape` to Flash's `ColorTransform.color = color` result (every
+		fill, stroke and gradient stop becomes `color`, alpha kept) by drawing a
+		pre-tinted copy of `assetPath` instead of setting a colour transform.
+		On HTML5 a colour transform makes OpenFL rasterize the shape into its own
+		bitmap, which lands slightly blurred and offset over the art beneath it,
+		so black shapes that the tinted channel covers exactly in Flash (the moon
+		hat's eye) show a dark fringe. Returns false for hairline art, which
+		keeps using the colour transform.
+	**/
+	public static function applySolidTint(shape:Shape, assetPath:String, color:Int):Bool {
+		var key = assetPath + "#" + StringTools.hex(color & 0xFFFFFF, 6);
+		var svg = tinted.get(key);
+		if (svg == null) {
+			var document = Xml.parse(prepare(loadText(assetPath)));
+			var root = document.firstElement();
+			if (root == null) throw 'Invalid SVG asset $assetPath';
+			// Paths without a fill attribute inherit the root's (default black).
+			root.set("fill", "#000000");
+			applyNamedTints(root, new Map(), [], color & 0xFFFFFF);
+			svg = new SvgDocument(document.toString());
+			tinted.set(key, svg);
+		}
+		if (svg.usesHairlines()) return false;
+		svg.drawInto(shape);
+		shape.transform.colorTransform = new openfl.geom.ColorTransform();
+		return true;
+	}
+
+	private static final tinted:Map<String, SvgDocument> = new Map();
+
 	private static function get(assetPath:String):SvgDocument {
 		var svg = parsed.get(assetPath);
 		if (svg == null) {
@@ -453,6 +484,13 @@ private class SvgDocument {
 		var shape = new Shape();
 		shape.graphics.copyFrom(rendered.graphics);
 		return shape;
+	}
+
+	public function usesHairlines():Bool return hasHairlines;
+
+	public function drawInto(shape:Shape):Void {
+		shape.graphics.clear();
+		shape.graphics.copyFrom(rendered.graphics);
 	}
 
 	public function createShapeAtHairlineThickness(thickness:Float):Shape {

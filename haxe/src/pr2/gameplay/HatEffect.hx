@@ -199,9 +199,19 @@ class HatEffect {
 		}
 		holder.visible = visible;
 		if (visible && holder.numChildren > 0) {
+			var tinted = Std.downcast(holder.getChildAt(0), pr2.runtime.TintedSvgShape);
 			var artwork = Std.downcast(holder.getChildAt(0), Shape);
-			if (artwork != null) {
+			if (tinted != null) {
+				tinted.tint(tint);
+			} else if (artwork != null) {
 				artwork.transform.colorTransform = colorTransformFor(tint);
+			}
+		}
+		var standIns = Std.downcast(findByName(display, "staticUnderSecondary"), Sprite);
+		if (standIns != null) {
+			for (index in 0...standIns.numChildren) {
+				var standIn = Std.downcast(standIns.getChildAt(index), pr2.runtime.StandInSvgShape);
+				if (standIn != null) standIn.sync();
 			}
 		}
 	}
