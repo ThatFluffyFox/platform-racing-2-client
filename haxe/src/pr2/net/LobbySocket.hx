@@ -60,13 +60,14 @@ class LobbySocket {
 		socket = new WebSocket(server.websocketUrl(secure));
 		socket.onopen = function(_):Void {
 			connected = true;
-			openedAtMs = lastSendMs = lastCommandMs = nowMs();
+			openedAtMs = lastSendMs = lastCommandMs = lastReceiveMs = nowMs();
 			startPingInterval();
 			if (onOpen != null) {
 				onOpen();
 			}
 		};
 		socket.onmessage = function(event):Void {
+			lastReceiveMs = nowMs();
 			for (frame in splitFrames(Std.string(event.data))) {
 				CommandHandler.commandHandler.handleServerFrame(frame);
 			}
@@ -93,6 +94,9 @@ class LobbySocket {
 	private static var lastSendMs:Float = 0;
 	private static var lastCommandMs:Float = 0;
 	private static var lastPingMs:Float = -1e12;
+	/** When the server last sent anything (it answers every ping), and the name of the last command sent. **/
+	private static var lastReceiveMs:Float = 0;
+	private static var lastSentName:String = "";
 	/** Why the last connection closed, for the "Disconnected." message. **/
 	private static var lastCloseText:String = "";
 
@@ -111,9 +115,13 @@ class LobbySocket {
 		var open = Math.round((t - openedAtMs) / 60000);
 		var sent = Math.round((t - lastSendMs) / 1000);
 		var command = Math.round((t - lastCommandMs) / 60000);
+		var heard = Math.round((t - lastReceiveMs) / 1000);
+		// The server answers every ping (sent every 10 s), so a long silence means the
+		// line went dead before the close: the network or the server, not a command.
 		var cause = sent >= 55 ? " Nothing was sent for a minute (the tab may have been asleep)."
-			: (command >= 29 ? " Only pings were sent for 30 minutes, so the server counted you as away." : "");
-		return '(code $code after $open min connected; last sent ${sent}s ago, last game command $command min ago.$cause)';
+			: (command >= 29 ? " Only pings were sent for 30 minutes, so the server counted you as away."
+				: (heard >= 25 ? ' The server stopped answering ${heard}s before the drop (network or server).' : ""));
+		return '(code $code after $open min connected; last sent ${sent}s ago ($lastSentName), last heard from the server ${heard}s ago, last game command $command min ago.$cause)';
 	}
 
 	public static function write(command:String):Void {
@@ -127,6 +135,8 @@ class LobbySocket {
 		if (socket != null && socket.readyState == WebSocket.OPEN && protocol != null) {
 			socket.send(protocol.commandFrame(command));
 			lastSendMs = nowMs();
+			var tick = command.indexOf("`");
+			lastSentName = tick < 0 ? command : command.substr(0, tick);
 			if (!StringTools.startsWith(command, "ping`")) lastCommandMs = lastSendMs;
 		}
 		#end
