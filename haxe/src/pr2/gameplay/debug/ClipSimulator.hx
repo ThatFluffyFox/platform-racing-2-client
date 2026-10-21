@@ -172,8 +172,16 @@ class ClipSimulator {
 
 	static function pointInSolid(level:Level, player:LocalPlayerController, courseY:Float):Bool {
 		var point = toLevel(player.x, courseY, player.courseRotation);
-		var block = level.blockAt(tileOf(point.x), tileOf(point.y));
-		return block != null && block.type.isSolid() && !player.blockController.isBlockRemoved(block);
+		return clippable(level.blockAt(tileOf(point.x), tileOf(point.y)), player);
+	}
+
+	/**
+		A block the player can be clipped into: solid and still there. Mines
+		don't count: touching one blows it up (MineBlock), so being inside one
+		is never a place the player stays.
+	**/
+	public static function clippable(block:Null<LevelBlock>, player:LocalPlayerController):Bool {
+		return block != null && block.type.isSolid() && block.type != BlockType.Mine && !player.blockController.isBlockRemoved(block);
 	}
 
 	/**
@@ -768,6 +776,11 @@ class ClipArea {
 		return template.length;
 	}
 
+	/** Every block in the area is one that never changes (so runs may share one Level). **/
+	public function staticBlocks():Bool {
+		return allStatic;
+	}
+
 	static inline function clampInt(value:Int, min:Int, max:Int):Int {
 		return value < min ? min : (value > max ? max : value);
 	}
@@ -856,8 +869,13 @@ class ClipBlockController extends BlockController {
 **/
 @:access(pr2.gameplay.player.LocalPlayerController)
 class ClipSnapshot {
-	public static function copy(source:LocalPlayerController):LocalPlayerController {
+	/**
+		`shared`: objects the copy keeps pointing at instead of copying (a
+		Level whose blocks never change), so thousands of copies stay small.
+	**/
+	public static function copy(source:LocalPlayerController, ?shared:Array<Dynamic>):LocalPlayerController {
 		var seen = new haxe.ds.ObjectMap<Dynamic, Dynamic>();
+		if (shared != null) for (object in shared) seen.set(object, object);
 		var player:LocalPlayerController = deep(source, seen);
 		var blocks = player.blockController;
 		if (Std.isOfType(blocks, ClipBlockController)) ClipBlockController.useFrameClock(cast blocks);

@@ -64,6 +64,14 @@ class RouteSettings {
 	/** Hop-back attempts tried for a recipe (null = the scanner's defaults). **/
 	public var recipeHopHolds:Null<Array<Int>> = null;
 	public var recipeHopBackFrames:Null<Array<Int>> = null;
+	/**
+		Spots within `exploreRange` tiles (through open space) of the target
+		also run a mechanics search (ClipExplorer) into it, for at most
+		`exploreSpots` spots and `exploreStates` states each.
+	**/
+	public var exploreSpots:Int = 6;
+	public var exploreRange:Float = 10;
+	public var exploreStates:Int = 400;
 
 	public function new(startX:Float, startY:Float, speed:Float, accel:Float, jump:Float, gravity:Float, targetTileX:Int, targetTileY:Int) {
 		this.startX = startX;
@@ -85,6 +93,8 @@ class RouteMove {
 	public final corner:Null<ClipCorner>;
 	/** For a mine move, the pixel x to walk to and stop on before playing `inputs` (null = play them at once). **/
 	public final approachX:Null<Float>;
+	/** A mechanics search (ClipExplorer) from the spot into the target. **/
+	public var explore:Bool = false;
 
 	public function new(name:String, inputs:Array<LocalPlayerInput>, ?corner:ClipCorner, ?approachX:Float) {
 		this.name = name;
@@ -346,6 +356,10 @@ class ClipRoutePlanner {
 		vanishes = [for (block in blocks) if (!block.isMarker() && block.type == BlockType.Vanish) block];
 		itemBlocks = [for (block in blocks) if (block.type == BlockType.Item || block.type == BlockType.InfiniteItem) block];
 		field = new TargetField(blocks, settings.targetTileX, settings.targetTileY);
+		var solid:Map<String, Bool> = new Map();
+		for (b in blocks) if (!b.isMarker() && b.type.isSolid() && b.type != BlockType.Mine) solid.set(b.x + "," + b.y, true);
+		var tx = settings.targetTileX, ty = settings.targetTileY;
+		targetBuried = solid.exists('${tx + 1},$ty') && solid.exists('${tx - 1},$ty') && solid.exists('$tx,${ty + 1}') && solid.exists('$tx,${ty - 1}');
 		area = ClipArea.aroundCourse(blocks, settings.startX, settings.startY, ClipFinder.AREA_RADIUS_X, ClipFinder.AREA_UP, ClipFinder.AREA_DOWN,
 			settings.startRotation);
 		// The start itself: simulate standing still, in case the target is already touched.
@@ -366,6 +380,10 @@ class ClipRoutePlanner {
 				runs++;
 				continue;
 			}
+			if (stepExplore()) {
+				runs++;
+				continue;
+			}
 			if (current == null && !nextSpot()) {
 				done = true;
 				break;
@@ -377,7 +395,9 @@ class ClipRoutePlanner {
 			}
 			var move = currentMoves[moveIndex++];
 			runs++;
-			if (move.corner != null) {
+			if (move.explore) {
+				startExplore(spot);
+			} else if (move.corner != null) {
 				// Waits for the wall's recipe scan, then tries the move again.
 				if (!tryClipMove(spot, move)) moveIndex--;
 			} else if (move.approachX != null) {
@@ -390,6 +410,19 @@ class ClipRoutePlanner {
 	}
 
 	function nextSpot():Bool {
+		if (open.length == 0 && exploreLater.length > 0 && settings.exploreSpots > exploresStarted) {
+			// The ordinary moves ran out: try the mechanics search from the spots
+			// nearest the target (each spot's own moves are already done).
+			exploreLater.sort((a, b) -> Reflect.compare(field.distance(a.tileX, a.tileY), field.distance(b.tileX, b.tileY)));
+			var spot = exploreLater.shift();
+			current = spot;
+			var explore = new RouteMove("clip in using the mechanics", []);
+			explore.explore = true;
+			currentMoves = [explore];
+			moveIndex = 0;
+			base = null;
+			return true;
+		}
 		while (open.length > 0) {
 			var spot = open.shift();
 			var key = spot.key;
@@ -808,6 +841,18 @@ class ClipRoutePlanner {
 		}
 		if (settings.normalMoves) moves.push(new RouteMove("jump in place", hold(0, 30, 0, 30, false)));
 		moves = moves.concat(itemMoves(spot)).concat(swimMoves(spot));
+		// Near the target: search with the clip mechanics from here. A buried target
+		// (no open side to touch) needs it, so it goes first; otherwise the spot is
+		// kept for when the ordinary moves run out (each search is long).
+		if (field.distance(spot.tileX, spot.tileY) <= settings.exploreRange) {
+			if (targetBuried && settings.exploreSpots > exploresStarted) {
+				var explore = new RouteMove("clip in using the mechanics", []);
+				explore.explore = true;
+				moves.unshift(explore);
+			} else if (!targetBuried) {
+				exploreLater.push(spot);
+			}
+		}
 		if (spot.rotation != 0) return moves;
 		return moves.concat(vanishMoves(spot)).concat(mineMoves(spot));
 	}
@@ -1015,6 +1060,57 @@ class ClipRoutePlanner {
 	}
 
 	static inline function cornerKey(corner:ClipCorner):String return corner.x + "," + corner.y + "," + corner.dir;
+
+	// ---- Mechanics search from a spot (ClipExplorer) ------------------------------
+
+	/** The running search, the spot it started from, and how many have started. **/
+	var exploring:Null<ClipExplorer> = null;
+	var exploreSpot:Null<RouteSpot> = null;
+	var exploresStarted:Int = 0;
+	/** Spots near the target to search from once the ordinary moves run out. **/
+	final exploreLater:Array<RouteSpot> = [];
+	/** The target has no open side, so it can only be reached by clipping in. **/
+	var targetBuried:Bool = false;
+
+	/** Starts a ClipExplorer from the player standing on `spot`, aimed at the target. **/
+	function startExplore(spot:RouteSpot):Void {
+		exploresStarted++;
+		var s = settings;
+		var base = spotBase(spot.script, spot.script.length);
+		if (base == null) return;
+		var explore = new ClipExplorer.ExploreSettings(s.startX, s.startY, s.speed, s.accel, s.jump, s.gravity);
+		explore.hats = s.hats;
+		explore.items = s.items;
+		explore.courseRotation = spot.rotation;
+		explore.targetTileX = s.targetTileX;
+		explore.targetTileY = s.targetTileY;
+		explore.maxExpansions = s.exploreStates;
+		explore.maxClips = 1;
+		explore.maxFrames = 300;
+		var picks = spot.state.picks;
+		var from = new ClipExplorer.ExploreStart(base.player, spot.script, area, base.itemUses,
+			script -> simulate(script, spot.script.length, false, null, false, picks).reachFrame >= 0);
+		exploring = new ClipExplorer(blocksForScans, explore, from);
+		exploreSpot = spot;
+	}
+
+	/** Advances a running mechanics search. Returns true while one is running. **/
+	function stepExplore():Bool {
+		var search = exploring;
+		if (search == null) return false;
+		search.step(20);
+		if (!search.done) return true;
+		exploring = null;
+		var spot = exploreSpot;
+		var script = search.firstScript;
+		if (spot == null || script == null) return true;
+		// It reached the target: the route ends with the search's moves.
+		var sim = simulate(script, spot.script.length, false, null, false, spot.state.picks);
+		if (sim.reachFrame < 0) return true;
+		var name = 'clip in: ${search.lastWhy}';
+		finishMove(spot, name, script, sim);
+		return true;
+	}
 
 	/** Advances a pending recipe scan by one attempt. Returns true while one is running. **/
 	function stepRecipeScan():Bool {

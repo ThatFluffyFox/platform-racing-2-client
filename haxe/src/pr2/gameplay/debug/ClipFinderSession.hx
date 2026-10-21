@@ -6,6 +6,7 @@ import openfl.events.MouseEvent;
 import openfl.geom.Point;
 import pr2.character.Character;
 import pr2.character.LocalCharacter;
+import pr2.gameplay.debug.ClipExplorer.MechanicsSearch;
 import pr2.gameplay.debug.ClipFinder.ClipFinderSettings;
 import pr2.gameplay.debug.ClipSimulator.ClipAttempt;
 import pr2.gameplay.debug.ClipSimulator.ClipHats;
@@ -65,6 +66,7 @@ class ClipFinderSession {
 		panel.onPredict = () -> startScan(true);
 		panel.onGlitches = startGlitches;
 		panel.onRoute = startRoute;
+		panel.onMechanics = startMechanics;
 		panelLayer.addChild(panel);
 		ghost = new ClipGhost(player);
 		ghost.courseRotation = () -> player.controller.courseRotation;
@@ -131,6 +133,7 @@ class ClipFinderSession {
 		stopReplay();
 		finder = ClipSimulator.keepRealItem(() -> new ClipFinder(liveBlocks(), settings));
 		glitchFinder = null;
+		mechanicsSearch = null;
 		glitchNotes = new Map();
 		clips = finder.clips;
 		clipPortals = [];
@@ -146,6 +149,10 @@ class ClipFinderSession {
 	}
 
 	function stopSearch():Void {
+		if (mechanicsSearch != null) {
+			stopMechanics();
+			return;
+		}
 		if (glitchFinder != null) {
 			stopGlitches();
 			return;
@@ -170,6 +177,7 @@ class ClipFinderSession {
 		// Simulated items share the game's one item-uses store; keep the real player's.
 		ClipSimulator.keepRealItem(() -> {
 			tickGlitches();
+			tickMechanics();
 			tickScan();
 			tickRoute();
 			tickFinder();
@@ -222,6 +230,91 @@ class ClipFinderSession {
 		}
 	}
 
+	// ---- Stage 4: clip mechanics search -------------------------------------------
+
+	/** The running Stage 4 search: aimed at the target (ClipExplorer) or at every block near you (ClipHunt). **/
+	var mechanicsSearch:Null<MechanicsSearch> = null;
+
+	/**
+		"Stage 4": a search that knows from the collision code what makes the
+		player clip (see ClipExplorer), started where you stand with your
+		stats, hats and item: aimed at the target when "Aim at target" is on,
+		else at every block near you that the body could get into.
+	**/
+	function startMechanics():Void {
+		var state = player.stateSnapshot();
+		stopReplay();
+		finder = null;
+		planner = null;
+		scanner = null;
+		glitchFinder = null;
+		routeText = null;
+		searchRotation = state.courseRotation;
+		var gravity = level.gravity * (player.hasHatFlag(Character.MOON) ? MOON_GRAVITY : 1);
+		var settings = new ClipExplorer.ExploreSettings(Math.round(state.x), Math.round(state.y), state.speedStat, state.accelerationStat,
+			state.jumpStat, gravity);
+		settings.hats = ClipHats.from(player.controller);
+		settings.items = ClipSimulator.ClipItems.from(player.controller);
+		settings.courseRotation = searchRotation;
+		var aimed = panel.aimBox.selected && targetTileX != null && targetTileY != null;
+		if (aimed) {
+			settings.targetTileX = targetTileX;
+			settings.targetTileY = targetTileY;
+		}
+		var blocks = liveBlocks();
+		mechanicsSearch = ClipSimulator.keepRealItem(() -> aimed ? MechanicsSearch.aimed(new ClipExplorer(blocks, settings))
+			: MechanicsSearch.everywhere(new ClipExplorer.ClipHunt(blocks, settings)));
+		clips = [];
+		clipPortals = [];
+		glitchNotes = new Map();
+		shownClips = 0;
+		selectedClip = -1;
+		ghost.stop();
+		panel.setClipCount(0);
+		panel.setRunning(true);
+		updateMechanicsStatus();
+	}
+
+	function stopMechanics():Void {
+		if (mechanicsSearch == null) return;
+		panel.setRunning(false);
+		updateMechanicsStatus(true);
+		mechanicsSearch = null;
+	}
+
+	function tickMechanics():Void {
+		var search = mechanicsSearch;
+		if (search == null) return;
+		if (!search.done()) {
+			var deadline = haxe.Timer.stamp() + FRAME_BUDGET_SECONDS;
+			search.step(1000, () -> haxe.Timer.stamp() > deadline);
+		}
+		var found = search.clips();
+		while (clips.length < found.length) {
+			var clip = found[clips.length];
+			clip.found.attempt.courseRotation = searchRotation;
+			glitchNotes.set(clips.length, 'How: ${clip.why}. Clips on frame ${clip.found.run.clipFrame + 1}.');
+			clips.push(clip.found);
+			clipPortals.push(null);
+		}
+		if (clips.length != shownClips) {
+			shownClips = clips.length;
+			panel.setClipCount(shownClips);
+			if (selectedClip < 0) showClip(0);
+		}
+		updateMechanicsStatus();
+		if (search.done()) {
+			panel.setRunning(false);
+			mechanicsSearch = null;
+		}
+	}
+
+	function updateMechanicsStatus(stopped:Bool = false):Void {
+		var search = mechanicsSearch;
+		if (search == null) return;
+		panel.setStatus(search.blockedStart() ? "Can't start here: inside a block." : search.progressText(stopped));
+	}
+
 	// ---- Stage 3: movement glitches ---------------------------------------------
 
 	var glitchFinder:Null<MovementGlitchFinder> = null;
@@ -233,6 +326,7 @@ class ClipFinderSession {
 		var state = player.stateSnapshot();
 		stopReplay();
 		finder = null;
+		mechanicsSearch = null;
 		planner = null;
 		scanner = null;
 		routeText = null;
@@ -317,6 +411,7 @@ class ClipFinderSession {
 		finder = null;
 		planner = null;
 		glitchFinder = null;
+		mechanicsSearch = null;
 		glitchNotes = new Map();
 		routeText = null;
 		var gravity = level.gravity * (player.hasHatFlag(Character.MOON) ? MOON_GRAVITY : 1);
@@ -452,6 +547,7 @@ class ClipFinderSession {
 		finder = null;
 		scanner = null;
 		glitchFinder = null;
+		mechanicsSearch = null;
 		glitchNotes = new Map();
 		var gravity = level.gravity * (player.hasHatFlag(Character.MOON) ? MOON_GRAVITY : 1);
 		// The stat rows: plan with each sampled set in turn (your own stats first) until one finds a route.
@@ -608,8 +704,10 @@ class ClipFinderSession {
 		var tx = ClipSimulator.tileOf(world.x);
 		var ty = ClipSimulator.tileOf(world.y);
 		var block = level.blockAt(tx, ty);
-		if (block == null || !block.type.isSolid()) {
-			panel.setStatus('No solid block at $tx,$ty. Click a block.');
+		if (block == null || !block.type.isSolid() || block.type == pr2.level.BlockType.Mine) {
+			// A mine blows up when touched, so it can't be clipped into.
+			panel.setStatus(block != null && block.type == pr2.level.BlockType.Mine ? 'Mines blow up instead of clipping. Click another block.'
+				: 'No solid block at $tx,$ty. Click a block.');
 			return false;
 		}
 		setPicking(false);
@@ -799,6 +897,7 @@ class ClipFinderSession {
 		scanner = null;
 		planner = null;
 		glitchFinder = null;
+		mechanicsSearch = null;
 		if (overlay != null) overlay.dispose();
 		overlay = null;
 		closed = true;

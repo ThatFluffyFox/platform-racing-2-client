@@ -22,6 +22,8 @@ enum abstract ScanStage(Int) {
 	var PredictedScan = 2;
 	/** Stage 3: movement glitches (higher, faster, or through block edges compared with open ground). **/
 	var MovementGlitches = 3;
+	/** Stage 4: a search that knows what makes the player clip (ClipExplorer), aimed at the target or every block near you. **/
+	var Mechanics = 4;
 }
 
 /**
@@ -83,6 +85,8 @@ class ClipFinderPanel extends NativeView {
 	/** Stage 3 (movement glitches) picked. **/
 	public var onGlitches:Null<Void->Void>;
 	public var onRoute:Null<Void->Void>;
+	/** Stage 4 (clip mechanics search) picked. **/
+	public var onMechanics:Null<Void->Void>;
 	final status:TextField;
 	final clipInfo:TextField;
 	var shownClip:Int = 0;
@@ -112,7 +116,8 @@ class ClipFinderPanel extends NativeView {
 		scanSelect.addOption("Stage 1.5: predicted clips", PredictedScan);
 		scanSelect.addOption("Stage 2: route to target", RouteToTarget);
 		scanSelect.addOption("Stage 3: movement glitches", MovementGlitches);
-		scanSelect.rowCount = 4;
+		scanSelect.addOption("Stage 4: clip mechanics search", Mechanics);
+		scanSelect.rowCount = 5;
 		scanSelect.onChange = function(option:SelectOption<ScanStage>):Void {
 			scanSelect.selectedIndex = -1;
 			chooseScanStage(option.value);
@@ -211,6 +216,8 @@ class ClipFinderPanel extends NativeView {
 				if (onGlitches != null) onGlitches();
 			case RouteToTarget:
 				if (onRoute != null) onRoute();
+			case Mechanics:
+				if (onMechanics != null) onMechanics();
 		}
 	}
 

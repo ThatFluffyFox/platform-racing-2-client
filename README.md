@@ -732,6 +732,47 @@ kind and tile) goes in the clip list with what it does, the moves, the ghost
 and Replay on me. On level 3460484 (100/45/40) it checks 300 spots in about
 16 s and finds 25 step snaps and one hover.
 
+**Stage 4: clip mechanics search** doesn't try random keys: it knows from
+the collision code what lets the body into a block, and steers by it. Every
+frame the game only checks a few points: under the middle of the feet (and
+only when the point 30 px up is open), two wall points 10 px above the feet
+(only against a block whose near side is open), and going up the middle at
+25, 30 and 55 px (only a block with open space under it). Swimming, and
+Cowboy Hat flight (which runs the swim code), checks only the top of the
+head going up. So the search scores each simulated state by how much of the
+body is inside the target's block mass where none of those points will push
+it back out (overlap the head check will bump back down counts for
+nothing), and by being lined up so that moving sideways slides the body in
+with the wall points clear. From each state it plays every direction with
+nothing, jump or down held, and the item tapped or held, for 1, 3 and 8
+frames. That way it finds, for example:
+
+- swimming under a wall that stands on the water and using the **Super Jump
+  item** (25 px a frame up) while the head check is inside a block that has
+  another block under it,
+- flying with the **Cowboy Hat** sideways into a one-block-thick platform
+  with the head above it and the feet below, then rising into it,
+- a **super jump charged on the pool floor**: press jump mid-charge, swim,
+  and the charge is kept (only the land code spends it) until you leave the
+  water or touch the floor (the search counts kept charge in a state's
+  favour; it is not yet shown finding a clip with it on a test level).
+
+It uses the **Teleport item** the same way as any other item: it moves
+exactly 120 px after checking only one point 5 px above the feet, so it can
+line the player up with a corner or put the body in a block. No test level
+shows a Teleport clip yet.
+
+With a target picked (and Aim at target ticked) it searches into that block;
+without one it tries the blocks near you in turn, the likely ones first
+(corners under platforms and walls, then undersides, wall faces, and plain
+floor last), and any clip into each one's block mass counts. Every clip is
+replayed from the start before it is listed, and its info says how it works.
+**Stage 2** uses the same search: near a buried target (no open side to
+touch) it tries it first, and for other targets once the ordinary moves run
+out, from the spots nearest the target.
+
+**Mines** don't count as clips anywhere: touching one blows it up.
+
 **What counts as a clip:** in the map scans (Stages 1 and 1.5) and in a
 search without a target, a clip only counts when it goes through: after
 getting into the blocks you come to rest outside them on the far side of

@@ -102,6 +102,11 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSolverPredictsTheLandingFrame", testSolverPredictsTheLandingFrame);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMinesAreNotClips", testMinesAreNotClips);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testExplorerFindsSuperJumpItemClipAboveWater", testExplorerFindsSuperJumpItemClipAboveWater);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testExplorerFindsCowboyFlightClip", testExplorerFindsCowboyFlightClip);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testHuntFindsClipsWithoutATarget", testHuntFindsClipsWithoutATarget);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSuperJumpChargeIsKeptWhileSwimming", testSuperJumpChargeIsKeptWhileSwimming);
 		// The panel tests share one started race; building a Course is fixture
 		// setup, not Clip Finder behaviour, so it is kept out of their timing.
 		course = raceCourse();
@@ -1469,8 +1474,13 @@ class ClipFinderTest {
 		course.setKey(Keyboard.D, true);
 		var session = course.clipFinder;
 		var menu = session.panel.scanSelect;
-		assertEquals(4, menu.length, "the Scan level menu has the four stages");
+		assertEquals(5, menu.length, "the Scan level menu has the five stages");
 		assertEquals(ScanStage.MovementGlitches, menu.itemAt(3), "stage 3 is movement glitches");
+		assertEquals(ScanStage.Mechanics, menu.itemAt(4), "stage 4 is the clip mechanics search");
+		menu.selectFromUser(4);
+		assertTrue(session.mechanicsSearch != null, "Stage 4 starts the mechanics search");
+		session.stopSearch();
+		assertTrue(session.mechanicsSearch == null, "and can be stopped");
 		assertEquals(ScanStage.MapScan, menu.itemAt(0), "stage 1 is the map scan");
 		assertEquals(ScanStage.PredictedScan, menu.itemAt(1), "stage 1.5 is the predicted clips");
 		assertEquals(ScanStage.RouteToTarget, menu.itemAt(2), "stage 2 is the route to the target");
@@ -1690,6 +1700,113 @@ class ClipFinderTest {
 			course.countdown.advance();
 		}
 		return course;
+	}
+
+	// ---- Stage 4: the clip mechanics search ----------------------------------------
+
+	private static function tiles(blocks:Array<LevelBlock>, row:Int, from:Int, to:Int, type:BlockType):Void {
+		for (c in from...to + 1) blocks.push(new LevelBlock(c, row, type));
+	}
+
+	/** A floor, a pool on it (rows 17-19) and a 2-wide wall standing on the water (cols 15-16, rows 10-16). **/
+	private static function wallOnAPool():Array<LevelBlock> {
+		var b:Array<LevelBlock> = [];
+		tiles(b, 20, 0, 30, BlockType.Basic);
+		for (r in 17...20) tiles(b, r, 2, 28, BlockType.Water);
+		for (r in 10...17) tiles(b, r, 15, 16, BlockType.Basic);
+		return b;
+	}
+
+	private static function exploreSettings(col:Int, ?item:Int, ?target:Array<Int>):pr2.gameplay.debug.ClipExplorer.ExploreSettings {
+		var s = new pr2.gameplay.debug.ClipExplorer.ExploreSettings(col * 30 + 15, 600, 50, 50, 50, 1);
+		if (item != null) s.items = new pr2.gameplay.debug.ClipSimulator.ClipItems(item);
+		if (target != null) {
+			s.targetTileX = target[0];
+			s.targetTileY = target[1];
+		}
+		s.maxClips = 1;
+		s.maxExpansions = 200;
+		// The test rooms are small: a tighter area keeps the copies cheap.
+		s.margin = 6;
+		return s;
+	}
+
+	private static function testMinesAreNotClips():Void {
+		var level = new ClipArea([new LevelBlock(5, 5, BlockType.Mine), new LevelBlock(6, 5, BlockType.Basic)], 0, 0, 10, 10).buildLevel(1);
+		var player = new pr2.gameplay.player.LocalPlayerController(level);
+		assertEquals(false, ClipSimulator.clippable(level.blockAt(5, 5), player), "a mine blows up when touched, so it is not a clip");
+		assertEquals(true, ClipSimulator.clippable(level.blockAt(6, 5), player), "a basic block is");
+	}
+
+	private static function testExplorerFindsSuperJumpItemClipAboveWater():Void {
+		var explorer = ClipSimulator.keepRealItem(() -> {
+			var e = new ClipExplorer(wallOnAPool(), exploreSettings(10, 5, [15, 16]));
+			while (!e.done) e.step(500);
+			e;
+		});
+		assertEquals(1, explorer.clips.length, 'swimming under the wall and using the Super Jump item clips into it (${explorer.progressText()})');
+		var clip = explorer.clips[0];
+		assertTrue(clip.why.indexOf("Super Jump item while swimming") >= 0, 'it says how: ${clip.why}');
+		assertTrue(clip.found.run.clipped && ClipSimulator.tileOf(clip.found.run.x) == 15, "and replays from the start into the wall");
+	}
+
+	private static function testExplorerFindsCowboyFlightClip():Void {
+		var b:Array<LevelBlock> = [];
+		tiles(b, 20, 0, 30, BlockType.Basic);
+		tiles(b, 15, 14, 20, BlockType.Basic);
+		var s = exploreSettings(10, null, [17, 15]);
+		s.hats = new ClipHats();
+		s.hats.cowboy = true;
+		var explorer = ClipSimulator.keepRealItem(() -> {
+			var e = new ClipExplorer(b, s);
+			while (!e.done) e.step(500);
+			e;
+		});
+		assertEquals(1, explorer.clips.length, 'flying sideways into a thin platform and rising clips into it (${explorer.progressText()})');
+		assertTrue(explorer.clips[0].why.indexOf("swimming only checks the top of the head") >= 0, 'cowboy flight is the swim code: ${explorer.clips[0].why}');
+	}
+
+	private static function testHuntFindsClipsWithoutATarget():Void {
+		var b:Array<LevelBlock> = [];
+		tiles(b, 20, 0, 30, BlockType.Basic);
+		tiles(b, 15, 14, 20, BlockType.Basic);
+		var s = exploreSettings(10);
+		s.hats = new ClipHats();
+		s.hats.cowboy = true;
+		s.maxClips = 1;
+		var hunt = ClipSimulator.keepRealItem(() -> {
+			var h = new pr2.gameplay.debug.ClipExplorer.ClipHunt(b, s);
+			var runs = 0;
+			while (!h.done && runs < 60000) runs += h.step(500);
+			h;
+		});
+		assertTrue(hunt.clips.length >= 1, 'with no target it tries the likely blocks in turn (${hunt.progressText()})');
+		assertEquals(null, hunt.clips[0].found.attempt.targetTileX, "and lists the clip for any block");
+	}
+
+	/** The mechanic behind saved super jumps: the charge is only spent by the land code. **/
+	@:access(pr2.gameplay.player.LocalPlayerController)
+	private static function testSuperJumpChargeIsKeptWhileSwimming():Void {
+		var b:Array<LevelBlock> = [];
+		tiles(b, 20, 0, 30, BlockType.Basic);
+		for (r in 17...20) tiles(b, r, 2, 28, BlockType.Water);
+		var area = new ClipArea(b, -5, -20, 40, 30);
+		var player = ClipSimulator.preparePlayer(area, area.buildLevel(1), 10 * 30 + 15, 600, 50, 50, 50, 1, null);
+		// Charge on the pool floor, press jump on the last charging frame, then swim up.
+		for (f in 0...20) player.step(new pr2.gameplay.player.LocalPlayerInput(false, false, f == 19, true));
+		var swamWithCharge = false;
+		var fired = false;
+		for (_ in 0...40) {
+			var before = player.crouchCharge;
+			player.step(new pr2.gameplay.player.LocalPlayerInput(false, false, true, false));
+			if (player.mode == pr2.gameplay.player.LocalPlayerController.MODE_WATER && player.crouchCharge > 25) swamWithCharge = true;
+			if (before > 25 && player.crouchCharge == 0) {
+				fired = true;
+				break;
+			}
+		}
+		assertTrue(swamWithCharge, "the charge is kept while swimming");
+		assertTrue(fired && player.mode == pr2.gameplay.player.LocalPlayerController.MODE_LAND, "and fires on leaving the water");
 	}
 
 	private static function assertEquals<T>(expected:T, actual:T, message:String):Void {
