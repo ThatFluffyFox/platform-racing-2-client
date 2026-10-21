@@ -80,6 +80,8 @@ class Main extends Sprite {
 		#if (js && html5)
 		// Re-render at the new density after browser zoom or a move to another monitor.
 		pr2.runtime.Html5PixelRatioSync.install(stage);
+		// Keep the game (and the server ping) running in a hidden or background tab.
+		pr2.runtime.BackgroundTicker.install(stage);
 		#end
 		applyPresentationFrameRate();
 		pr2.app.AppStage.stage = stage;

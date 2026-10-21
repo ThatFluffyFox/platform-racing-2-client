@@ -201,15 +201,29 @@ class LobbySocket {
 		stopPingInterval();
 		pingIntervalActive = true;
 		#if js
-		pingTimer = new Timer(10000);
-		pingTimer.run = sendPing;
+		// The worker-driven ticker keeps pinging in a background tab, where page
+		// timers are throttled to once a minute and the server (60 s of silence)
+		// would drop the player. Without workers, a normal timer.
+		stopBackgroundPing = pr2.runtime.BackgroundTicker.every(10000, sendPing);
+		if (!pr2.runtime.BackgroundTicker.running()) {
+			stopBackgroundPing();
+			stopBackgroundPing = null;
+			pingTimer = new Timer(10000);
+			pingTimer.run = sendPing;
+		}
 		#end
 	}
+
+	private static var stopBackgroundPing:Null<Void->Void> = null;
 
 	private static function stopPingInterval():Void {
 		#if js
 		if (pingTimer != null) {
 			pingTimer.stop();
+		}
+		if (stopBackgroundPing != null) {
+			stopBackgroundPing();
+			stopBackgroundPing = null;
 		}
 		#end
 		pingTimer = null;

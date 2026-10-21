@@ -1098,7 +1098,7 @@ class ClipRoutePlanner {
 	function stepExplore():Bool {
 		var search = exploring;
 		if (search == null) return false;
-		search.step(20);
+		search.step(1);
 		if (!search.done) return true;
 		exploring = null;
 		var spot = exploreSpot;

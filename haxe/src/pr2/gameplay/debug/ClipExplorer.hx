@@ -121,6 +121,10 @@ class ClipExplorer {
 	final open:NodeHeap = new NodeHeap(n -> n.score);
 	final shallow:NodeHeap = new NodeHeap(n -> n.script.length);
 	final seen:Map<String, Bool> = new Map();
+	var seenCount:Int = 0;
+	static inline var MAX_SEEN:Int = 200000;
+	/** States kept waiting at most (fewer when each carries its own level copy). **/
+	var openLimit:Int = 0;
 	/** Clips already kept (by where and how), so the same clip isn't listed twice. **/
 	final clipKeys:Map<String, Bool> = new Map();
 	/** Moves (key combinations) tried from every state. **/
@@ -175,6 +179,8 @@ class ClipExplorer {
 		var level = start.level;
 		var mineItem = start.itemId == 2;
 		shared = area.staticBlocks() && !mineItem && !hasItemBlocks() ? [level, level.blocks] : null;
+		// Each state of a level whose blocks can change carries its own copy of the area: keep fewer.
+		openLimit = shared != null ? settings.maxOpen : Std.int(Math.min(settings.maxOpen, 300));
 		target = settings.targetTileX == null || settings.targetTileY == null ? null
 			: new TargetRegion(level, settings.targetTileX, settings.targetTileY);
 		var root = new ExploreNode(start, [], ClipSimulator.itemUses(), new ExploreTrace());
@@ -204,24 +210,41 @@ class ClipExplorer {
 		return false;
 	}
 
-	/** Expands states until `maxRuns` moves were simulated or `deadline()` says time is up. Returns moves simulated. **/
+	/** The state being expanded and the next of its moves (a step can stop between moves). **/
+	var expanding:Null<ExploreNode> = null;
+	var moveIndex:Int = 0;
+
+	/**
+		Plays moves until `maxRuns` were played or `deadline()` says time is up
+		(checked after every move, so the game keeps its frame rate). Returns
+		moves played.
+	**/
 	public function step(maxRuns:Int, ?deadline:Void->Bool):Int {
 		var runs = 0;
 		while (!done && runs < maxRuns && (deadline == null || runs == 0 || !deadline())) {
-			var node = nextNode();
-			if (node == null) {
-				done = true;
-				break;
+			if (expanding == null) {
+				if (settings.maxExpansions > 0 && expansions >= settings.maxExpansions) {
+					done = true;
+					break;
+				}
+				expanding = nextNode();
+				moveIndex = 0;
+				if (expanding == null) {
+					done = true;
+					break;
+				}
+				expansions++;
+				if (onExpand != null) onExpand(expanding);
 			}
-			expansions++;
-			if (onExpand != null) onExpand(node);
-			for (move in moves) {
-				if (move.item && node.player.itemId == null) continue;
-				runs++;
-				tryMove(node, move);
-				if (done) break;
+			var node = expanding;
+			if (moveIndex >= moves.length) {
+				expanding = null;
+				continue;
 			}
-			if (settings.maxExpansions > 0 && expansions >= settings.maxExpansions) done = true;
+			var move = moves[moveIndex++];
+			if (move.item && node.player.itemId == null) continue;
+			runs++;
+			tryMove(node, move);
 		}
 		return runs;
 	}
@@ -257,6 +280,11 @@ class ClipExplorer {
 			if (f != last && move.stops.indexOf(f + 1) < 0) continue;
 			var key = stateKey(player);
 			if (seen.exists(key)) continue;
+			// Forget old states now and then, so a long search stays within memory.
+			if (++seenCount > MAX_SEEN) {
+				seen.clear();
+				seenCount = 0;
+			}
 			seen.set(key, true);
 			// The last stop keeps the working copy; earlier ones need their own.
 			var child = new ExploreNode(f == last ? player : ClipSnapshot.copy(player, shared), f == last ? script : script.copy(),
@@ -264,8 +292,8 @@ class ClipExplorer {
 			score(child);
 			open.push(child);
 			shallow.push(child);
-			if (open.size > settings.maxOpen) open.dropWorst(Std.int(settings.maxOpen * 0.8));
-			if (shallow.size > settings.maxOpen) shallow.dropWorst(Std.int(settings.maxOpen * 0.8));
+			if (open.size > openLimit) open.dropWorst(Std.int(openLimit * 0.8));
+			if (shallow.size > openLimit) shallow.dropWorst(Std.int(openLimit * 0.8));
 		}
 	}
 
@@ -656,7 +684,7 @@ class ClipHunt {
 			}
 			turn = turn % running.length;
 			var explorer = running[turn];
-			runs += explorer.step(60);
+			runs += explorer.step(60, deadline);
 			collect(explorer);
 			if (explorer.done) {
 				running.splice(turn, 1);
