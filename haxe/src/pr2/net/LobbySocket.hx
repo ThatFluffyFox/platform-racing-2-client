@@ -112,16 +112,25 @@ class LobbySocket {
 	**/
 	private static function describeClose(code:Int):String {
 		var t = nowMs();
+		// Woken from a pause, the close can be handled before the next check runs.
+		if (lastTickMs > 0 && t - lastTickMs > longestPauseMs) {
+			longestPauseMs = t - lastTickMs;
+			longestPauseEndMs = t;
+		}
 		var open = Math.round((t - openedAtMs) / 60000);
 		var sent = Math.round((t - lastSendMs) / 1000);
 		var command = Math.round((t - lastCommandMs) / 60000);
 		var heard = Math.round((t - lastReceiveMs) / 1000);
 		// The server answers every ping (sent every 10 s), so a long silence means the
 		// line went dead before the close: the network or the server, not a command.
-		var cause = sent >= 55 ? " Nothing was sent for a minute (the tab may have been asleep)."
+		// A page the browser froze sends nothing, so the server drops it after 60 s;
+		// the close is only seen (and queued sends go out) once the tab wakes up.
+		var paused = longestPauseMs >= 55000 && t - longestPauseEndMs < 10000;
+		var cause = paused ? " The browser paused this page for over a minute, so the server dropped it."
+			: sent >= 55 ? " Nothing was sent for a minute (the tab may have been asleep)."
 			: (command >= 29 ? " Only pings were sent for 30 minutes, so the server counted you as away."
 				: (heard >= 25 ? ' The server stopped answering ${heard}s before the drop (network or server).' : ""));
-		return '(code $code after $open min connected; last sent ${sent}s ago ($lastSentName), last heard from the server ${heard}s ago, last game command $command min ago.$cause)';
+		return '(code $code after $open min connected; last sent ${sent}s ago ($lastSentName), last heard from the server ${heard}s ago, last game command $command min ago.$cause${pauseText(t)})';
 	}
 
 	public static function write(command:String):Void {
@@ -257,6 +266,10 @@ class LobbySocket {
 		// stalled one (a throttled timer, a worker the browser paused) can't
 		// leave the connection silent.
 		lastPingMs = nowMs();
+		lastTickMs = 0;
+		longestPauseMs = 0;
+		frozenTimes = 0;
+		watchFreezes();
 		stopBackgroundPing = pr2.runtime.BackgroundTicker.every(2000, pingIfDue);
 		pingTimer = new Timer(2000);
 		pingTimer.run = pingIfDue;
@@ -264,12 +277,47 @@ class LobbySocket {
 	}
 
 	private static function pingIfDue():Void {
+		// Asked every 2 s: a longer gap means no code ran (the browser froze or paused the tab).
+		var now = nowMs();
+		if (lastTickMs > 0 && now - lastTickMs > longestPauseMs) {
+			longestPauseMs = now - lastTickMs;
+			longestPauseEndMs = now;
+		}
+		lastTickMs = now;
 		if (nowMs() - lastPingMs < 10000) return;
 		lastPingMs = nowMs();
 		sendPing();
 	}
 
 	private static var stopBackgroundPing:Null<Void->Void> = null;
+	/** Pauses in the page while connected: the longest gap between the 2 s checks, when it ended, and how often the browser froze the tab. **/
+	private static var lastTickMs:Float = 0;
+	private static var longestPauseMs:Float = 0;
+	private static var longestPauseEndMs:Float = 0;
+	private static var frozenTimes:Int = 0;
+	private static var freezeWatched:Bool = false;
+
+	/** Chrome fires `freeze` before it stops a background tab (other browsers show it as a pause). **/
+	private static function watchFreezes():Void {
+		#if js
+		if (freezeWatched) return;
+		freezeWatched = true;
+		Browser.document.addEventListener("freeze", function(_) frozenTimes++);
+		#end
+	}
+
+	/** What the page was doing before a drop: hidden, frozen, or paused for a while. **/
+	private static function pauseText(now:Float):String {
+		var parts:Array<String> = [];
+		#if js
+		if (Browser.document.hidden) parts.push("the tab is hidden");
+		#end
+		if (frozenTimes > 0) parts.push('the browser froze the tab ${frozenTimes}x');
+		if (longestPauseMs >= 5000) {
+			parts.push('the page stopped for ${Math.round(longestPauseMs / 1000)}s, ${Math.round((now - longestPauseEndMs) / 1000)}s before the drop');
+		}
+		return parts.length == 0 ? "" : " " + parts.join("; ") + ".";
+	}
 
 	private static function stopPingInterval():Void {
 		#if js
