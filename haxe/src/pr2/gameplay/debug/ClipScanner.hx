@@ -157,6 +157,32 @@ class ClipPortal {
 	}
 
 	/**
+		True when the clip leads through the block: the player comes to rest
+		past it (`passesThrough`), or gets out into the open past it without
+		coming to rest (it falls out of the level and is sent back to a safe
+		spot, or keeps swimming). A head clip that pops back out, or getting
+		stuck inside, does not. The map scans list these.
+	**/
+	public var goesThrough(get, never):Bool;
+	function get_goesThrough():Bool return passesThrough || clearsPast();
+
+	function clearsPast():Bool {
+		var ghost = run.ghost;
+		if (corner.mine != null || exitX != null || ghost == null || run.clipFrame < 0) return false;
+		var t = ClipSimulator.TILE;
+		for (i in run.clipFrame + 2...ghost.length) {
+			if (isRespawn(ghost, i)) break;
+			var f = ghost[i];
+			if (f.inSolid) continue;
+			var p = ClipSimulator.toCourse(f.x, f.y, attempt.courseRotation);
+			// Out in the open a tile past the wall face, or (floor corners) a tile under the floor.
+			if (corner.dir * (p.x - corner.wallFace) > t) return true;
+			if (corner.kind == FloorWall && p.y > corner.floorY + t) return true;
+		}
+		return false;
+	}
+
+	/**
 		First recorded pose after the clip where the player stands outside the
 		blocks (before any respawn), or -1. Indexes are into the ghost frames.
 	**/
@@ -227,6 +253,8 @@ class ClipScanSettings {
 	public var followFrames:Int = 150;
 	/** Only accept a clip that comes out through the blocks (the route planner's recipes); others keep the corner scanning. **/
 	public var passThroughOnly:Bool = false;
+	/** With `passThroughOnly`: a clip that gets out past the blocks without coming to rest counts too (`ClipPortal.goesThrough`; the map scans. A route needs somewhere to land). **/
+	public var clearPastCounts:Bool = false;
 	/**
 		Also try laser recoil clips (the player holds a Laser Gun): stand
 		against the wall, jump in place, and on the frame before landing in the
@@ -623,7 +651,7 @@ class ClipScanner implements CornerScan {
 			tested++;
 			if (result.clipped) {
 				var portal = new ClipPortal(corner, attempt, followClip(area, attempt));
-				if (settings.passThroughOnly && !portal.passesThrough) continue;
+				if (settings.passThroughOnly && !(settings.clearPastCounts ? portal.goesThrough : portal.passesThrough)) continue;
 				portals.push(portal);
 				nextCorner();
 			}

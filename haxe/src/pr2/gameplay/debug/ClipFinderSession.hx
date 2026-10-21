@@ -442,6 +442,8 @@ class ClipFinderSession {
 		settings.courseRotation = searchRotation;
 		// A clip only counts when it goes through the blocks (head clips that pop back out don't).
 		settings.passThroughOnly = true;
+		// ...or gets out past them without coming to rest (falls out of the level, swims on).
+		settings.clearPastCounts = true;
 		// Every held item that moves the player (Laser Gun, Sword, Super Jump, Speed Burst, Mine, Jet Pack, Teleport) adds its own clip attempts at each corner,
 		// and so does every one of those the level's item blocks can give.
 		settings.heldItem = player.controller.itemId;

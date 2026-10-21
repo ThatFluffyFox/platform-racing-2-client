@@ -183,7 +183,7 @@ class ClipPredictor implements CornerScan {
 			tested++;
 			if (!result.clipped || !nearCorner(corner, result.x, result.y)) continue;
 			var portal = new ClipPortal(corner, attempt, ClipScanner.follow(area, attempt, settings.followFrames));
-			if (settings.passThroughOnly && !portal.passesThrough) continue;
+			if (settings.passThroughOnly && !(settings.clearPastCounts ? portal.goesThrough : portal.passesThrough)) continue;
 			portals.push(portal);
 			nextCorner();
 		}

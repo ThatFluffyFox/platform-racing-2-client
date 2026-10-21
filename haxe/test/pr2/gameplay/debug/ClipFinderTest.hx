@@ -99,6 +99,7 @@ class ClipFinderTest {
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testMineItemClipsThroughTheWall", testMineItemClipsThroughTheWall);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testArrowStartsRideAConveyorIntoTheCorner", testArrowStartsRideAConveyorIntoTheCorner);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPredictorFindsTheClipFromTheLanding", testPredictorFindsTheClipFromTheLanding);
+		pr2.DeterministicTestMode.runTest("ClipFinderTest.testPredictorBumpsTheRoofThenFastFalls", testPredictorBumpsTheRoofThenFastFalls);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testSolverPredictsTheLandingFrame", testSolverPredictsTheLandingFrame);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testStatRangeValues", testStatRangeValues);
 		pr2.DeterministicTestMode.runTest("ClipFinderTest.testGhostLoopsBackToStart", testGhostLoopsBackToStart);
@@ -487,6 +488,14 @@ class ClipFinderTest {
 		while (!falls.done) falls.step(10);
 		assertEquals(0, falls.portals.length, "a clip that falls out of the level is not a way through");
 		assertEquals(1, falls.solidCorners.length, "so the corner has no way through");
+		// The map scans still list it: the player gets through the wall, out of the level.
+		var scan = scanSettings(90);
+		scan.passThroughOnly = true;
+		scan.clearPastCounts = true;
+		var out = new ClipScanner(cornerBlocks(), scan);
+		while (!out.done) out.step(10);
+		assertEquals(1, out.portals.length, "a map scan lists a clip that goes through and falls out of the level");
+		assertTrue(out.portals[0].goesThrough && !out.portals[0].passesThrough, "as going through, without a place to land");
 	}
 
 	private static function testPassThroughScanKeepsClipsThatLand():Void {
@@ -1330,6 +1339,50 @@ class ClipFinderTest {
 	}
 
 	/**
+		Level 76127's sealed 3x3 box (speed 100, accel 45, jump 46): the only
+		way to land 10 px into the floor under the left wall while crossing it
+		is to run from the right wall, jump into the roof and fast-fall from
+		the frame after the bump. The feet land exactly 10 px deep, which the
+		game counts.
+	**/
+	private static function testPredictorBumpsTheRoofThenFastFalls():Void {
+		var blocks:Array<LevelBlock> = [];
+		for (col in 0...14) {
+			blocks.push(new LevelBlock(col, 12, BlockType.Basic));
+			blocks.push(new LevelBlock(col, 17, BlockType.Basic));
+			blocks.push(new LevelBlock(col, 22, BlockType.Basic));
+		}
+		// Walls at cols 4 and 8 (rows 13-16): the box is cols 5-7, rows 14-16 under a roof at row 13.
+		for (row in 13...17) for (col in [4, 8]) blocks.push(new LevelBlock(col, row, BlockType.Basic));
+		for (col in 5...8) blocks.push(new LevelBlock(col, 13, BlockType.Basic));
+		var settings = new ClipScanSettings(100, 45, 46, 1);
+		settings.originX = 7 * 30 + 15;
+		settings.originY = 17 * 30;
+		settings.solveJumpHolds = [];
+		settings.solveCharges = [];
+		settings.solveTurnBacks = [];
+		settings.solveFrames = 50;
+		settings.predictCeilings = [3];
+		settings.predictFallback = false;
+		settings.mines = false;
+		settings.wallClips = false;
+		settings.passThroughOnly = true;
+		settings.clearPastCounts = true;
+		var predictor = new ClipPredictor(blocks, settings);
+		var portal:Null<ClipScanner.ClipPortal> = null;
+		while (!predictor.done && portal == null) {
+			predictor.step(50);
+			for (p in predictor.portals) if (p.corner.x == 5 && p.corner.y == 16) portal = p;
+		}
+		assertTrue(portal != null, "the box's left corner clips");
+		assertEquals(4, portal.blockX, "into the floor under the left wall");
+		assertEquals(17, portal.blockY, "(row 17)");
+		var label = portal.attempt.describe();
+		assertTrue(label.indexOf("into the ceiling 3 tiles up") > 0 && label.indexOf("fast-fall") > 0, 'by bumping the roof and fast-falling: $label');
+		assertEquals(8 * 30 - 10.0, portal.attempt.startX, "from against the right wall");
+	}
+
+	/**
 		The solver puts a jump and a run together from their own tracks: each
 		start it solves lands in the corner on exactly the frame it predicts
 		when played with the real physics.
@@ -1739,8 +1792,11 @@ class ClipFinderTest {
 	}
 
 	private static function testExplorerFindsSuperJumpItemClipAboveWater():Void {
+		// Already swimming, two tiles from the wall (a short search keeps the test quick).
+		var s = exploreSettings(13, 5, [15, 16]);
+		s.startY = 520;
 		var explorer = ClipSimulator.keepRealItem(() -> {
-			var e = new ClipExplorer(wallOnAPool(), exploreSettings(10, 5, [15, 16]));
+			var e = new ClipExplorer(wallOnAPool(), s);
 			while (!e.done) e.step(500);
 			e;
 		});

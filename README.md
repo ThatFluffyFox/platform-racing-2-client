@@ -565,9 +565,12 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     - **vertical programs**: jump held 1-12, 15, 20 or all frames; super
       jumps charged 10-50 frames; each with fast-fall from frame 1, 2 or any
       4th frame up to 60, or none; the Super Jump item alone or during a
-      jump; and full jumps and super jumps bumping a ceiling 2-12 tiles up.
+      jump; and full jumps and super jumps bumping a ceiling 2-12 tiles up
+      (the bump turns the rise into a fall, so fast-fall from every frame
+      after the bump is tried; the frame right after it lands hardest).
       The floor is taken away after takeoff, so each lists the frames it
-      lands more than 10 px deep on every floor height above and below
+      lands 10 px or more deep (the wall check, 10 px above the feet, is
+      then beside a solid floor block) on every floor height above and below
       (and the frames it passes 10-15 px under a block's bottom, for bottom
       corners).
     - **horizontal programs**, each way: running, running with a Speed
@@ -579,9 +582,10 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     that gives a window of start x a few px wide. Where a spot you can stand
     on falls in the window, every landing on that floor height that lines up
     in time is a solution: moving starts `t + 1 - s` frames into the jump
-    (no sooner than a super jump's release or a ceiling bump), or a plain
-    jump gets a run-up of `s - 1 - t` frames on floor that reaches the
-    takeoff. Starts are whole pixels, like the programs (the game rounds the
+    (no sooner than a super jump's release), or a plain jump gets a run-up
+    of `s - 1 - t` frames on floor that reaches the takeoff. Under a ceiling
+    the ceiling must be the same height over everywhere the player passes
+    from the takeoff to the bump. Starts are whole pixels, like the programs (the game rounds the
     position every frame, so a start a fraction off drifts). The solved
     path is then traced through the level: starts whose path stays clear of
     blocks until the corner are checked first, nearest and with the least
@@ -599,7 +603,12 @@ in `haxe/src/pr2/gameplay/debug/`, and it shares its simulation code with
     and Laser shots to the landing, and finds 133 corners from solving
     alone in under a minute. On level 102573 it finds 125 clips from
     solving alone; from 340,336 it solves super jumps into the ceiling 8
-    tiles up, holding right, that clip the corner at 343,338.
+    tiles up, holding right, that clip the corner at 343,338. On level 76127
+    (100/45/46), from 350,337 in the sealed 3x3 box it finds the clip into
+    347,337: from against the right wall run 2 frames, jump into the roof
+    and hold down from the frame after the bump (the feet land exactly
+    10 px deep as you cross the wall); from 339,342 it finds the clip into
+    333,342, which goes through the wall and out of the level.
   - **Stage 2: route to target** (with Range ticked on stat rows, it plans
     with each sampled set of stats in turn, up to 3 values per ranged stat
     and your own stats first, until one finds a route; the status shows which
@@ -773,13 +782,17 @@ out, from the spots nearest the target.
 
 **Mines** don't count as clips anywhere: touching one blows it up.
 
-**What counts as a clip:** in the map scans (Stages 1 and 1.5) and in a
-search without a target, a clip only counts when it goes through: after
-getting into the blocks you come to rest outside them on the far side of
-the block you went into, at least a tile from where you went in, without
-being sent back to a safe spot. A head clip that pops back out, or one that
-falls out of the level, isn't listed. Aiming at a target block, any clip
-into it counts, and Stage 2 routes use whatever clip gets them there.
+**What counts as a clip:** in the map scans (Stages 1 and 1.5) a clip
+counts when it goes through: after getting into the blocks you come to
+rest outside them on the far side, or you get out into the open past them
+(a tile past the wall, or a tile under the floor) without coming to rest,
+such as falling out of the level or swimming on. In a search without a
+target you must come to rest on the far side of the block you went into,
+at least a tile from where you went in, without being sent back to a safe
+spot. A head clip that pops back out, or getting stuck inside, isn't
+listed. Aiming at a target block, any clip into it counts, and Stage 2
+routes use whatever clip gets them there (a clip recipe for a route must
+come to rest past the blocks).
 
 **Hats:** every search uses the hats you wear: moon (lower gravity),
 propeller (holding jump slows the fall), cowboy (moves like swimming in the

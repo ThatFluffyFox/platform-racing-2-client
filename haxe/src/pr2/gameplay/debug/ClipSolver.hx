@@ -19,7 +19,7 @@ import pr2.level.Level.LevelBlock;
 	vertical track (what the jump/down keys do), frame by frame. (Tested: 0 px
 	apart from the full flight.)
 
-	A corner clips when, on one frame, the feet land more than 10 px into its
+	A corner clips when, on one frame, the feet land 10 px or more into its
 	floor (vertical) and the body crosses into the wall's column moving at 10 px
 	a frame or more (horizontal). So the solver:
 
@@ -83,8 +83,10 @@ class ClipSolver {
 		}
 		var ceilingCharges = [for (c in settings.solveCharges) if (c % 5 == 0) c];
 		for (h in settings.predictCeilings) {
-			for (d in [-1, 8, 16, 24]) pendingV.push(VTrack.jump(999, d, h));
-			for (charge in ceilingCharges) for (d in [-1, charge + 8, charge + 16]) pendingV.push(VTrack.superJump(charge, d, h));
+			// The bump turns the rise into a fall (a quarter of the speed, downward);
+			// fast-falling from the frame after it lands hardest, so every frame is tried.
+			for (d in -1...25) if (d != 0) pendingV.push(VTrack.jump(999, d, h));
+			for (charge in ceilingCharges) for (d in [-1, charge + 1, charge + 2, charge + 3, charge + 4, charge + 8, charge + 16]) pendingV.push(VTrack.superJump(charge, d, h));
 		}
 		for (dir in [1, -1]) {
 			pendingH.push(new HTrack(Run, dir, 0));
@@ -152,21 +154,21 @@ class ClipSolver {
 				left = true;
 				for (b in level.blocks.copy()) if (b.y == row) player.blockController.removeBlock(b);
 			}
-			// Under a ceiling, moving starts once the bump has stopped the rise.
-			if (v.ceiling > 0 && v.moveFrom < 0 && f > 0 && left && ys[f] >= ys[f - 1]) v.moveFrom = f;
+			// The frame the bump stops the rise.
+			if (v.ceiling > 0 && v.bumpFrame < 0 && f > 0 && left && ys[f] >= ys[f - 1]) v.bumpFrame = f;
 			highest = Math.min(highest, ys[f]);
 		}
-		if (v.ceiling > 0 && (v.moveFrom < 0 || highest > -(v.ceiling * t) + 60)) {
+		if (v.ceiling > 0 && (v.bumpFrame < 0 || highest > -(v.ceiling * t) + 60)) {
 			// Never reached the ceiling: a plain program already does the same.
 			v.ys = [];
 			return;
 		}
-		if (v.moveFrom < 0) v.moveFrom = 0;
 		v.ys = ys;
 		for (f in 1...ys.length) {
 			var y0 = ys[f - 1], y1 = ys[f];
-			// Floors (row offset k) the feet pass more than 10 px through on this frame.
-			var kMin = Math.ceil(y0 / t), kMax = Math.floor((y1 - 10.01) / t);
+			// Floors (row offset k) the feet pass 10 px or more through on this frame: the
+			// wall check (10 px above the feet) is then in the floor row, beside a solid block.
+			var kMin = Math.ceil(y0 / t), kMax = Math.floor((y1 - 10 + 1e-6) / t);
 			for (k in kMin...kMax + 1) {
 				if (k * t <= y0 || k < -MAX_RISE_ROWS || k > MAX_DROP_ROWS) continue;
 				add(floorHits, k, new VHit(v, f, false));
@@ -310,6 +312,23 @@ class ClipSolver {
 		return true;
 	}
 
+	/**
+		True when the ceiling program's ceiling is there: the same height over
+		every column the body passes under from the takeoff to the bump (the
+		player may already be running then).
+	**/
+	static function ceilingOver(v:VTrack, h:HTrack, x:Float, row:Int, runUp:Int, moveAt:Int, ceilingAt:Int->Int->Int->Bool):Bool {
+		var last = h.dist.length - 1;
+		inline function at(f:Int):Float {
+			var n = f - moveAt + 1;
+			return x + h.dir * (n <= 0 ? 0 : h.dist[n < last ? n : last]);
+		}
+		var a = at(runUp), b = at(runUp + v.bumpFrame);
+		var c0 = ClipSimulator.tileOf(Math.min(a, b) - 9), c1 = ClipSimulator.tileOf(Math.max(a, b) + 9);
+		for (c in c0...c1 + 1) if (!ceilingAt(c, row, v.ceiling)) return false;
+		return true;
+	}
+
 	function solveTrack(corner:ClipCorner, h:HTrack, byFrame:Array<Array<VHit>>, k:Int, startRow:Int, spots:Array<Span>, standable:Int->Int->Bool,
 			ceilingAt:Int->Int->Int->Bool, out:Array<ClipSolution>):Void {
 		for (s in 1...h.dist.length) solveFrame(corner, h, s, byFrame, k, startRow, spots, standable, ceilingAt, out);
@@ -368,7 +387,7 @@ class ClipSolver {
 			if (prevAbove != null && hit.prevAbove != prevAbove) return -1;
 			var v = hit.v;
 			if (v.item != null && h.item != null) return -1;
-			if (v.ceiling > 0 && !ceilingAt(col, startRow, v.ceiling)) return -1;
+			if (v.ceiling > 0 && !ceilingOver(v, h, x, startRow, runUp, moveAt, ceilingAt)) return -1;
 			var fam = family(v);
 			inline function full(f:String):Bool return taken.exists(f) && taken.get(f) >= PER_SPOT;
 			if (full(fam) && full(fam + "!")) return -1;
@@ -402,7 +421,7 @@ class ClipSolver {
 			if (hits == null) continue;
 			if (!floorRuns(x, h.dir, h.dist[runUp], startRow, standable)) break;
 			for (hit in hits) {
-				if (hit.v.charge > 0 || hit.v.ceiling > 0 || hit.v.moveFrom > 0) continue;
+				if (hit.v.charge > 0 || hit.v.moveFrom > 0) continue;
 				var extra = usable(hit, runUp, 0);
 				if (extra < 0) continue;
 				out.push(new ClipSolution(hit.v, h, x, startRow, runUp, 0, runUp + hit.frame, extra + distance + runUp * 0.25));
@@ -518,8 +537,10 @@ class VTrack {
 	public final item:Null<Int>;
 	/** Tiles of air under a ceiling it is played with (0 = none). **/
 	public final ceiling:Int;
-	/** Earliest frame horizontal moving may start (a super jump's charge holds the player still; a ceiling bump first). **/
+	/** Earliest frame horizontal moving may start (a super jump's charge holds the player still). **/
 	public var moveFrom:Int;
+	/** Under a ceiling: the frame the bump stops the rise (-1 = none). **/
+	public var bumpFrame:Int = -1;
 	/** Feet height after each frame, relative to the start floor (down is positive). **/
 	public var ys:Array<Float> = [];
 
@@ -540,12 +561,12 @@ class VTrack {
 
 	public static function jump(hold:Int, fastFall:Int, ceiling:Int = 0):VTrack {
 		return new VTrack('jump held ${hold >= 999 ? "all" : Std.string(hold)}${ceilText(ceiling)}${ffText(fastFall)}', hold, 0, fastFall, -1, null,
-			ceiling, ceiling > 0 ? -1 : 0);
+			ceiling, 0);
 	}
 
 	public static function superJump(charge:Int, fastFall:Int, ceiling:Int = 0):VTrack {
 		return new VTrack('super jump (charge $charge)${ceilText(ceiling)}${ffText(fastFall)}', 0, charge, fastFall, -1, null, ceiling,
-			ceiling > 0 ? -1 : charge);
+			charge);
 	}
 
 	/** The Super Jump item: alone from the ground (at = -1, used on frame 1), or during a full jump on frame `at`. **/
