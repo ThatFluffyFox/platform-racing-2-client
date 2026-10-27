@@ -126,6 +126,8 @@ class LocalPlayerControllerTest {
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testExpiringWaterLingerRunsLandPhysicsDuringRotation", testExpiringWaterLingerRunsLandPhysicsDuringRotation);
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testRotateBlockHitDuringTurnTakesNewDirection", testRotateBlockHitDuringTurnTakesNewDirection);
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testSameRotateDirectionDuringTurnKeepsTween", testSameRotateDirectionDuringTurnKeepsTween);
+		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testMineHitDuringRotatePauseKeepsPlayerMoving", testMineHitDuringRotatePauseKeepsPlayerMoving);
+		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testMineHitWhileFrozenSolidKeepsFrozenMode", testMineHitWhileFrozenSolidKeepsFrozenMode);
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testRotateRightCompletesCourseRotation", testRotateRightCompletesCourseRotation);
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testRotateLeftCompletesCourseRotation", testRotateLeftCompletesCourseRotation);
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testRotationTweenMatchesCourseFrames", testRotationTweenMatchesCourseFrames);
@@ -2318,6 +2320,37 @@ class LocalPlayerControllerTest {
 		stepFrames(player, 20);
 		assertEquals(-90, player.stateSnapshot().courseRotation, "turn finishes on the original schedule");
 		assertEquals(0, player.courseTweenRotation, "tween resets after the turn");
+	}
+
+	private static function testMineHitDuringRotatePauseKeepsPlayerMoving():Void {
+		// Flash LocalCharacter.hit only keeps the current mode while frozen solid.
+		// When a rotate block and a mine are hit in the same collision pass (level
+		// 6499671), the mine's hurt mode replaces the rotate pause and the blast
+		// carries the player while the course turns.
+		var level = rotateBlockLevel(BlockType.RotateRight);
+		var mine = new LevelBlock(0, 3, BlockType.Mine);
+		level.blocks.push(mine);
+		var player = bumpRotateBlockInLevel(level);
+		level.blocks.splice(1, 1); // no floor: only the blast and gravity move the player
+		@:privateAccess player.controller.hitMine(mine);
+		var hit = player.stateSnapshot();
+		assertEquals("hurt", hit.mode, "mine hit during the rotate pause switches to hurt mode");
+		assertAbove(hit.vx, 30, "mine blast velocity is kept");
+
+		player.step(new LocalPlayerInput());
+		assertAbove(player.stateSnapshot().x, hit.x + 20, "player keeps moving while the course turns");
+		assertEquals(3, player.courseTweenRotation, "course tween continues during hurt mode");
+		stepFrames(player, 29);
+		assertEquals(90, player.stateSnapshot().courseRotation, "the turn still completes");
+	}
+
+	private static function testMineHitWhileFrozenSolidKeepsFrozenMode():Void {
+		var level = delayedMineBlockLevel();
+		var mine = level.blockAt(2, 3);
+		var player = new LocalPlayerController(level);
+		player.freeze();
+		@:privateAccess player.hitMine(mine);
+		assertEquals("frozenSolid", player.stateSnapshot().mode, "ice-frozen player stays frozen when a mine hits");
 	}
 
 	private static function testRotateRightCompletesCourseRotation():Void {

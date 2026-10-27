@@ -1629,7 +1629,11 @@ class LocalPlayerController implements ItemRuntimeOwner {
 			}
 		}
 		activateBlock(block, "", true);
-		if (!crownProtected && !crownHatActive && mode != MODE_PHYSICS_PAUSE && !invincible) {
+		// LocalCharacter.hit only skips hurt mode while frozen solid by an ice
+		// wave. A rotate block's physics pause does not protect the player: a
+		// mine hit in the same collision pass as a rotate block switches to hurt,
+		// so the blast keeps moving the player while the course turns.
+		if (!crownProtected && !crownHatActive && !isFrozen() && !invincible) {
 			setMode(MODE_HURT);
 			beginHurtRecovery();
 		}
