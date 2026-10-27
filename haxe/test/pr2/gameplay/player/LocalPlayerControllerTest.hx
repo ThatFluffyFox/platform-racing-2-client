@@ -124,6 +124,8 @@ class LocalPlayerControllerTest {
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testBumpingRotateBlockPutsPlayerInFreezeState", testBumpingRotateBlockPutsPlayerInFreezeState);
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testWaterTouchDoesNotCancelRotation", testWaterTouchDoesNotCancelRotation);
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testExpiringWaterLingerRunsLandPhysicsDuringRotation", testExpiringWaterLingerRunsLandPhysicsDuringRotation);
+		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testRotateBlockHitDuringTurnTakesNewDirection", testRotateBlockHitDuringTurnTakesNewDirection);
+		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testSameRotateDirectionDuringTurnKeepsTween", testSameRotateDirectionDuringTurnKeepsTween);
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testRotateRightCompletesCourseRotation", testRotateRightCompletesCourseRotation);
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testRotateLeftCompletesCourseRotation", testRotateLeftCompletesCourseRotation);
 		pr2.DeterministicTestMode.runTest("LocalPlayerControllerTest.testRotationTweenMatchesCourseFrames", testRotationTweenMatchesCourseFrames);
@@ -2229,7 +2231,7 @@ class LocalPlayerControllerTest {
 
 		player.step(new LocalPlayerInput());
 		var collision = player.stateSnapshot();
-		@:privateAccess assertEquals(30, player.controller.rotateFramesRemaining, "water-gap setup starts the rotate tween");
+		@:privateAccess assertEquals(true, player.controller.rotationTweenActive, "water-gap setup starts the rotate tween");
 		assertEquals("land", collision.mode, "stale water frame cancels the rotate pause like Flash");
 		assertEquals("swim", collision.animation, "collision frame retains the swimming animation");
 		assertClose(0, collision.vx, "rotate block still clears horizontal velocity before the stale mode change");
@@ -2246,7 +2248,76 @@ class LocalPlayerControllerTest {
 		var completed = player.stateSnapshot();
 		assertEquals(-90, completed.courseRotation, "water-gap rotation still completes");
 		assertAbove(completed.x, collision.y + 100, "falling during the left rotation becomes displacement on the new x axis");
-		@:privateAccess assertEquals(0, player.controller.rotateFramesRemaining, "completed water-gap rotation allows later rotate blocks");
+		@:privateAccess assertEquals(false, player.controller.rotationTweenActive, "completed water-gap rotation allows later rotate blocks");
+	}
+
+	/** Water-glitch setup from testExpiringWaterLingerRunsLandPhysicsDuringRotation, plus a second rotate block at (4, 1). */
+	private static function waterGlitchRotatePlayer(first:BlockType, second:BlockType):{player:LocalCharacter, level:Level} {
+		var level = rotateBlockLevel(first);
+		level.blocks.splice(1, 1);
+		level.blocks.push(new LevelBlock(1, 3, BlockType.Water));
+		level.blocks.push(new LevelBlock(4, 1, second));
+		var player = new LocalCharacter(level);
+		player.setControllerPosition(45, 115);
+		@:privateAccess player.controller.setMode(LocalPlayerController.MODE_WATER);
+		@:privateAccess player.controller.waterTicks = 1;
+		@:privateAccess player.controller.vx = 20;
+		@:privateAccess player.controller.vy = -14;
+		player.step(new LocalPlayerInput());
+		assertEquals("land", player.stateSnapshot().mode, "water glitch keeps the player moving during the turn");
+		return {player: player, level: level};
+	}
+
+	private static function bumpSecondRotateBlock(player:LocalCharacter):Void {
+		player.setControllerPosition(135, 115);
+		@:privateAccess player.controller.vx = 0;
+		@:privateAccess player.controller.vy = -14;
+		player.step(new LocalPlayerInput());
+	}
+
+	private static function testRotateBlockHitDuringTurnTakesNewDirection():Void {
+		// Level 6499671 (Don't Move 1P): Flash's Course.startRotate accepts a
+		// rotate block hit while a turn is running and heads for the new
+		// direction's quarter turn from the current angle.
+		var setup = waterGlitchRotatePlayer(BlockType.RotateLeft, BlockType.RotateRight);
+		var player = setup.player;
+		var committed:Array<Int> = [];
+		player.controller.onCourseRotationCommitted = committed.push;
+		stepFrames(player, 9);
+		assertEquals(-27, player.courseTweenRotation, "left turn is under way");
+
+		bumpSecondRotateBlock(player);
+		var hit = player.stateSnapshot();
+		assertEquals("rotate_right", hit.touchedBlockType, "second rotate block is bumped mid-turn");
+		assertEquals("freeze", hit.mode, "mid-turn rotate hit pauses the player again");
+		assertClose(0, hit.vx, "mid-turn rotate hit clears horizontal velocity");
+		assertClose(0, hit.vy, "mid-turn rotate hit clears vertical velocity");
+		assertEquals(-30, player.courseTweenRotation, "tween keeps its current angle instead of restarting");
+
+		player.step(new LocalPlayerInput());
+		assertEquals(-27, player.courseTweenRotation, "tween now turns right from where it was");
+
+		// From -27 to +90 is 39 more frames of 3 degrees.
+		stepFrames(player, 38);
+		assertEquals(0, committed.length, "turn has not finished before reaching +90");
+		player.step(new LocalPlayerInput());
+		assertEquals(90, player.stateSnapshot().courseRotation, "the later right rotate block decides the turn");
+		assertEquals("90", committed.join(","), "only one quarter turn is committed");
+		assertEquals("land", player.stateSnapshot().mode, "player resumes after the turn");
+		assertEquals(0, player.courseTweenRotation, "tween resets after the turn");
+	}
+
+	private static function testSameRotateDirectionDuringTurnKeepsTween():Void {
+		var setup = waterGlitchRotatePlayer(BlockType.RotateLeft, BlockType.RotateLeft);
+		var player = setup.player;
+		stepFrames(player, 9);
+		bumpSecondRotateBlock(player);
+		assertEquals("freeze", player.stateSnapshot().mode, "same-direction rotate hit still pauses the player");
+		assertEquals(-30, player.courseTweenRotation, "same-direction hit does not restart the tween");
+		// 30 frames in total from the first hit: 20 more after -30.
+		stepFrames(player, 20);
+		assertEquals(-90, player.stateSnapshot().courseRotation, "turn finishes on the original schedule");
+		assertEquals(0, player.courseTweenRotation, "tween resets after the turn");
 	}
 
 	private static function testRotateRightCompletesCourseRotation():Void {

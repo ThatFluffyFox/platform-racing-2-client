@@ -40,7 +40,6 @@ class LocalPlayerController implements ItemRuntimeOwner {
 	private static inline var FLASH_TWIPS_PER_PIXEL:Float = 20;
 	private static inline var VELOCITY_ZERO_EPSILON:Float = 1e-9;
 	private static inline var TELEPORT_DEFAULT_COLOR:String = "16744272";
-	private static inline var ROTATE_FRAMES:Int = 30;
 	private static inline var HURT_FRAMES:Int = 60;
 	private static inline var BUMP_RECOVERY_FRAMES:Int = 65;
 	private static inline var FROZEN_SOLID_FRAMES:Int = 54;
@@ -155,7 +154,7 @@ class LocalPlayerController implements ItemRuntimeOwner {
 	public var lastSafeY(default, null):Float;
 	private var standingTileX:Int;
 	private var standingTileY:Int;
-	private var rotateFramesRemaining:Int = 0;
+	private var rotationTweenActive:Bool = false;
 	private var rotateDirection:Int = 0;
 	private var hurtFramesRemaining:Int = 0;
 	private var frozenSolidFramesRemaining:Int = 0;
@@ -271,7 +270,7 @@ class LocalPlayerController implements ItemRuntimeOwner {
 		standingTileY = tileIndex(y);
 		lastSafeX = x;
 		lastSafeY = y;
-		rotateFramesRemaining = 0;
+		rotationTweenActive = false;
 		rotateDirection = 0;
 		hurtFramesRemaining = 0;
 		frozenSolidFramesRemaining = 0;
@@ -303,7 +302,7 @@ class LocalPlayerController implements ItemRuntimeOwner {
 		// LocalCharacter physics mode is active. Its ENTER_FRAME listener runs
 		// before the character listener, so an existing tween advances before
 		// physics while a newly-triggered rotation waits until the next frame.
-		if (rotateFramesRemaining > 0) {
+		if (rotationTweenActive) {
 			updateRotation();
 		}
 		traceCharacterFrame("before");
@@ -673,7 +672,7 @@ class LocalPlayerController implements ItemRuntimeOwner {
 	}
 
 	public function presentationDeltaX():Float {
-		if (rotateFramesRemaining > 0) {
+		if (rotationTweenActive) {
 			return 0;
 		}
 		var result = flashCoordinate(Math.round(x) + previewNextVelocityX()) - x;
@@ -687,7 +686,7 @@ class LocalPlayerController implements ItemRuntimeOwner {
 	}
 
 	public function presentationDeltaY():Float {
-		if (rotateFramesRemaining > 0) {
+		if (rotationTweenActive) {
 			return 0;
 		}
 		var result = flashCoordinate(Math.round(y) + previewNextVelocityY()) - y;
@@ -1468,7 +1467,7 @@ class LocalPlayerController implements ItemRuntimeOwner {
 	}
 
 	private function startRotate(block:LevelBlock):Void {
-		if (rotateFramesRemaining > 0 || isBlockFrozen(block)) {
+		if (isBlockFrozen(block)) {
 			return;
 		}
 		// Flash normally pauses character physics in `freezeGo` while Course owns
@@ -1479,20 +1478,29 @@ class LocalPlayerController implements ItemRuntimeOwner {
 		vy = 0;
 		targetVelX = 0;
 		grounded = false;
+		// Course.startRotate always takes the new direction. A rotate block hit
+		// while a turn is still running (the water glitch keeps the player
+		// moving) does not restart the tween: Flash's ENTER_FRAME listener is
+		// already registered, so the course keeps its current angle and simply
+		// heads for +90 or -90 from there.
 		rotateDirection = block.type == BlockType.RotateRight ? 1 : -1;
-		rotateFramesRemaining = ROTATE_FRAMES;
-		courseTweenRotation = 0;
-		characterRotation = 0;
+		if (!rotationTweenActive) {
+			rotationTweenActive = true;
+			courseTweenRotation = 0;
+			characterRotation = 0;
+		}
 	}
 
 	private function updateRotation():Void {
-		if (rotateFramesRemaining <= 0) {
+		if (!rotationTweenActive) {
 			return;
 		}
 		courseTweenRotation += rotateDirection * 3;
 		characterRotation = -courseTweenRotation;
-		rotateFramesRemaining--;
-		if (rotateFramesRemaining == 0) {
+		// Course.rotate ends the turn once the course angle reaches the quarter
+		// turn in the current direction, not after a fixed number of frames.
+		var rotateDone = rotateDirection > 0 ? courseTweenRotation >= 90 : courseTweenRotation <= -90;
+		if (rotateDone) {
 			finishRotation();
 		}
 		if (onRotationTweenFrame != null) {
@@ -1521,6 +1529,7 @@ class LocalPlayerController implements ItemRuntimeOwner {
 		if (onCourseRotationCommitted != null) {
 			onCourseRotationCommitted(courseRotation);
 		}
+		rotationTweenActive = false;
 		rotateDirection = 0;
 		courseTweenRotation = 0;
 		characterRotation = 0;
@@ -1686,7 +1695,7 @@ class LocalPlayerController implements ItemRuntimeOwner {
 		waterTicks = 0;
 		hurtFramesRemaining = 0;
 		frozenSolidFramesRemaining = 0;
-		rotateFramesRemaining = 0;
+		rotationTweenActive = false;
 		rotateDirection = 0;
 		standingTileX = tileIndex(x);
 		standingTileY = tileIndex(y);
