@@ -121,8 +121,8 @@ class GameSlider extends NativeControl {
 		stage.removeEventListener(MouseEvent.MOUSE_UP, endDrag);
 	}
 	private function setValueFromPosition(localX:Float):Void {
-		var usable = Math.max(1, controlWidth - 10);
-		var ratio = Math.max(0, Math.min(1, (localX - 5) / usable));
+		// fl.controls.Slider maps the full track width to the value range.
+		var ratio = Math.max(0, Math.min(1, localX / Math.max(1, controlWidth)));
 		if (reversed) ratio = 1 - ratio;
 		setValueFromUser(minimum + (maximum - minimum) * ratio);
 	}
@@ -134,7 +134,10 @@ class GameSlider extends NativeControl {
 		var path = !enabled ? "assets/svg/ui/slider_thumb_disabled.svg" : (thumbPressed ? "assets/svg/ui/slider_thumb_down.svg" : (thumbHovered ?
 			"assets/svg/ui/slider_thumb_over.svg" : "assets/svg/ui/slider_thumb_up.svg"));
 		thumb.addChild(SvgAsset.create(path));
-		thumb.x = 5 + ratio * Math.max(1, controlWidth - 10);
+		// fl.controls.Slider.positionThumb: thumb.x = ratio * width. The
+		// SliderThumb skin is centred on its origin, so the thumb's centre sits
+		// over the track's ends at the minimum and maximum.
+		thumb.x = ratio * controlWidth;
 		thumb.y = 0;
 	}
 

@@ -1,8 +1,13 @@
 package pr2.ui;
 
+import openfl.display.CapsStyle;
+import openfl.display.GradientType;
+import openfl.display.JointStyle;
+import openfl.display.LineScaleMode;
 import openfl.display.Shape;
 import openfl.display.Sprite;
 import openfl.events.MouseEvent;
+import openfl.geom.Matrix;
 import openfl.text.TextField;
 import openfl.text.TextFieldAutoSize;
 import openfl.text.TextFormat;
@@ -75,7 +80,7 @@ class LobbyTab extends Sprite {
 		}
 		tabFunction();
 		deactivate();
-		setState(StaticSvg.LobbyTabOver, true);
+		setState(null, true);
 	}
 
 	public function activate():Void {
@@ -102,16 +107,64 @@ class LobbyTab extends Sprite {
 		}
 	}
 
-	private function setState(asset:StaticSvg, selected:Bool):Void {
+	private function setState(asset:Null<StaticSvg>, selected:Bool):Void {
 		if (base != null) bg.removeChild(base);
 		if (selectedOverlay != null) bg.removeChild(selectedOverlay);
-		base = NativeAssets.svg(asset);
+		// The `selected` frame shows only Graphics/Symbol 1223, not the up/over art.
+		base = selected ? selectedArt() : NativeAssets.svg(asset);
 		bg.addChild(base);
 		if (selected) {
 			selectedOverlay = NativeAssets.svg(StaticSvg.LobbyTabSelectedOverlay);
 			bg.addChild(selectedOverlay);
 		} else selectedOverlay = null;
 		bg.width = textBox.width + 10;
+	}
+
+	/**
+		Layers 3 and 2 of XFL `Graphics/Symbol 1223` (the 50x19 selected tab):
+		a half-transparent 3px dark outline, then the white-green-white gradient
+		with its 1px green (#3CFF62) outline. The white sparkle (layer 1) is the
+		LobbyTabSelectedOverlay SVG drawn on top. Like Flash, the clip is then
+		stretched to the label width.
+	**/
+	private static function selectedArt():Shape {
+		var art = new Shape();
+		var g = art.graphics;
+		g.lineStyle(3, 0x000000, 0.501960784313725, true, LineScaleMode.NORMAL, CapsStyle.ROUND, JointStyle.ROUND);
+		g.moveTo(50, 14);
+		g.lineTo(50, 6);
+		g.lineTo(49.85, 4.45);
+		g.curveTo(49.15, 1, 45, 1);
+		g.lineTo(5, 1);
+		g.curveTo(0.85, 1, 0.15, 4.45);
+		g.lineTo(0, 5.15);
+		g.lineTo(0, 6);
+		g.lineTo(0, 14);
+
+		g.lineStyle();
+		var gradient = new Matrix();
+		gradient.createGradientBox(50, 18.3, Math.PI / 2, 0, 0.6);
+		g.beginGradientFill(GradientType.LINEAR, [0xFFFFFF, 0xC4FEBC, 0xFFFFFF, 0xFFFFFF], [1, 1, 1, 0], [0, 126, 210, 233], gradient);
+		g.moveTo(49.05, 14.5);
+		g.lineTo(49.05, 4.45);
+		g.curveTo(48.75, 0, 44.2, 0);
+		g.lineTo(5.75, 0);
+		g.curveTo(1.25, 0, 1, 4.45);
+		g.lineTo(0.95, 5);
+		g.lineTo(0.95, 19);
+		g.lineTo(49.05, 19);
+		g.lineTo(49.05, 14.5);
+		g.endFill();
+
+		g.lineStyle(1, 0x3CFF62, 1, true, LineScaleMode.NORMAL, CapsStyle.ROUND, JointStyle.ROUND);
+		g.moveTo(49.05, 14.5);
+		g.lineTo(49.05, 4.45);
+		g.curveTo(48.75, 0, 44.2, 0);
+		g.lineTo(5.75, 0);
+		g.curveTo(1.25, 0, 1, 4.45);
+		g.lineTo(0.95, 5);
+		g.lineTo(0.95, 14.5);
+		return art;
 	}
 
 }

@@ -66,9 +66,9 @@ class OptionsPopupTest {
 		assertNear(-67.5, music.transform.matrix.ty, 0.000001, "music slider keeps XFL Y");
 		assertNear(98.3, sound.transform.matrix.tx, 0.000001, "sound slider keeps XFL X");
 		music.value = 100;
-		assertNear(5, music.thumbLocalXForTests(), 0.000001, "vertical music slider puts 100 percent at the top");
+		assertNear(0, music.thumbLocalXForTests(), 0.000001, "vertical music slider puts 100 percent at the top");
 		music.value = 0;
-		assertNear(95, music.thumbLocalXForTests(), 0.000001, "vertical music slider puts zero percent at the bottom");
+		assertNear(100, music.thumbLocalXForTests(), 0.000001, "vertical music slider puts zero percent at the bottom");
 		music.value = 35;
 		assertNear(-118.2, DisplayUtil.findByName(popup, "artOn_bt").x, 0.000001, "art On keeps XFL X");
 		assertNear(-82.45, DisplayUtil.findByName(popup, "artOn_bt").y, 0.000001, "art On keeps XFL Y");
