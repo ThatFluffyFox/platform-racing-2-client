@@ -2,6 +2,13 @@ package pr2.lobby.account;
 
 import openfl.display.Sprite;
 import openfl.events.Event;
+import openfl.events.MouseEvent;
+import openfl.text.TextField;
+import openfl.text.TextFormat;
+import openfl.text.TextFormatAlign;
+import pr2.assets.NativeAssetIds.FontAsset;
+import pr2.assets.NativeAssetIds.StaticSvg;
+import pr2.assets.NativeAssets;
 import pr2.ui.ArrowButtons;
 
 /**
@@ -63,10 +70,7 @@ class PartSelector extends Sprite {
 		arrows.addEventListener(Event.CHANGE, onArrowChange);
 		addChild(arrows);
 
-		infoButton = new Sprite();
-		infoButton.graphics.beginFill(0x000000, 0);
-		infoButton.graphics.drawRect(0, 0, 15, 20);
-		infoButton.graphics.endFill();
+		infoButton = new PartInfoButton();
 		infoButton.x = cp.x + 27.5;
 		infoButton.y = cp.y + 3;
 		addChild(infoButton);
@@ -160,6 +164,7 @@ class PartSelector extends Sprite {
 	}
 
 	public function remove():Void {
+		cast(infoButton, PartInfoButton).dispose();
 		cp.removeEventListener(Event.CHANGE, onColorChange);
 		cp.remove();
 		cp2.removeEventListener(Event.CHANGE, onColorChange);
@@ -169,5 +174,81 @@ class PartSelector extends Sprite {
 		if (parent != null) {
 			parent.removeChild(this);
 		}
+	}
+}
+
+/**
+	XFL `Buttons/Symbol 1213` (`InfoButton`): a grey circle with a "?" that
+	turns yellow on hover. Flash sizes the instance to 15 x 20.3, which draws
+	the 10px circle at 1.2 x 1.29.
+**/
+private class PartInfoButton extends Sprite {
+	private static inline var ART_SCALE_X:Float = 1.2;
+	private static inline var ART_SCALE_Y:Float = 1.29;
+
+	private final art = new Sprite();
+	private var over = false;
+	private var down = false;
+
+	public function new() {
+		super();
+		buttonMode = useHandCursor = true;
+		mouseChildren = false;
+		// Hit area of the authored button's hit frame.
+		graphics.beginFill(0x000000, 0);
+		graphics.drawRect(0, 0, 15, 20);
+		graphics.endFill();
+		art.scaleX = ART_SCALE_X;
+		art.scaleY = ART_SCALE_Y;
+		addChild(art);
+		addEventListener(MouseEvent.MOUSE_OVER, onOver);
+		addEventListener(MouseEvent.MOUSE_OUT, onOut);
+		addEventListener(MouseEvent.MOUSE_DOWN, onDown);
+		addEventListener(MouseEvent.MOUSE_UP, onUp);
+		redraw();
+	}
+
+	public function dispose():Void {
+		removeEventListener(MouseEvent.MOUSE_OVER, onOver);
+		removeEventListener(MouseEvent.MOUSE_OUT, onOut);
+		removeEventListener(MouseEvent.MOUSE_DOWN, onDown);
+		removeEventListener(MouseEvent.MOUSE_UP, onUp);
+	}
+
+	private function onOver(_:MouseEvent):Void {
+		over = true;
+		redraw();
+	}
+
+	private function onOut(_:MouseEvent):Void {
+		over = down = false;
+		redraw();
+	}
+
+	private function onDown(_:MouseEvent):Void {
+		down = true;
+		redraw();
+	}
+
+	private function onUp(_:MouseEvent):Void {
+		down = false;
+		redraw();
+	}
+
+	private function redraw():Void {
+		art.removeChildren();
+		art.addChild(NativeAssets.svg(down ? StaticSvg.LevelItemInfoDown : over ? StaticSvg.LevelItemInfoOver : StaticSvg.LevelItemInfoUp));
+		// openfl-svg does not render the authored SVG <text>; restore the "?".
+		var question = new TextField();
+		question.mouseEnabled = false;
+		question.selectable = false;
+		question.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, over || down ? 0xFFFF00 : 0x000000, false, null, null,
+			null, null, TextFormatAlign.CENTER);
+		question.text = "?";
+		question.x = 0.5;
+		question.y = -3.2;
+		question.width = 7;
+		question.height = 10.7;
+		art.addChild(question);
 	}
 }

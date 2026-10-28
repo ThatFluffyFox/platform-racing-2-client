@@ -40,7 +40,9 @@ class StatsSelect extends Sprite {
 		label.name = "label";
 		label.x = 2;
 		label.y = 2;
-		label.width = 121.85;
+		// XFL width is 121.85, sized for Verdana Bold. DejaVu Sans Bold runs a
+		// little wider and clipped the colon, so leave room up to the value box.
+		label.width = 128;
 		label.height = 14.55;
 		label.scaleX = 0.999557495117188;
 		label.selectable = false;

@@ -18,7 +18,7 @@ class PointsRemainingTest {
 		assertEquals("Points Remaining:", label.text, "points label keeps authored copy");
 		assertClose(2, label.x, "points label keeps XFL X");
 		assertClose(2, label.y, "points label keeps XFL Y");
-		assertClose(121.85 * 0.999557495117188, label.width, "points label keeps transformed authored width");
+		assertClose(128 * 0.999557495117188, label.width, "points label is widened so DejaVu Sans Bold keeps the colon");
 		assertClose(14.55, label.height, "points label keeps authored height");
 		assertClose(0.999557495117188, label.scaleX, "points label keeps XFL horizontal scale");
 		assertClose(130.05, value.x, "points value keeps XFL X");

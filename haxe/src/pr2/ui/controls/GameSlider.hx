@@ -14,6 +14,8 @@ class GameSlider extends NativeControl {
 	// SliderTrack skin (3px) to the component's top-left origin. The port had
 	// centred the track inside the thumb (track.y = (13-3)/2), which pushed the
 	// bar exactly 5px below where Flash renders it while the thumb stayed correct.
+	private static inline var TRACK_HEIGHT:Float = 4;
+
 	public var minimum(default, null):Float;
 	public var maximum(default, null):Float;
 	public var step(default, null):Float;
@@ -142,6 +144,10 @@ class GameSlider extends NativeControl {
 		var art = SvgAsset.create(enabled ? "assets/svg/ui/slider_track_up.svg" : "assets/svg/ui/slider_track_disabled.svg");
 		art.scale9Grid = new Rectangle(2.25, 0, 75.75, 3);
 		art.width = controlWidth;
+		// fl.controls.Slider sizes its track button to 4px tall (configUI's
+		// track.setSize(80, 4)). The skin's vertical grid (-1..3.95) spans all
+		// three 1px bands, so each band stretches to 1.33px.
+		art.height = TRACK_HEIGHT;
 		track.addChild(art);
 		track.y = 0;
 	}
