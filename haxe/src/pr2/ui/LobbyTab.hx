@@ -26,6 +26,7 @@ import pr2.assets.NativeAssets;
 **/
 class LobbyTab extends Sprite {
 	private var bg:Sprite;
+	private var bgScaleX:Float = 0;
 	private var base:Null<Shape>;
 	private var selectedOverlay:Null<Shape>;
 	private var textBox:TextField;
@@ -117,7 +118,16 @@ class LobbyTab extends Sprite {
 			selectedOverlay = NativeAssets.svg(StaticSvg.LobbyTabSelectedOverlay);
 			bg.addChild(selectedOverlay);
 		} else selectedOverlay = null;
-		bg.width = textBox.width + 10;
+		// Flash sets `bg.width = textBox.width + 10` once, in the constructor's
+		// up frame, and the stretch then carries over to the over and selected
+		// frames. The selected art's 3px outline makes its bounds wider, so
+		// refitting each frame (as before) shrank the selected tab.
+		if (bgScaleX == 0) {
+			bg.width = textBox.width + 10;
+			bgScaleX = bg.scaleX;
+		} else {
+			bg.scaleX = bgScaleX;
+		}
 	}
 
 	/**
