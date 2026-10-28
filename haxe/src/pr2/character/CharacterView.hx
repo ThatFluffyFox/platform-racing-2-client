@@ -343,16 +343,54 @@ class CharacterView extends Sprite {
 		container.setChildIndex(artwork, 0);
 		if (isEmptyPart(kind, partId(kind))) return;
 		var channels = partVariant(kind, partId(kind));
-		var primary = SvgAsset.create(partChannelAsset(channels, "primary"));
+		addLayeredChannels(artwork, channels, partChannelAsset(channels, "primary"), partChannelAsset(channels, "static"),
+			partChannelAsset(channels, "secondary"));
+		applyPartColorToArtwork(kind, artwork);
+	}
+
+	/**
+		Stacks a part's channels in Flash's order. Part clips interleave fixed
+		layers with the colour clips (outlines above `colorMC2`, `static_color`
+		between the colours, some shading below `colorMC`), but the SVG export
+		flattens the fixed layers into one file. With `fixedBands` the fixed art
+		is split back into its three bands; otherwise it sits between the colours.
+	**/
+	private static inline var EPIC_COVERED_STATIC = "staticMiddleUnderEpic";
+
+	/** Shows the uncoloured epic artwork only while no epic colour covers it. */
+	private static function syncEpicCoveredStatic(artwork:Sprite, secondary:Null<Shape>):Void {
+		var covered = artwork.getChildByName(EPIC_COVERED_STATIC);
+		if (covered != null) covered.visible = secondary == null || !secondary.visible;
+	}
+
+	private static function addLayeredChannels(artwork:Sprite, channels:RigPartChannels, primaryAsset:String, fixedAsset:String,
+			secondaryAsset:String):Void {
+		var bands = channels.fixedBands;
+		var layered = bands != null && fixedAsset == channels.fixed;
+		if (layered && bands.under > 0) {
+			var under = SvgAsset.createLayerRange(fixedAsset, 0, bands.under);
+			under.name = "staticUnder";
+			artwork.addChild(under);
+		}
+		var primary = SvgAsset.create(primaryAsset);
 		primary.name = "primary";
 		artwork.addChild(primary);
-		var fixed = SvgAsset.create(partChannelAsset(channels, "static"));
+		if (layered && bands.middle > 0) {
+			var middle = SvgAsset.createLayerRange(fixedAsset, bands.under, bands.under + bands.middle);
+			middle.name = bands.middleHiddenByEpic == true ? EPIC_COVERED_STATIC : "staticMiddle";
+			artwork.addChild(middle);
+		}
+		var fixed = layered ? SvgAsset.createLayerRange(fixedAsset, bands.under + bands.middle, 0x7FFFFFFF) : SvgAsset.create(fixedAsset);
 		fixed.name = "static";
-		artwork.addChild(fixed);
-		var secondary = SvgAsset.create(partChannelAsset(channels, "secondary"));
+		var secondary = SvgAsset.create(secondaryAsset);
 		secondary.name = "secondary";
-		artwork.addChild(secondary);
-		applyPartColorToArtwork(kind, artwork);
+		if (layered) {
+			artwork.addChild(secondary);
+			artwork.addChild(fixed);
+		} else {
+			artwork.addChild(fixed);
+			artwork.addChild(secondary);
+		}
 	}
 
 	private function createHatSlots():Void {
@@ -377,15 +415,7 @@ class CharacterView extends Sprite {
 		var artwork = new Sprite();
 		artwork.name = "artwork";
 		slot.addChild(artwork);
-		var primary = SvgAsset.create(channels.primary);
-		primary.name = "primary";
-		artwork.addChild(primary);
-		var fixed = SvgAsset.create(channels.fixed);
-		fixed.name = "static";
-		artwork.addChild(fixed);
-		var secondary = SvgAsset.create(channels.secondary);
-		secondary.name = "secondary";
-		artwork.addChild(secondary);
+		addLayeredChannels(artwork, channels, channels.primary, channels.fixed, channels.secondary);
 		applyHatColorToArtwork(index, artwork);
 		if (channels.overlayAnimation != null) {
 			var overlay = new Sprite();
@@ -974,6 +1004,7 @@ class CharacterView extends Sprite {
 			secondary.visible = color.secondary >= 0;
 			if (secondary.visible) secondary.transform.colorTransform = solidColor(color.secondary);
 		}
+		syncEpicCoveredStatic(artwork, secondary);
 	}
 
 	private function applyAllHatColors():Void {
@@ -994,6 +1025,7 @@ class CharacterView extends Sprite {
 			secondary.visible = color.secondary >= 0;
 			if (secondary.visible) secondary.transform.colorTransform = solidColor(color.secondary);
 		}
+		syncEpicCoveredStatic(artwork, secondary);
 	}
 
 	private function applyHatAttachments():Void {

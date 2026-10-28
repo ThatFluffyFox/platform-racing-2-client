@@ -44,6 +44,10 @@ class AccountCharacter extends Sprite {
 		// The neutral rig retains the authored ~0.15 root matrix, so the wrapper
 		// remains at scale 1 exactly like Flash's Character instance.
 		addChild(display);
+		// Previews show one character, so draw its parts as vectors like Flash.
+		// The race-time part bitmap cache resamples each part through its
+		// rotated slot every frame, which softens outlines visibly at this size.
+		display.setPartBitmapCacheEnabled(false);
 		// Flash's customize/account preview is a live Character MovieClip, so the
 		// standing idle plays continuously. Drive it from the stage clock; the
 		// listener is released automatically when the preview is detached.

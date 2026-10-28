@@ -14,6 +14,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 from character_lottie_motion import load_lottie_motion
+import character_static_bands
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -358,7 +359,7 @@ def generate() -> dict[str, object]:
             "registration": PART_REGISTRATION.get(kind, {"x": 0.0, "y": 0.0}),
             "variants": part_variants(kind, include_excluded=kind == "body"),
         }
-    return {
+    payload = {
         "format": "pr2-character-rig",
         "version": 9,
         "source": "MovieClips/Character",
@@ -373,6 +374,12 @@ def generate() -> dict[str, object]:
         "items": item_records(),
         "animations": [animation_record(*state, roots) for state in STATE_SOURCES],
     }
+    # Fixed-art bands around the colour clips (see character_static_bands.py).
+    computed, warnings = character_static_bands.bands(LIBRARY)
+    for warning in warnings:
+        print("warning:", warning)
+    character_static_bands.apply(payload, computed)
+    return payload
 
 
 def summary(payload: dict[str, object]) -> str:
