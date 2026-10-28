@@ -239,16 +239,28 @@ private class PartInfoButton extends Sprite {
 		art.removeChildren();
 		art.addChild(NativeAssets.svg(down ? StaticSvg.LevelItemInfoDown : over ? StaticSvg.LevelItemInfoOver : StaticSvg.LevelItemInfoUp));
 		// openfl-svg does not render the authored SVG <text>; restore the "?".
+		// Symbol 1213's static text: 12px Verdana in a 6.7 x 14.55 block at
+		// left 46.65, under the matrix (0.9065, 0.7314, tx -40.2, ty -0.2).
+		var holder = new Sprite();
+		holder.mouseEnabled = false;
+		holder.mouseChildren = false;
+		holder.scaleX = 0.906539916992188;
+		holder.scaleY = 0.731430053710938;
+		holder.x = -40.2 + 46.65 * holder.scaleX;
+		holder.y = -0.2;
 		var question = new TextField();
-		question.mouseEnabled = false;
 		question.selectable = false;
 		question.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, over || down ? 0xFFFF00 : 0x000000, false, null, null,
 			null, null, TextFormatAlign.CENTER);
 		question.text = "?";
-		question.x = 0.5;
-		question.y = -3.2;
-		question.width = 7;
-		question.height = 10.7;
-		art.addChild(question);
+		// Static text has no 2px TextField gutter.
+		question.x = -2;
+		// Verdana's ascent (1.005 em) sets the baseline 0.92px below DejaVu's
+		// (0.928 em) at 12px.
+		question.y = -2 + (1.005 - 0.928) * 12;
+		question.width = 6.7 + 4;
+		question.height = 14.55 + 4;
+		holder.addChild(question);
+		art.addChild(holder);
 	}
 }
