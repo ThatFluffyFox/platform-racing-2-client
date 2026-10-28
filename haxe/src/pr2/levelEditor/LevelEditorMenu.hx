@@ -212,11 +212,8 @@ class LevelEditorMenu extends Sprite {
 		if (LobbySession.group <= 0) {
 			return;
 		}
-		if (editor.canViewLevelReports()) {
-			new ChooseLevelsModePopup();
-		} else {
-			new GetLevelsPopup();
-		}
+		// Port addition: choose My Levels (the Flash flow), a level ID, or a file.
+		new LoadLevelSourcePopup(editor.canViewLevelReports());
 	}
 
 	private function clickTest():Void {

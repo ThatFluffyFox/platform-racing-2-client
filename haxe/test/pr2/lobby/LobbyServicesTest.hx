@@ -68,6 +68,10 @@ import pr2.levelEditor.GetReportedLevelsPopupItem;
 import pr2.levelEditor.HandleLevelReportPopup;
 import pr2.levelEditor.GetReportedLevelsPopup;
 import pr2.levelEditor.LoadingLevelPopup;
+import pr2.levelEditor.LoadLevelSourcePopup;
+import pr2.levelEditor.LoadLevelByIdPopup;
+import pr2.levelEditor.LevelFileImport;
+import pr2.net.LevelListClient.LevelListResult;
 import pr2.levelEditor.LevelEditorConnectingPopup;
 import pr2.levelEditor.SaveLevelPopup;
 import pr2.levelEditor.EditorSideBarEntry;
@@ -142,6 +146,9 @@ class LobbyServicesTest {
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLevelEditorRoute", testLevelEditorRoute);
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLobbyBottomButtonEffects", testLobbyBottomButtonEffects);
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLevelEditorLoadListPopup", testLevelEditorLoadListPopup);
+		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLoadSourceChooserLayout", testLoadSourceChooserLayout);
+		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLoadLevelById", testLoadLevelById);
+		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLevelFileImportParsesPayloads", testLevelFileImportParsesPayloads);
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLevelEditorLoadingLevelPopup", testLevelEditorLoadingLevelPopup);
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLevelEditorReportedLevelsPopup", testLevelEditorReportedLevelsPopup);
 		pr2.DeterministicTestMode.runTest("LobbyServicesTest.testLevelEditorReportHandlePopup", testLevelEditorReportHandlePopup);
@@ -369,6 +376,90 @@ class LobbyServicesTest {
 		DisplayUtil.findByName(editor.menu.art, name).dispatchEvent(new MouseEvent(MouseEvent.CLICK));
 	}
 
+	/** Clicks the editor's Load button, then `button` in the load-source chooser it opens. **/
+	private static function chooseLoadSource(editor:LevelEditor, button:String):Void {
+		clickEditorMenu(editor, "loadButton");
+		var chooser = Std.downcast(Popup.getOpen()[Popup.getOpen().length - 1], LoadLevelSourcePopup);
+		assertNotNull(chooser, "load button opens the load-source chooser");
+		DisplayUtil.findByName(chooser.art, button).dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+		assertEquals(true, chooser.fadeOutStarted, "choosing a load source closes the chooser");
+	}
+
+	private static function testLoadSourceChooserLayout():Void {
+		closeAllPopups();
+		LobbySession.clear();
+		LobbySession.group = 1;
+		var editor = new LevelEditor(null, false, false);
+		editor.initialize();
+		clickEditorMenu(editor, "loadButton");
+		var chooser = Std.downcast(Popup.getOpen()[Popup.getOpen().length - 1], LoadLevelSourcePopup);
+		assertNotNull(chooser, "load opens the chooser");
+		var mine = DisplayUtil.findByName(chooser.art, "mine_bt");
+		var id = DisplayUtil.findByName(chooser.art, "id_bt");
+		var file = DisplayUtil.findByName(chooser.art, "file_bt");
+		assertNotNull(mine, "chooser has My Levels");
+		assertNotNull(id, "chooser has Level ID");
+		assertNotNull(file, "chooser has Load from File");
+		assertEquals(mine.y, id.y, "My Levels and Level ID share a row");
+		assertEquals(true, mine.x < id.x, "My Levels is left of Level ID");
+		assertEquals(true, file.y > mine.y, "Load from File sits below them");
+		assertEquals(true, Math.abs(file.x + file.width / 2) < 1, "Load from File is centred");
+		DisplayUtil.findByName(chooser.art, "cancel_bt").dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+		assertEquals(true, chooser.fadeOutStarted, "cancel closes the chooser");
+	}
+
+	private static function testLoadLevelById():Void {
+		closeAllPopups();
+		LobbySession.clear();
+		LobbySession.group = 1;
+		var previousSearch = LoadLevelByIdPopup.searchFactory;
+		var previousLoad = LoadLevelByIdPopup.loadFactory;
+		var params:Map<String, String> = null;
+		var loaded = "";
+		LoadLevelByIdPopup.searchFactory = function(p:Map<String, String>, onResult:LevelListResult->Void, onError:String->Void):Void {
+			params = p;
+			onResult(new LevelListResult([
+				CampaignLevelInfo.fromDynamic({level_id: 6499671, version: 23, title: "~ Dont Move 1P ~"})
+			], true));
+		};
+		LoadLevelByIdPopup.loadFactory = function(levelId:Int, version:Int):Void loaded = levelId + ":" + version;
+
+		var editor = new LevelEditor(null, false, false);
+		editor.initialize();
+		chooseLoadSource(editor, "id_bt");
+		var popup = Std.downcast(Popup.getOpen()[Popup.getOpen().length - 1], LoadLevelByIdPopup);
+		assertNotNull(popup, "Level ID opens the level-ID prompt");
+		popup.art.input.text = "6499671";
+		popup.submit();
+		assertEquals("6499671", params.get("search_str"), "level ID lookup searches for the ID");
+		assertEquals("id", params.get("mode"), "level ID lookup uses the id search mode");
+		assertEquals("6499671:23", loaded, "level ID lookup loads the level at its current version");
+		assertEquals(true, popup.fadeOutStarted, "a found level closes the prompt");
+
+		assertEquals(null, LoadLevelByIdPopup.parseLevelId("12a"), "letters are not a level ID");
+		assertEquals(null, LoadLevelByIdPopup.parseLevelId("0"), "zero is not a level ID");
+		assertEquals(42, LoadLevelByIdPopup.parseLevelId(" 42 "), "spaces around the ID are ignored");
+		LoadLevelByIdPopup.searchFactory = previousSearch;
+		LoadLevelByIdPopup.loadFactory = previousLoad;
+	}
+
+	private static function testLevelFileImportParsesPayloads():Void {
+		var data = "m4`222233`0;0;111,0;3;109``````-1````";
+		var full = "level_id=0&version=1&title=File Level&gravity=1.0&data=" + data;
+		var withHash = LevelFileImport.parse(full + LevelDataClient.computeHash(1, 0, full));
+		assertNotNull(withHash, "a server-format payload with its hash loads");
+		assertEquals("File Level", withHash.title, "payload title is kept");
+		assertEquals(data, withHash.data, "payload block data is kept");
+		var noHash = LevelFileImport.parse(full);
+		assertNotNull(noHash, "a payload without the hash loads");
+		assertEquals(data, noHash.data, "payload without hash keeps its block data");
+		var raw = LevelFileImport.parse(data + "\n");
+		assertNotNull(raw, "a bare m4 data string loads");
+		assertEquals(data, raw.data, "bare data string is used as the level data");
+		assertEquals(null, LevelFileImport.parse("hello world"), "text without level data is rejected");
+		assertEquals(null, LevelFileImport.parse(""), "an empty file is rejected");
+	}
+
 	private static function clickEditorSidebar(editor:LevelEditor, name:String):Void {
 		editor.menu.sideBar.getChildByName(name).dispatchEvent(new MouseEvent(MouseEvent.CLICK));
 	}
@@ -410,7 +501,7 @@ class LobbyServicesTest {
 
 		var editor = new LevelEditor(null, false, false);
 		editor.initialize();
-		clickEditorMenu(editor, "loadButton");
+		chooseLoadSource(editor, "mine_bt");
 		var popup = Std.downcast(Popup.getOpen()[Popup.getOpen().length - 1], GetLevelsPopup);
 		assertNotNull(popup, "load button opens the editor levels popup");
 		assertNotNull(Reflect.field(popup, "scroll"), "load popup mounts the authored scrollbar");
@@ -578,7 +669,7 @@ class LobbyServicesTest {
 
 		var editor = new LevelEditor(null, true, false);
 		editor.initialize();
-		clickEditorMenu(editor, "loadButton");
+		chooseLoadSource(editor, "mine_bt");
 		var choice = Std.downcast(Popup.getOpen()[Popup.getOpen().length - 1], ChooseLevelsModePopup);
 		assertNotNull(choice, "moderator load opens the authored level-mode chooser");
 		DisplayUtil.findByName(choice.art, "reports_bt").dispatchEvent(new MouseEvent(MouseEvent.CLICK));
@@ -784,7 +875,7 @@ class LobbyServicesTest {
 
 		var editor = new LevelEditor(null, false, false);
 		editor.initialize();
-		clickEditorMenu(editor, "loadButton");
+		chooseLoadSource(editor, "mine_bt");
 		var popup = Std.downcast(Popup.getOpen()[Popup.getOpen().length - 1], GetLevelsPopup);
 		assertNotNull(popup, "delete flow opens the editor levels popup");
 		assertEquals("delete-token", requestedToken, "delete flow list request sends the session token");
