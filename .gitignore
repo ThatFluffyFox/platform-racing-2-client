@@ -64,3 +64,6 @@ test/output/
 /tools/test_archival_parity_workflow.py
 /tools/test_neutral_data_metadata.py
 /tools/test_xfl_composer.py
+
+# Your own licensed copies of the Flash fonts (Verdana, Arial, Times New Roman).
+/assets/fonts/local/*.ttf

@@ -60,6 +60,8 @@ class LobbyShellParityTest {
 
 		assertEquals(41, footer.moreGamesButton.glow.totalFrames, "Kong glow keeps all 41 XFL frames");
 		assertEquals(true, footer.moreGamesButton.glow.looping, "Kong glow loops like its MovieClip timeline");
+		footer.moreGamesButton.glow.gotoAndStop(1);
+		assertNear(5, glowFilter(footer.moreGamesButton.glow.getChildAt(0).filters[0]).blurX, "Kong frame 1 uses the default XFL blur");
 		footer.moreGamesButton.glow.gotoAndStop(11);
 		var kongGlow = glowFilter(footer.moreGamesButton.glow.getChildAt(0).filters[0]);
 		assertNear(10, kongGlow.blurX, "Kong frame 11 blur x comes from XFL");
@@ -74,7 +76,9 @@ class LobbyShellParityTest {
 		assertEquals(1, footer.vaultButton.glow.totalFrames, "Vault glow is the exact static XFL frame");
 		assertEquals(false, footer.vaultButton.glow.looping, "Vault does not invent animation");
 		var vaultGlow = glowFilter(footer.vaultButton.glow.getChildAt(0).filters[0]);
-		assertNear(0, vaultGlow.blurX, "Vault authored glow blur remains zero");
+		// The XFL GlowFilter omits blurX/blurY, so it uses Animate's default of 5.
+		assertNear(5, vaultGlow.blurX, "Vault glow uses the default XFL blur x");
+		assertNear(5, vaultGlow.blurY, "Vault glow uses the default XFL blur y");
 		assertEquals(true, vaultGlow.knockout, "Vault glow preserves knockout metadata");
 
 		footer.dispose();

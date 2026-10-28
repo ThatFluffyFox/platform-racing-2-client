@@ -8,6 +8,7 @@ import pr2.runtime.SvgAsset;
 import pr2.ui.AuthoredScale9;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.NativeView;
+import pr2.runtime.FontResolver;
 
 /** Exact XFL end-of-race shell with native dynamic award fields and buttons. */
 class FinishedPageView extends NativeView {
@@ -51,7 +52,7 @@ class FinishedPageView extends NativeView {
 		text.height = height;
 		text.selectable = false;
 		text.mouseEnabled = false;
-		text.defaultTextFormat = new TextFormat("Verdana", size, 0x000000, false, null, null, null, null, align);
+		text.defaultTextFormat = new TextFormat(FontResolver.resolve("Verdana"), size, 0x000000, false, null, null, null, null, align);
 		text.text = "--";
 		addChild(text);
 	}

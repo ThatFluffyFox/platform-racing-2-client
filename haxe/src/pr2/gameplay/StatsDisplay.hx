@@ -10,6 +10,7 @@ import pr2.display.Removable;
 import pr2.lobby.dialogs.HoverPopup;
 import pr2.runtime.SvgAsset;
 import pr2.ui.AuthoredScale9;
+import pr2.runtime.FontResolver;
 
 /**
 	Port of Flash `gameplay.StatsDisplay`.
@@ -62,7 +63,7 @@ class StatsDisplay extends Removable {
 		field.width = width;
 		field.height = 9.75;
 		field.selectable = false;
-		field.defaultTextFormat = new TextFormat("Verdana", 8, 0, false, null, null, null, null,
+		field.defaultTextFormat = new TextFormat(FontResolver.resolve("Verdana"), 8, 0, false, null, null, null, null,
 			TextFormatAlign.CENTER);
 		return field;
 	}

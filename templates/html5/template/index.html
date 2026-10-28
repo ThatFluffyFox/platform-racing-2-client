@@ -42,17 +42,18 @@
 		}
 		/* Flash drew these faces with Verdana, Arial and Times New Roman. Those
 		   fonts cannot be redistributed, so each family uses the player's
-		   installed copy when there is one and the bundled metric-compatible
-		   substitute (DejaVu Sans / Liberation) otherwise. */
+		   installed copy when there is one, then a copy you place yourself in
+		   assets/fonts/local/ (git-ignored; see its README), and the bundled
+		   metric-compatible substitute (DejaVu Sans / Liberation) otherwise. */
 		@font-face {
 			font-family: 'DejaVu Sans Bold Italic';
-			src: local('Verdana Bold Italic'), local('Verdana-BoldItalic'), url('assets/fonts/DejaVuSans-BoldOblique.ttf') format('truetype');
+			src: local('Verdana Bold Italic'), local('Verdana-BoldItalic'), url('assets/fonts/local/verdanaz.ttf') format('truetype'), url('assets/fonts/DejaVuSans-BoldOblique.ttf') format('truetype');
 			font-weight: normal;
 			font-style: normal;
 		}
 		@font-face {
 			font-family: 'DejaVu Sans';
-			src: local('Verdana'), url('assets/fonts/DejaVuSans.ttf') format('truetype');
+			src: local('Verdana'), url('assets/fonts/local/verdana.ttf') format('truetype'), url('assets/fonts/DejaVuSans.ttf') format('truetype');
 			font-weight: normal;
 			font-style: normal;
 		}
@@ -70,25 +71,25 @@
 		}
 		@font-face {
 			font-family: 'Liberation Serif';
-			src: local('Times New Roman'), local('TimesNewRomanPSMT'), url('assets/fonts/LiberationSerif-Regular.ttf') format('truetype');
+			src: local('Times New Roman'), local('TimesNewRomanPSMT'), url('assets/fonts/local/times.ttf') format('truetype'), url('assets/fonts/LiberationSerif-Regular.ttf') format('truetype');
 			font-weight: normal;
 			font-style: normal;
 		}
 		@font-face {
 			font-family: 'DejaVu Sans Bold';
-			src: local('Verdana Bold'), local('Verdana-Bold'), url('assets/fonts/DejaVuSans-Bold.ttf') format('truetype');
+			src: local('Verdana Bold'), local('Verdana-Bold'), url('assets/fonts/local/verdanab.ttf') format('truetype'), url('assets/fonts/DejaVuSans-Bold.ttf') format('truetype');
 			font-weight: normal;
 			font-style: normal;
 		}
 		@font-face {
 			font-family: 'Liberation Sans';
-			src: local('Arial'), local('ArialMT'), url('assets/fonts/LiberationSans-Regular.ttf') format('truetype');
+			src: local('Arial'), local('ArialMT'), url('assets/fonts/local/arial.ttf') format('truetype'), url('assets/fonts/LiberationSans-Regular.ttf') format('truetype');
 			font-weight: normal;
 			font-style: normal;
 		}
 		@font-face {
 			font-family: 'DejaVu Sans Italic';
-			src: local('Verdana Italic'), local('Verdana-Italic'), url('assets/fonts/DejaVuSans-Oblique.ttf') format('truetype');
+			src: local('Verdana Italic'), local('Verdana-Italic'), url('assets/fonts/local/verdanai.ttf') format('truetype'), url('assets/fonts/DejaVuSans-Oblique.ttf') format('truetype');
 			font-weight: normal;
 			font-style: normal;
 		}

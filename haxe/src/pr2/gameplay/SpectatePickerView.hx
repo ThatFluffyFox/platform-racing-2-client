@@ -7,6 +7,7 @@ import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
 import pr2.ui.controls.AuthoredArrowButton;
 import pr2.ui.view.NativeView;
+import pr2.runtime.FontResolver;
 
 /** Native spectating selector with explicit controls and dual-layer name text. */
 class SpectatePickerView extends NativeView {
@@ -53,7 +54,7 @@ class SpectatePickerView extends NativeView {
 		field.width = width;
 		field.height = height;
 		field.selectable = false;
-		field.defaultTextFormat = new TextFormat("Verdana", size, color, bold, null, null, null, null,
+		field.defaultTextFormat = new TextFormat(FontResolver.resolve("Verdana"), size, color, bold, null, null, null, null,
 			TextFormatAlign.CENTER);
 		return field;
 	}
