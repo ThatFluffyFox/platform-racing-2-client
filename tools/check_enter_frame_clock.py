@@ -32,6 +32,8 @@ PRESENTATION_ONLY_CALLBACKS = {
         "publishes browser harness diagnostics only",
     ("haxe/src/pr2/page/CharacterPartCachePreview.hx", "animateCharacters"):
         "is a rendered-frame performance benchmark",
+    ("haxe/src/pr2/page/LoginTitle.hx", "refresh"):
+        "redraws the logo bitmap when the display scale changes",
     ("haxe/src/pr2/page/GamePage.hx", "advanceGameplayWarmup"):
         "presents one cold asset group to the renderer per display frame",
     ("haxe/src/pr2/runtime/FrameClock.hx", "onStageFrame"):

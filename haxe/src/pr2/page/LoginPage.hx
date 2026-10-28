@@ -1,13 +1,6 @@
 package pr2.page;
 
 import openfl.display.Shape;
-import openfl.filters.GlowFilter;
-import openfl.text.TextField;
-import openfl.text.TextFieldAutoSize;
-import openfl.text.TextFormat;
-import openfl.text.TextFormatAlign;
-import pr2.runtime.FontResolver;
-import pr2.runtime.OutputResolutionFilters;
 import pr2.runtime.SvgAsset;
 
 private typedef LoginPageArt = {
@@ -35,8 +28,7 @@ class LoginPage extends Page {
 	private var background:Null<LoginBackground>;
 	private var pageArt:Null<Shape>;
 	private var timelineFade:Null<LoginPageFade>;
-	private var titleText:Null<TextField>;
-	private var titleGlow:Null<OutputResolutionFilters>;
+	private var title:Null<LoginTitle>;
 	private var buttons:Array<LoginPageMenuButton> = [];
 	public var flow(default, null):LoginFlow;
 	public final siteMode:String;
@@ -58,9 +50,8 @@ class LoginPage extends Page {
 		pageArt = SvgAsset.create(art.assetPath);
 		addChild(pageArt);
 
-		titleText = createTitle();
-		titleGlow = new OutputResolutionFilters(titleText, titleFilters);
-		addChild(titleText);
+		title = new LoginTitle();
+		addChild(title);
 
 		addMenuButton("Log In", flow.openLoginDialog);
 		addMenuButton("Play as Guest", flow.openGuestDialog);
@@ -92,14 +83,11 @@ class LoginPage extends Page {
 		}
 		buttons = [];
 
-		if (titleGlow != null) {
-			titleGlow.dispose();
-			titleGlow = null;
+		if (title != null) {
+			title.dispose();
+			if (title.parent != null) title.parent.removeChild(title);
 		}
-		if (titleText != null && titleText.parent != null) {
-			titleText.parent.removeChild(titleText);
-		}
-		titleText = null;
+		title = null;
 
 		if (pageArt != null && pageArt.parent != null) {
 			pageArt.parent.removeChild(pageArt);
@@ -134,36 +122,6 @@ class LoginPage extends Page {
 
 	private static function loginPageArtFor(_siteMode:String):LoginPageArt {
 		return {assetPath: LOGIN_PAGE_NO_LOGO_ASSET, trimX: LOGIN_PAGE_NO_LOGO_TRIM_X, trimY: LOGIN_PAGE_NO_LOGO_TRIM_Y};
-	}
-
-	// The "Platform Racing 2" logo. In the original Flash menu this is live
-	// Gwibble text with a white glow (XFL LoginPage symbol, Layer 7); the baked
-	// page art no longer includes it. Geometry mirrors the DOMStaticText:
-	// tx/ty 81.4/92.4, box 386.8 wide, size 43, centered, lineSpacing -3.
-	private static function createTitle():TextField {
-		var text = new TextField();
-		var format = new TextFormat(FontResolver.resolve("Gwibble"), 43, 0x000000, false, false, false, null, null, TextFormatAlign.CENTER, 0, 0, 0, -3);
-		text.defaultTextFormat = format;
-		text.embedFonts = true;
-		text.x = 81.4;
-		text.y = 92.4;
-		text.width = 386.8;
-		text.height = 120;
-		text.autoSize = TextFieldAutoSize.NONE;
-		text.selectable = false;
-		text.mouseEnabled = false;
-		text.multiline = true;
-		text.wordWrap = false;
-		text.text = "Platform Racing\n-- 2 --";
-		text.setTextFormat(format);
-		return text;
-	}
-
-	// White glow from the XFL (blur 6 stage pixels, strength 2, quality 3), drawn
-	// at the screen's resolution instead of being stretched from 550x400.
-	private static function titleFilters(pixelsPerStagePixel:Float):Array<openfl.filters.BitmapFilter> {
-		var blur = 6 * pixelsPerStagePixel;
-		return [new GlowFilter(0xFFFFFF, 1, blur, blur, 2, 3)];
 	}
 
 }
