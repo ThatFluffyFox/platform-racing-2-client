@@ -7,6 +7,7 @@ import openfl.text.TextFieldAutoSize;
 import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
 import pr2.runtime.FontResolver;
+import pr2.runtime.OutputResolutionFilters;
 import pr2.runtime.SvgAsset;
 
 private typedef LoginPageArt = {
@@ -35,6 +36,7 @@ class LoginPage extends Page {
 	private var pageArt:Null<Shape>;
 	private var timelineFade:Null<LoginPageFade>;
 	private var titleText:Null<TextField>;
+	private var titleGlow:Null<OutputResolutionFilters>;
 	private var buttons:Array<LoginPageMenuButton> = [];
 	public var flow(default, null):LoginFlow;
 	public final siteMode:String;
@@ -57,6 +59,7 @@ class LoginPage extends Page {
 		addChild(pageArt);
 
 		titleText = createTitle();
+		titleGlow = new OutputResolutionFilters(titleText, titleFilters);
 		addChild(titleText);
 
 		addMenuButton("Log In", flow.openLoginDialog);
@@ -89,6 +92,10 @@ class LoginPage extends Page {
 		}
 		buttons = [];
 
+		if (titleGlow != null) {
+			titleGlow.dispose();
+			titleGlow = null;
+		}
 		if (titleText != null && titleText.parent != null) {
 			titleText.parent.removeChild(titleText);
 		}
@@ -149,8 +156,14 @@ class LoginPage extends Page {
 		text.wordWrap = false;
 		text.text = "Platform Racing\n-- 2 --";
 		text.setTextFormat(format);
-		text.filters = [new GlowFilter(0xFFFFFF, 1, 6, 6, 2, 3)];
 		return text;
+	}
+
+	// White glow from the XFL (blur 6 stage pixels, strength 2, quality 3), drawn
+	// at the screen's resolution instead of being stretched from 550x400.
+	private static function titleFilters(pixelsPerStagePixel:Float):Array<openfl.filters.BitmapFilter> {
+		var blur = 6 * pixelsPerStagePixel;
+		return [new GlowFilter(0xFFFFFF, 1, blur, blur, 2, 3)];
 	}
 
 }
