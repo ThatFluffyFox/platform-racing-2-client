@@ -172,6 +172,9 @@ class GameSelect<T> extends NativeControl {
 		if (stage != null) mountListOnStage();
 	}
 	private function drawRow(row:Sprite, index:Int, hovered:Bool):Void {
+		// A choice can replace the popup and clear the options; the roll-out that
+		// follows on the removed row must not redraw a missing option.
+		if (index < 0 || index >= options.length) return;
 		while (row.numChildren > 0) row.removeChildAt(0);
 		var selected = index == selectedIndex;
 		var asset = selected ? (hovered ? StaticSvg.CellSelectedOver : StaticSvg.CellSelectedUp) : (hovered ? StaticSvg.CellOver : StaticSvg.CellUp);
