@@ -34,6 +34,10 @@ class PlayerListItem extends Removable implements SortableRow {
 	private function setNameHtml(html:String):Void {
 		if (nameField != null) {
 			nameField.htmlText = html;
+			// OpenFL leaves the caret after the last character, and every layout
+			// pass scrolls a field to keep its caret visible, so a name wider than
+			// the 95 px column showed its end. Flash clips it on the right instead.
+			nameField.setSelection(0, 0);
 		}
 	}
 
