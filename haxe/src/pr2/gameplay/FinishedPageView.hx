@@ -2,8 +2,10 @@ package pr2.gameplay;
 
 import openfl.display.Shape;
 import openfl.text.TextField;
+import openfl.text.TextFieldAutoSize;
 import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
+import pr2.runtime.FontResolver;
 import pr2.runtime.SvgAsset;
 import pr2.ui.AuthoredScale9;
 import pr2.ui.controls.GameButton;
@@ -28,6 +30,11 @@ class FinishedPageView extends NativeView {
 			field("exp" + index, 50.25, y, 76, 14.55, TextFormatAlign.LEFT);
 		}
 		field("expTotal", 50.25, 19.5, 76, 14.55, TextFormatAlign.LEFT);
+		// FinishedPageGraphic's static text. The shell SVG is drawn as one Shape,
+		// and format.svg does not render <text>, so these are native fields.
+		staticLabel("raceCompleteLabel", "-- Race Complete! --", -69.15, -129.75, true);
+		staticLabel("totalExpLabel", "Total Experience Points:", -127.95 + 17, 19.5, false);
+		staticLabel("rateLevelLabel", "Rate This Level:", -99.45 + 1.5, 90, false);
 		button("close_bt", "Close", -111, 121);
 		button("return_bt", "Return to Lobby", 8, 121);
 		field("physicsFrames", -136, -132, 130, 11, TextFormatAlign.LEFT, 8);
@@ -40,6 +47,23 @@ class FinishedPageView extends NativeView {
 		control.y = y;
 		control.setSize(100, 22);
 		addChild(control);
+	}
+
+	/** Flash static text at its XFL text origin: TextField's 2 px gutter is removed. */
+	private function staticLabel(name:String, text:String, x:Float, y:Float, bold:Bool):Void {
+		var label = new TextField();
+		label.name = name;
+		label.autoSize = TextFieldAutoSize.LEFT;
+		label.embedFonts = true;
+		label.selectable = false;
+		label.mouseEnabled = false;
+		var format = new TextFormat(FontResolver.resolve(bold ? "Verdana-Bold" : "Verdana"), 12, 0x000000);
+		format.letterSpacing = -0.05;
+		label.defaultTextFormat = format;
+		label.text = text;
+		label.x = x - 2;
+		label.y = y - 2;
+		addChild(label);
 	}
 
 	private function field(name:String, x:Float, y:Float, width:Float, height:Float, align:TextFormatAlign, size:Int = 12):Void {
