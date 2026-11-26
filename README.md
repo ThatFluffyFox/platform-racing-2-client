@@ -206,13 +206,17 @@ git -C .haxelib/hxcpp/git describe --tags --exact-match
 This should print `v4.3.146`. The Git checkout's `haxelib.json` reports the
 API-series version `4.3.0`; the Git tag is the authoritative pinned release.
 
-Sharp text in the browser:
+Sharp text and outlines in the browser:
 
 - `haxe/src/openfl/display/_internal/Context3DTextField.hx` is OpenFL 9.5.2's
   file with one change (marked in it): text is rasterized at the full output
   scale (devicePixelRatio times the stage scale). OpenFL used devicePixelRatio
   alone, so text on the scaled-up stage was drawn small and stretched. Re-copy
   it when OpenFL is upgraded.
+- `haxe/src/openfl/display/_internal/Context3DGraphics.hx` is OpenFL 9.5.2's
+  file with one change (marked in it): shapes with a scale9Grid (the panels
+  and buttons) are rasterized at the full output scale too, so their outlines
+  stay sharp. Re-copy it when OpenFL is upgraded.
 
 Browser development path:
 
