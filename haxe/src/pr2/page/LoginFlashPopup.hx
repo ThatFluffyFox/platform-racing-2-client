@@ -360,7 +360,11 @@ private class LoginPopupView extends NativeView {
 
 private class LoginTextButton extends Sprite {
 	private static final FOCUS_GRID = new Rectangle(4, 2, 74, 18);
+	/** Symbol 543 up-state colour; its over and down frames leave the text black. */
+	private static inline var UP_COLOR:Int = 0x4E4EFE;
+	private static inline var OVER_COLOR:Int = 0x000000;
 	private final focusIndicator:Sprite;
+	private final labelField:TextField;
 
 	public function new(label:String) {
 		super();
@@ -368,16 +372,23 @@ private class LoginTextButton extends Sprite {
 		buttonMode = true;
 		useHandCursor = true;
 		mouseChildren = false;
-		var labelField = new TextField();
+		labelField = new TextField();
 		labelField.mouseEnabled = false;
 		labelField.selectable = false;
 		labelField.x = 1.964111328125;
 		labelField.y = 1.964111328125;
 		labelField.width = 111.069;
 		labelField.height = 13;
-		labelField.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x4E4EFE);
+		labelField.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, UP_COLOR);
 		labelField.text = label;
 		addChild(labelField);
+		// Symbol 543's hit frame is its text. The label itself is not
+		// mouse-enabled, so without this the button had nothing to click or hover.
+		graphics.beginFill(0x000000, 0);
+		graphics.drawRect(labelField.x, labelField.y, labelField.width, labelField.height);
+		graphics.endFill();
+		addEventListener(MouseEvent.ROLL_OVER, function(_):Void setLabelColor(OVER_COLOR));
+		addEventListener(MouseEvent.ROLL_OUT, function(_):Void setLabelColor(UP_COLOR));
 
 		focusIndicator = new Sprite();
 		focusIndicator.mouseEnabled = false;
@@ -394,6 +405,10 @@ private class LoginTextButton extends Sprite {
 		addEventListener(KeyboardEvent.KEY_DOWN, function(event):Void {
 			if (event.keyCode == Keyboard.ENTER || event.keyCode == Keyboard.SPACE) dispatchEvent(new Event(NativeControl.KEYBOARD_ACTIVATE));
 		});
+	}
+
+	private function setLabelColor(color:Int):Void {
+		labelField.textColor = color;
 	}
 }
 
