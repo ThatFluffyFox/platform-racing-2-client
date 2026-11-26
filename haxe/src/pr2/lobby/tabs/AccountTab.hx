@@ -219,8 +219,12 @@ class AccountTab extends Page {
 		if (rankDown != null) rankDown.visible = rankTokensUsed > 0;
 		setButtonText(rankUp, unused);
 		setButtonText(rankDown, rankTokensUsed);
-		if (rankUp != null) rankUp.x = 66;
-		if (rankDown != null) rankDown.x = unused > 0 ? 101 : 66;
+		// AccountInfo.as rankBtnX / rankBtnDualX.
+		if (rankUp != null) rankUp.x = 65;
+		if (rankDown != null) rankDown.x = unused > 0 ? 95 : 65;
+		var downContainer = Std.downcast(rankDown, openfl.display.DisplayObjectContainer);
+		var downArrow = downContainer == null ? null : downContainer.getChildByName("arrow");
+		if (downArrow != null) downArrow.rotation = 180;
 	}
 
 	private function openLoadouts():Void {

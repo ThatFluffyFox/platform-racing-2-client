@@ -11,8 +11,8 @@ class ArrowButtonsTest {
 		var arrows = new ArrowButtons([10, 20, 30], 20);
 		var changes = 0;
 		arrows.addEventListener(Event.CHANGE, function(_):Void changes++);
-		var left:NativeControl = cast arrows.getChildAt(0);
-		var right:NativeControl = cast arrows.getChildAt(1);
+		var left:NativeControl = cast arrows.getChildByName("left");
+		var right:NativeControl = cast arrows.getChildByName("right");
 		left.activate();
 		assertEquals(10, arrows.value, "left native control steps backward");
 		right.activate();

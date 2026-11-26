@@ -1,7 +1,12 @@
 package pr2.ui;
 
+import openfl.display.Shape;
 import openfl.display.Sprite;
 import openfl.events.Event;
+import openfl.filters.BlurFilter;
+import openfl.geom.ColorTransform;
+import pr2.assets.NativeAssetIds.StaticSvg;
+import pr2.assets.NativeAssets;
 import pr2.ui.controls.AuthoredArrowButton;
 
 /**
@@ -22,10 +27,29 @@ class ArrowButtons extends Sprite {
 		this.array = values;
 		leftButton = new AuthoredArrowButton(false, clickLeft);
 		rightButton = new AuthoredArrowButton(true, clickRight);
+		leftButton.name = "left";
+		rightButton.name = "right";
 		rightButton.x = 100;
+		addChild(shadow(false, 0));
+		addChild(shadow(true, 100));
 		addChild(leftButton);
 		addChild(rightButton);
 		setValue(val);
+	}
+
+	/**
+		XFL `ArrowButtonsGraphic` gives both arrows a DropShadowFilter (distance 3,
+		angle 90, blur 2, strength 0.25). The shadow is a separate blurred copy so
+		the arrow itself is not drawn through OpenFL's low-resolution filter cache.
+	**/
+	private static function shadow(pointsRight:Bool, x:Float):Shape {
+		var art = NativeAssets.svg(StaticSvg.ArrowButtonUp);
+		art.transform.colorTransform = new ColorTransform(0, 0, 0, 0.25);
+		art.filters = [new BlurFilter(2, 2, 1)];
+		art.scaleX = pointsRight ? 1 : -1;
+		art.x = pointsRight ? x : x + 10;
+		art.y = 3;
+		return art;
 	}
 
 	private function clickLeft():Void {
