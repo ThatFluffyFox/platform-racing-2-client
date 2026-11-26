@@ -248,7 +248,8 @@ private class PartInfoButton extends Sprite {
 		question.x = 0.5;
 		question.y = -3.2;
 		question.width = 7;
-		question.height = 10.7;
+		// Tall enough for the question mark's dot below the baseline.
+		question.height = 16;
 		art.addChild(question);
 	}
 }

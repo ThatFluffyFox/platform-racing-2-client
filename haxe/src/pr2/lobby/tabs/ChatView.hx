@@ -97,7 +97,7 @@ private class InfoButton extends Sprite {
 		text.x = 2.1;
 		text.y = -0.2;
 		text.width = 6.1;
-		text.height = 10.65;
+		text.height = 16;
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0x000000);
 		text.text = "?";

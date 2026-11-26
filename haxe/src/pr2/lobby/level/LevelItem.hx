@@ -786,7 +786,7 @@ private class LevelItemIconButton extends NativeControl {
 			question.x = 0.5;
 			question.y = -3.2;
 			question.width = 7;
-			question.height = 10.7;
+			question.height = 16;
 			addChild(question);
 		}
 	}
