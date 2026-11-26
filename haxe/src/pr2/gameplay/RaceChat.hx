@@ -357,10 +357,19 @@ private class RaceChatView extends Sprite {
 		chatInput.width = INPUT_WIDTH;
 		chatInput.height = INPUT_HEIGHT;
 		chatInput.type = openfl.text.TextFieldType.INPUT;
-		chatInput.border = true;
+		// Flash "show border around text" gives the input a white background and
+		// a one-pixel hairline border. OpenFL's TextField border scales with the
+		// stage, so the hairline is drawn separately and never thickens.
+		chatInput.background = true;
+		chatInput.backgroundColor = 0xFFFFFF;
+		chatInput.border = false;
 		chatInput.maxChars = 100;
 		chatInput.scaleY = 0.999664306640625;
 		chatInput.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0x000000);
+		var inputOutline = new openfl.display.Shape();
+		inputOutline.name = "chatInputOutline";
+		inputOutline.graphics.lineStyle(0, 0x000000, 1, false, openfl.display.LineScaleMode.NONE);
+		inputOutline.graphics.drawRect(INPUT_X, INPUT_Y, INPUT_WIDTH, INPUT_HEIGHT * 0.999664306640625);
 
 		// Animate lists layers from top to bottom. Add them in reverse display-list
 		// order so the XFL's transcript/color-shadow layering remains exact.
@@ -369,6 +378,8 @@ private class RaceChatView extends Sprite {
 		addChild(blackLabel);
 		addChild(bg);
 		addChild(top);
+		// Last, so the authored XFL layer indices stay unchanged; nothing overlaps it.
+		addChild(inputOutline);
 	}
 
 	private static function makeOutput(name:String, x:Float, y:Float, width:Float, height:Float, color:Int):TextField {
@@ -380,7 +391,8 @@ private class RaceChatView extends Sprite {
 		field.height = height;
 		field.scaleY = 0.999664306640625;
 		field.multiline = true;
-		field.wordWrap = false;
+		// XFL lineType="multiline" wraps; long messages must not run off the box.
+		field.wordWrap = true;
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, color);
 		return field;
