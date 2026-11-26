@@ -101,6 +101,10 @@ class LevelItem extends Sprite {
 
 		art.titleBox.text = info.title;
 		art.authorBox.htmlText = "by " + htmlNameMaker.makeName(info.userName, info.userGroup);
+		// OpenFL scrolls a field to keep its end-of-text caret visible, so long
+		// titles and author names showed their end. Flash clips them on the right.
+		art.titleBox.setSelection(0, 0);
+		art.authorBox.setSelection(0, 0);
 		htmlNameMaker.listenForLink(art.authorBox);
 
 		setRatingBar(info.rating);

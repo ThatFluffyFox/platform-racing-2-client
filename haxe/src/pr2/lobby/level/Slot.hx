@@ -54,6 +54,8 @@ class Slot extends Sprite {
 		}
 		if (nameBox != null) {
 			nameBox.text = name;
+			// Keep long names clipped on the right like Flash, not scrolled to the end.
+			nameBox.setSelection(0, 0);
 		}
 		changeStatus("filled");
 		if (me == "me" && owner != null) {
