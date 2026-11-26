@@ -42,6 +42,14 @@ class CourseRosterController {
 			owner.localCharacter.setStats(init.speed, init.accel, init.jump);
 		}
 		owner.playerArray[init.tempId] = owner.localCharacter;
+		if (owner.drawingInfo != null) {
+			// Flash adds the local racer under the server's tempID; drop the slot
+			// the course showed before the server assigned it.
+			if (previousTempId != init.tempId) {
+				owner.drawingInfo.removePlayer(previousTempId);
+			}
+			owner.drawingInfo.addPlayer(Course.localDrawingName(), init.tempId);
+		}
 		registerLocalCommands(init.tempId);
 		owner.positionLocalAtStartCenter();
 		return owner.localCharacter;
@@ -144,6 +152,10 @@ class CourseRosterController {
 		}
 		var remote = new RemoteCharacter(init.tempId, dot, init.userName, Std.int(init.hatId), Std.int(init.headId), Std.int(init.bodyId),
 			Std.int(init.feetId), init.group, owner.commandHandler);
+		// Flash Game.createRemoteCharacter: drawingInfo.addPlayer(userName, tempId).
+		if (owner.drawingInfo != null) {
+			owner.drawingInfo.addPlayer(init.userName, init.tempId);
+		}
 		remote.bindMapRotation(function():Float return owner.localCharacter == null ? 0 : owner.localCharacter.controller.courseRotation);
 		remote.setHatsAllowed(owner.config.gameMode != Modes.roguelike);
 		remote.setColors(Std.int(init.hatColor), Std.int(init.hatColor2), Std.int(init.headColor), Std.int(init.headColor2),

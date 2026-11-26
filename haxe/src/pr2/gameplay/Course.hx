@@ -357,6 +357,11 @@ class Course extends Sprite {
 		addChild(miniMap);
 	}
 
+	/** The name Flash shows for the local racer (Main.loggedInAs). */
+	public static function localDrawingName():String {
+		return LobbySession.userName == "" ? "Guest" : LobbySession.userName;
+	}
+
 	private function rebuildMiniMap():Void {
 		var index = -1;
 		if (miniMap != null) {
@@ -472,7 +477,8 @@ class Course extends Sprite {
 		drawingInfo = new DrawingInfo(null, config.gameMode, Std.int(config.levelId), function():Int return framesPlaying);
 		drawingInfo.x = DRAWING_X;
 		drawingInfo.y = DRAWING_Y;
-		drawingInfo.addPlayer("You", 0);
+		// Flash Game.createLocalCharacter: addPlayer(Main.loggedInAs, tempId).
+		drawingInfo.addPlayer(localDrawingName(), player == null ? 0 : player.tempID);
 		drawingInfoFinished = false;
 		addChild(drawingInfo);
 	}
@@ -940,7 +946,7 @@ class Course extends Sprite {
 		if (!drawingInfoFinished) {
 			emitFinishDrawingReady();
 			if (drawingInfo != null) {
-				drawingInfo.finishDrawing(0);
+				drawingInfo.finishDrawing(player.tempID);
 			}
 			drawingInfoFinished = true;
 		}

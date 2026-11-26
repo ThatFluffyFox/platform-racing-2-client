@@ -124,6 +124,16 @@ class DrawingInfo extends Removable {
 		setDrawingVisible(tempID, true);
 	}
 
+	/** Clears a slot the local player held before the server assigned its tempID. */
+	public function removePlayer(tempID:Int):Void {
+		if (!validTempID(tempID)) {
+			return;
+		}
+		names[tempID] = null;
+		setName(tempID, "");
+		setDrawingVisible(tempID, false);
+	}
+
 	public function finishDrawing(tempID:Int):Void {
 		if (!validTempID(tempID)) {
 			return;
