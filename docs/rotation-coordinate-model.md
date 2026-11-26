@@ -12,7 +12,7 @@ character's raw `x` and `y` stable when gravity rotates.
   positive local Y direction.
 - **Effect-packet space** is the coordinate representation used by a particular
   Flash `add_effect` payload. Most projectiles send gravity-local coordinates;
-  mines use their own historical encoding.
+  mines send the canonical tile centre.
 - **Display space** is the observing client's unrotated character/effect plane.
   A sender-local projectile must be reprojected into this frame.
 
@@ -36,7 +36,7 @@ The wire layouts remain unchanged.
 |---|---|---|
 | Laser | Sender gravity frame | Included |
 | Ice Wave | Sender gravity frame | Included |
-| Mine | Mine-specific rotated map centre | Included |
+| Mine | Canonical tile centre | Included (Flash receivers ignore it) |
 | Hat | Sender gravity frame | Included |
 | Slash | Sender gravity frame | Not included |
 | Teleport | Sender gravity frame | Not included |

@@ -85,10 +85,13 @@ class CoordinateFrames {
 		return new DisplayPoint(converted.x, converted.y);
 	}
 
-	/** Mine packets uniquely encode a canonical tile centre with positive sender rotation. */
+	/**
+		Mine packets carry the canonical tile centre: Flash Mine.useItem sends
+		Data.rotatePoint(localCentre, rotation), and Flash's EffectBackground
+		hands that straight to MineAppear, ignoring the rotation field.
+	**/
 	public static function canonicalFromMinePacket(point:EffectPacketPoint, senderRotation:Int):CanonicalPoint {
-		var converted = RotationMath.rotatePoint(point.x, point.y, -senderRotation);
-		return new CanonicalPoint(converted.x, converted.y);
+		return new CanonicalPoint(point.x, point.y);
 	}
 
 	public static function displayFromCanonical(point:CanonicalPoint, receiverRotation:Int):DisplayPoint {

@@ -28,7 +28,8 @@ class RotationMathTest {
 			var sender = CoordinateFrames.gravityFromCanonical(canonical, senderRotation);
 			assertCoordinates(75, 165, CoordinateFrames.canonicalFromGravity(sender, senderRotation),
 				'$senderRotation-degree gravity frame round-trips through canonical space');
-			var encodedMine = RotationMath.rotatePoint(canonical.x, canonical.y, senderRotation);
+			// Flash sends the canonical centre for every sender rotation.
+			var encodedMine = CoordinateFrames.canonicalFromGravity(sender, senderRotation);
 			var decodedMine = CoordinateFrames.canonicalFromMinePacket(
 				new CoordinateFrames.EffectPacketPoint(encodedMine.x, encodedMine.y), senderRotation);
 			assertCoordinates(75, 165, decodedMine, '$senderRotation-degree mine packet restores its canonical tile centre');

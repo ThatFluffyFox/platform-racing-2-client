@@ -279,6 +279,10 @@ class Course extends Sprite {
 		buildDrawingInfo();
 		effectBackground = new EffectBackground(this, commandHandler);
 		levelRenderer.attachEffectLayer(effectBackground);
+		levelRenderer.effectCourseRotation = function():Int {
+			if (player != null) return player.controller.courseRotation;
+			return levelRenderer == null ? 0 : levelRenderer.courseRotationDegrees;
+		};
 		eggRound = new EggRound(commandHandler, collectEgg, effectBackground,
 			levelRenderer.cameraOffset, null, null, function(shooterId:Int):Void {
 				if (localCharacter != null && shooterId != localCharacter.tempID && !localCharacter.isFrozen()) {

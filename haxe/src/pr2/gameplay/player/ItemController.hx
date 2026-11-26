@@ -174,7 +174,9 @@ class ItemController {
 		if (owner.level.blockAt(tile.x, tile.y) != null) {
 			return;
 		}
-		var effectPos = LocalPlayerController.rotatePoint(tile.x * owner.level.tileSize + 15, tile.y * owner.level.tileSize + 15, owner.courseRotation);
+		// Flash Mine.useItem sends Data.rotatePoint(localCentre, rotation): the
+		// canonical (unrotated map) tile centre, which is what Flash receivers use.
+		var effectPos = new PixelPoint(tile.x * owner.level.tileSize + 15, tile.y * owner.level.tileSize + 15);
 		owner.lastItemEffect = "mine:" + effectPos.x + "," + effectPos.y + ":" + owner.courseRotation;
 		var display = RotationMath.rotatePoint(tile.x * owner.level.tileSize + 15, tile.y * owner.level.tileSize + 15, -owner.courseRotation);
 		owner.pendingMinePlacements.push({

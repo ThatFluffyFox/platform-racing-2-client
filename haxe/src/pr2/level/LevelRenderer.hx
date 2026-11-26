@@ -151,6 +151,8 @@ class LevelRenderer extends Sprite {
 	private var backCharacterLayer:Null<Sprite>;
 	private var frontCharacterLayer:Null<Sprite>;
 	private var effectLayer:Null<Sprite>;
+	/** The authoritative committed course rotation, for block pieces and explosions. */
+	public var effectCourseRotation:Null<Void->Int>;
 	private final artLayerContainers:Array<Sprite> = [];
 	private final blockPresentationMatrix:Matrix = new Matrix();
 	private final backCharacterPresentationMatrix:Matrix = new Matrix();
@@ -1030,7 +1032,11 @@ class LevelRenderer extends Sprite {
 		if (effectLayer == null) {
 			return new Point(worldX, worldY);
 		}
-		var rotated = BlockCollision.rotatedWorldBlockPos(Std.int(worldX), Std.int(worldY), courseRotation, TILE_SIZE);
+		// Flash commits a turn before the character moves, so a block broken on
+		// that frame already uses the new rotation. This renderer only receives
+		// the rotation after block visuals are spawned, so ask the gameplay side.
+		var rotation = effectCourseRotation != null ? effectCourseRotation() : courseRotation;
+		var rotated = BlockCollision.rotatedWorldBlockPos(Std.int(worldX), Std.int(worldY), rotation, TILE_SIZE);
 		return new Point(rotated.x, rotated.y);
 	}
 
