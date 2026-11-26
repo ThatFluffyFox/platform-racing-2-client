@@ -32,8 +32,11 @@ class MineAppearTest {
 		assertNear(-14.55, effect.animation.bitmap.x, "final frame keeps authored mine registration");
 		assertNear(1, effect.animation.bitmap.transform.colorTransform.redMultiplier, "final frame removes white transition tint");
 
+		advance(effect, 5);
+		assertEquals(0, completions, "final frame holds until Flash's 38-frame removal");
+		assertNear(1, effect.animation.bitmap.scaleX, "held final frame keeps authored mine scale");
 		advance(effect, 1);
-		assertEquals(1, completions, "completion fires once after exactly 33 frames");
+		assertEquals(1, completions, "completion fires once after exactly 38 frames");
 		assertEquals(null, effect.animation, "completion tears down the native animation");
 		effect.remove(true);
 		assertEquals(1, completions, "explicit removal cannot replay completion");
@@ -46,9 +49,9 @@ class MineAppearTest {
 	private static function testEffectLifetimeMatchesAtBothPresentationRates():Void {
 		var baseline = runEffectCadence(false);
 		var smooth = runEffectCadence(true);
-		assertEquals("33:33:1:true", baseline, "30 FPS mine effect completes after 33 authoritative frames");
-		assertEquals("33:65:1:true", smooth,
-			"60 FPS mine effect keeps its 33-frame lifetime and ignores presentation-only frames");
+		assertEquals("38:38:1:true", baseline, "30 FPS mine effect completes after 38 authoritative frames");
+		assertEquals("38:75:1:true", smooth,
+			"60 FPS mine effect keeps its 38-frame lifetime and ignores presentation-only frames");
 	}
 
 	private static function runEffectCadence(smooth:Bool):String {

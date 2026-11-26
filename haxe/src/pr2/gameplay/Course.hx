@@ -654,6 +654,13 @@ class Course extends Sprite {
 		));
 	}
 
+	public function placeRuntimeMineAtDisplay(displayX:Float, displayY:Float):Bool {
+		var rotation = localCharacter != null ? localCharacter.controller.courseRotation
+			: (levelRenderer == null ? 0 : levelRenderer.courseRotationDegrees);
+		var target = RotationMath.rotatePoint(displayX, displayY, rotation);
+		return placeRuntimeMine(target.x, target.y);
+	}
+
 	public function setLife(lives:Int):Void {
 		if (config.gameMode != "deathmatch" && config.gameMode != Modes.roguelike) {
 			return;
@@ -1424,7 +1431,7 @@ class Course extends Sprite {
 				var receiverRotation = levelRenderer.courseRotationDegrees;
 				var displayCenter = CoordinateFrames.displayFromCanonical(canonicalCenter, receiverRotation);
 				levelRenderer.showMineAppear(displayCenter.x, displayCenter.y, tileWorldX, tileWorldY, receiverRotation, true,
-					function():Void placeRuntimeMine(tileWorldX, tileWorldY));
+					function():Void placeRuntimeMineAtDisplay(displayCenter.x, displayCenter.y));
 				LobbySocket.write('add_effect`Mine`$effectX`$effectY`$rotation');
 			case "teleport":
 				if (parts.length < 3) {

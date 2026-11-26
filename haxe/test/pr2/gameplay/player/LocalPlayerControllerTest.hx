@@ -1533,8 +1533,8 @@ class LocalPlayerControllerTest {
 		assertEquals(null, state.itemId, "mine item consumes after placing mine");
 		assertEquals(0, Lambda.count(level.blocks, function(block) return block.type == BlockType.Mine), "mine item waits for appear animation");
 		assertEquals("mine:75,165:0", state.lastItemEffect, "mine item uses Flash's held-weapon probe instead of forcing the next tile");
-		stepFrames(player, 32);
-		assertEquals(0, Lambda.count(level.blocks, function(block) return block.type == BlockType.Mine), "mine does not place before frame 33");
+		stepFrames(player, 37);
+		assertEquals(0, Lambda.count(level.blocks, function(block) return block.type == BlockType.Mine), "mine does not place before frame 38");
 		player.step(new LocalPlayerInput());
 		var mine = Lambda.find(level.blocks, function(block) return block.type == BlockType.Mine);
 		assertEquals(true, mine != null, "mine item places a mine block after appear animation");
@@ -1576,7 +1576,7 @@ class LocalPlayerControllerTest {
 		makeItemAvailable(player);
 		player.step(new LocalPlayerInput(false, false, false, false, true));
 		level.blocks.push(new LevelBlock(3, 5, BlockType.Solid));
-		stepFrames(player, 33);
+		stepFrames(player, 38);
 
 		var mineCount = Lambda.count(level.blocks, function(block) return block.type == BlockType.Mine);
 		assertEquals(0, mineCount, "mine appear skips placement if target tile becomes occupied");
@@ -1592,7 +1592,7 @@ class LocalPlayerControllerTest {
 
 		makeItemAvailable(player);
 		player.step(new LocalPlayerInput(false, false, false, false, true));
-		stepFrames(player, 33);
+		stepFrames(player, 38);
 
 		var replacement = level.blockAt(3, 5);
 		assertEquals(BlockType.Mine, replacement == null ? null : replacement.type, "mine can be placed in the vacated tile");

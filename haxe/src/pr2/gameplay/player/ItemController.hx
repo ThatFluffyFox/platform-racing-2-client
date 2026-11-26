@@ -176,7 +176,14 @@ class ItemController {
 		}
 		var effectPos = LocalPlayerController.rotatePoint(tile.x * owner.level.tileSize + 15, tile.y * owner.level.tileSize + 15, owner.courseRotation);
 		owner.lastItemEffect = "mine:" + effectPos.x + "," + effectPos.y + ":" + owner.courseRotation;
-		owner.pendingMinePlacements.push({tileX: tile.x, tileY: tile.y, framesRemaining: LocalPlayerController.MINE_APPEAR_FRAMES});
+		var display = RotationMath.rotatePoint(tile.x * owner.level.tileSize + 15, tile.y * owner.level.tileSize + 15, -owner.courseRotation);
+		owner.pendingMinePlacements.push({
+			tileX: tile.x,
+			tileY: tile.y,
+			framesRemaining: LocalPlayerController.MINE_APPEAR_FRAMES,
+			displayX: display.x,
+			displayY: display.y
+		});
 		consumeHeldItemUse();
 	}
 
@@ -200,7 +207,10 @@ class ItemController {
 
 	public function placePendingMinePlacements(ready:Array<PendingMinePlacement>):Void {
 		for (placement in ready) {
-			owner.blockController.addBlock(new LevelBlock(placement.tileX, placement.tileY, BlockType.Mine));
+			var target = RotationMath.rotatePoint(placement.displayX, placement.displayY, owner.courseRotation);
+			var tileX = Std.int(Math.floor(target.x / owner.level.tileSize));
+			var tileY = Std.int(Math.floor(target.y / owner.level.tileSize));
+			owner.blockController.addBlock(new LevelBlock(tileX, tileY, BlockType.Mine));
 		}
 	}
 

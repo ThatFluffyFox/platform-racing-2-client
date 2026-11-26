@@ -58,6 +58,8 @@ typedef PendingMinePlacement = {
 	var tileX:Int;
 	var tileY:Int;
 	var framesRemaining:Int;
+	var displayX:Int;
+	var displayY:Int;
 }
 
 typedef PendingProjectileDamage = {

@@ -61,7 +61,7 @@ class EffectBackground extends Sprite {
 					var receiverRotation = course.levelRenderer.courseRotationDegrees;
 					var displayCenter = CoordinateFrames.displayFromCanonical(canonicalCenter, receiverRotation);
 					course.levelRenderer.showMineAppear(displayCenter.x, displayCenter.y, tileWorldX, tileWorldY, receiverRotation, true,
-						function():Void course.placeRuntimeMine(tileWorldX, tileWorldY));
+						function():Void course.placeRuntimeMineAtDisplay(displayCenter.x, displayCenter.y));
 				}
 			case "Hat":
 				course.addLooseHat(originX, originY, parseIntArg(args, 3), parseIntArg(args, 4), parseIntArg(args, 5), parseIntArg(args, 6),

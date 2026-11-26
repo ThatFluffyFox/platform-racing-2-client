@@ -11,12 +11,15 @@ import pr2.audio.SoundEffects;
 **/
 class MineAppear extends Sprite {
 	public static inline var LIFETIME_FRAMES:Int = 33;
+	public static inline var PLACE_FRAMES:Int = 38;
 	public static inline var SOUND_PATH:String = "assets/audio/sfx/mine_appear.mp3";
 
 	public var animation(default, null):Null<MineAppearAnimation>;
 	private final clock:AnimationClock;
 	private var onComplete:Null<Void->Void>;
 	private var completed:Bool = false;
+	private var framesElapsed:Int = 0;
+	private final createdOnSimulationFrame:Int;
 
 	public function new(worldX:Float, worldY:Float, rotationDegrees:Float, cameraX:Float = 0, cameraY:Float = 0, ?onComplete:Void->Void,
 			playSound:Bool = true) {
@@ -25,8 +28,9 @@ class MineAppear extends Sprite {
 		y = worldY;
 		rotation = rotationDegrees;
 		this.onComplete = onComplete;
+		createdOnSimulationFrame = pr2.runtime.FrameClock.current == null ? -1 : pr2.runtime.FrameClock.current.simulationFrameNumber;
 		clock = new AnimationClock();
-		animation = new MineAppearAnimation(function():Void remove(true));
+		animation = new MineAppearAnimation();
 		clock.add(animation.playback);
 		addChild(animation);
 		addEventListener(Event.ENTER_FRAME, tick);
@@ -38,7 +42,13 @@ class MineAppear extends Sprite {
 
 	private function tick(event:Event):Void {
 		if (!pr2.runtime.FrameClock.shouldRunSimulationFrame()) return;
+		var frameClock = pr2.runtime.FrameClock.current;
+		if (frameClock != null && frameClock.simulationFrameNumber == createdOnSimulationFrame) return;
 		clock.advance();
+		framesElapsed++;
+		if (framesElapsed >= PLACE_FRAMES) {
+			remove(true);
+		}
 	}
 
 	public function remove(runComplete:Bool = false):Void {

@@ -60,7 +60,7 @@ class LocalPlayerController implements ItemRuntimeOwner {
 	private static inline var JET_PACK_TOTAL_FUEL:Int = 200;
 	private static inline var FAST_ITEM_RELOAD_FRAMES:Int = 22;
 	private static inline var ICE_WAVE_RELOAD_FRAMES:Int = 27;
-	private static inline var MINE_APPEAR_FRAMES:Int = 33;
+	private static inline var MINE_APPEAR_FRAMES:Int = 38;
 	private static inline var SHOT_EFFECT_DEFAULT_SPEED:Float = 5;
 	private static inline var LASER_SHOT_SPEED:Float = 29;
 	public static inline var ROGUELIKE_MAX_LIVES:Int = 10;
