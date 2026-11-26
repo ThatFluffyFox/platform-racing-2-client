@@ -1,11 +1,16 @@
 package pr2.character;
 
+import openfl.display.Sprite;
 import openfl.events.Event;
+import openfl.text.TextField;
+import openfl.text.TextFormat;
+import openfl.text.TextFormatAlign;
 import pr2.gameplay.MiniMapDot;
 import pr2.gameplay.RotationMath;
 import pr2.gameplay.presentation.CharacterPresentationLayer;
 import pr2.gameplay.presentation.PresentationPose;
 import pr2.net.CommandHandler;
+import pr2.runtime.FontResolver;
 import pr2.runtime.FrameClock;
 
 typedef RemoteCharacterPoint = {
@@ -49,6 +54,8 @@ class RemoteCharacter extends Character {
 	private var presentationDiscontinuityPending:Bool = true;
 	private var externalPresentationSnapPending:Bool = false;
 	private var mapRotationSource:Null<Void->Float> = null;
+	/** Flash CharacterGraphic.nameHolder (Symbol 893): the name above the head. */
+	private var nameHolder:Null<Sprite>;
 
 	public function new(tempId:Int, ?dot:MiniMapDot, userName:String = "", hatId:Int = 1, headId:Int = 1, bodyId:Int = 1, feetId:Int = 1,
 			groupStr:String = "0", ?handler:CommandHandler) {
@@ -60,6 +67,7 @@ class RemoteCharacter extends Character {
 		}
 		this.groupStr = groupStr;
 		this.userName = userName;
+		buildNameHolder(userName);
 		this.catchupRate = updateInterval + 1;
 		commandHandler = handler != null ? handler : CommandHandler.commandHandler;
 		registerCommands();
@@ -128,7 +136,45 @@ class RemoteCharacter extends Character {
 	}
 
 	public function setScaleX(value:Float):Void {
+		// Flash flips nameHolder with the character so the name stays readable.
 		scaleX = value;
+		if (nameHolder != null) {
+			nameHolder.scaleX = value;
+		}
+	}
+
+	/**
+		Flash RemoteCharacter sets nameHolder.nameBox and nameBox2 to the user
+		name and colours nameBox like the player's minimap dot. Symbol 893 puts
+		the coloured nameBox one pixel up-right of a black nameBox2 shadow; the
+		holder sits 84.25 px above the character at 25% alpha.
+	**/
+	private function buildNameHolder(name:String):Void {
+		nameHolder = new Sprite();
+		nameHolder.name = "nameHolder";
+		nameHolder.y = -84.25;
+		nameHolder.alpha = 0.25;
+		nameHolder.mouseEnabled = false;
+		nameHolder.mouseChildren = false;
+		nameHolder.addChild(nameField("nameBox2", name, -50, 3, 0x000000));
+		nameHolder.addChild(nameField("nameBox", name, -49, 2, MiniMapDot.colorForTempId(tempID)));
+		display.addChild(nameHolder);
+	}
+
+	private static function nameField(fieldName:String, text:String, x:Float, y:Float, color:Int):TextField {
+		var field = new TextField();
+		field.name = fieldName;
+		field.x = x;
+		field.y = y;
+		field.width = 100;
+		field.height = 14.55;
+		field.selectable = false;
+		field.mouseEnabled = false;
+		var format = new TextFormat(FontResolver.resolve("Verdana"), 12, color);
+		format.align = TextFormatAlign.CENTER;
+		field.defaultTextFormat = format;
+		field.text = text;
+		return field;
 	}
 
 	public function setScaleY(_:Float):Void {}
