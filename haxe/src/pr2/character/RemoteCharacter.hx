@@ -170,11 +170,27 @@ class RemoteCharacter extends Character {
 		field.height = 14.55;
 		field.selectable = false;
 		field.mouseEnabled = false;
-		var format = new TextFormat(FontResolver.resolve("Verdana"), 12, color);
+		var format = new TextFormat(nameFont(), 12, color);
 		format.align = TextFormatAlign.CENTER;
 		field.defaultTextFormat = format;
 		field.text = text;
 		return field;
+	}
+
+	/**
+		Flash draws names in Verdana. Verdana can't be shipped, but almost every
+		Windows and Mac browser has it installed, so the names ask for it first
+		and fall back to the bundled DejaVu Sans. OpenFL's HTML5 text engine
+		wraps the face in single quotes, which turns this into the CSS font list
+		'Verdana', 'DejaVu Sans'. Native targets look faces up by exact name, so
+		they keep DejaVu Sans.
+	**/
+	private static function nameFont():String {
+		#if html5
+		return "Verdana', '" + FontResolver.resolve("Verdana");
+		#else
+		return FontResolver.resolve("Verdana");
+		#end
 	}
 
 	public function setScaleY(_:Float):Void {}
