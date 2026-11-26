@@ -105,6 +105,9 @@ private class ExpGainView extends Sprite {
 		textBox.selectable = false;
 		textBox.defaultTextFormat = new TextFormat("Verdana", 10, 0x666666, false, null, null, null, null,
 			TextFormatAlign.CENTER);
+		// ExpGainGraphic's authored text: shown until the bar starts counting,
+		// and kept when the server sends no experience for this race.
+		textBox.text = "/";
 		addChild(textBox);
 	}
 
