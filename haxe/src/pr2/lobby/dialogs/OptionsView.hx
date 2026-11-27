@@ -43,16 +43,16 @@ class OptionsView extends NativeView {
 		panel.width += 70;
 		addChild(panel);
 		highlight("artHighlight", -93.05, -71.5);
-		highlight("cacheHighlight", -167, -15.55);
+		highlight("cacheHighlight", -158.5, -15.55);
 		highlight("filterHighlight", -28.15, -71.5);
 		// Close and the title stay centred on the widened panel (35px left of the authored centre).
 		componentButton("close_bt", "Close", -85, 106.5, 100);
-		var cacheLabel = label("cached\nsprites", "cacheLabel", -202, -119, 70, 30, 12, false, TextFormatAlign.CENTER);
+		var cacheLabel = label("cached\nsprites", "cacheLabel", -193.5, -119, 70, 30, 12, false, TextFormatAlign.CENTER);
 		cacheLabel.multiline = true;
 		cacheLabel.text = "cached\nsprites";
-		componentButton("cacheOff_bt", "Off", -192, -82.45, 50);
-		componentButton("cache1x_bt", "1x", -192, -54.5, 50);
-		componentButton("cache2x_bt", "2x", -192, -26.55, 50);
+		componentButton("cacheOff_bt", "Off", -183.5, -82.45, 50);
+		componentButton("cache1x_bt", "1x", -183.5, -54.5, 50);
+		componentButton("cache2x_bt", "2x", -183.5, -26.55, 50);
 		label("↑", null, -68.75, -2.8, 16, 14.6, 12, false, TextFormatAlign.CENTER);
 		input("wasdUp", -68.75, 14.5);
 		label("↓", null, -68.75, 51.95, 16, 14.6, 12, false, TextFormatAlign.CENTER);
