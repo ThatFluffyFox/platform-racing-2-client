@@ -32,14 +32,21 @@ class CursorEyedropper extends CustomCursor {
 	public function new(?sampleSource:DisplayObject) {
 		super();
 		visible = false;
-		applyCursorGraphic(makeCursorGraphic());
+		// Flash adds CursorEyedropperGraphic with addChild, not applyCursorGraphic,
+		// so it is not centred: Symbol 1304's registration puts the dropper's tip
+		// on the pointer, where the colour is read. Centring it drew the tip up and
+		// to the left of the sampled point.
+		var graphic = makeCursorGraphic();
+		var interactive = Std.downcast(graphic, openfl.display.InteractiveObject);
+		if (interactive != null) interactive.mouseEnabled = false;
+		addChild(graphic);
 		this.sampleSource = sampleSource;
 		ensureBitmap();
 	}
 
 	private function makeCursorGraphic():DisplayObject {
-		// Keep the linkage root separate from Symbol 1303. CustomCursor centers the
-		// root, while the authored child retains this registration transform.
+		// CursorEyedropperGraphic (Symbol 1304) holds Symbol 1303 under this
+		// registration transform.
 		var root = new Sprite();
 		root.name = "eyedropperRoot";
 		var art = new Sprite();
