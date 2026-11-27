@@ -30,9 +30,12 @@ import pr2.runtime.FontResolver;
 **/
 @:access(openfl.display.Stage)
 class LoginTitle extends Sprite {
-	private static inline var TEXT_X:Float = 81.4;
+	// The authored field is 386.8 wide at x 81.4. The text is centred, so it is
+	// widened by 20 on each side (same centre): Gwibble's "G" in "Racing" ran
+	// past the authored right edge here and was clipped.
+	private static inline var TEXT_X:Float = 81.4 - 20;
 	private static inline var TEXT_Y:Float = 92.4;
-	private static inline var TEXT_WIDTH:Float = 386.8;
+	private static inline var TEXT_WIDTH:Float = 386.8 + 40;
 	private static inline var TEXT_HEIGHT:Float = 120;
 	private static inline var GLOW_BLUR:Float = 6;
 	// Room for the glow around the text box, in stage pixels.
