@@ -148,8 +148,10 @@ class EditorHatsSettingsPopup extends Sprite {
 		if (y + popupHeight > 400) {
 			y = 400 - popupHeight;
 		}
-		x = Math.round(x);
-		y = Math.round(y);
+		// Flash InfoPopup: the art is authored around its origin, so subtract the
+		// popup's own bounds origin to put its visible edge beside the button.
+		x = Math.round(x - popupBounds.left);
+		y = Math.round(y - popupBounds.top);
 	}
 
 }

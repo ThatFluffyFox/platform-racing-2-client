@@ -50,12 +50,15 @@ class LevelInfoView extends NativeView {
 
 		makeRating(levelInfo, -33.5, 27.7);
 		makeMode(levelInfo, -142.95, 73.55);
-		sourceTile(levelInfo, "song", StaticSvg.LevelInfoMusic, -88.5, 71.7, 28, 27);
-		sourceTile(levelInfo, "cowboyChance", StaticSvg.LevelInfoCowboy, -38.55, 71.7, 28, 27);
-		sourceTile(levelInfo, "maxTime", StaticSvg.LevelInfoClock, 9.5, 72, 28, 27);
+		// These are Flash buttons centred on their placement: the hover area is each
+		// button's HIT-state rectangle and the OVER state greys the icon (music,
+		// clock) or lays a 20% white highlight over it (cowboy, items, hats).
+		sourceTile(levelInfo, "song", StaticSvg.LevelInfoMusic, -88.5, 71.7, -11.25, -11.4, 23.5, 24, false);
+		sourceTile(levelInfo, "cowboyChance", StaticSvg.LevelInfoCowboy, -38.55, 71.7, -13, -10.35, 26, 20.75, true);
+		sourceTile(levelInfo, "maxTime", StaticSvg.LevelInfoClock, 9.5, 72, -12.5, -12.5, 25, 25, false);
 		gravityButton(levelInfo, 54.8, 74.6);
-		sourceTile(levelInfo, "items", StaticSvg.LevelInfoItems, 88.6, 61.9, 25, 26);
-		sourceTile(levelInfo, "hatsAllowed", StaticSvg.LevelInfoHats, 149.25, 73.9, 28, 27);
+		sourceTile(levelInfo, "items", StaticSvg.LevelInfoItems, 88.6, 61.9, -0.25, -1.43, 25, 25.76, true);
+		sourceTile(levelInfo, "hatsAllowed", StaticSvg.LevelInfoHats, 149.25, 73.9, -13, -13, 26, 26, true);
 
 		actionButton(levelInfo, "share_bt", LevelInfoActionKind.Share, -149.05, 112.8);
 		actionButton(levelInfo, "report_bt", LevelInfoActionKind.Report, 150.8, 112.8);
@@ -108,14 +111,46 @@ class LevelInfoView extends NativeView {
 		parent.addChild(tile);
 	}
 
-	private function sourceTile(parent:Sprite, name:String, asset:StaticSvg, x:Float, y:Float, width:Float, height:Float):Void {
+	private function sourceTile(parent:Sprite, name:String, asset:StaticSvg, x:Float, y:Float, hitX:Float, hitY:Float, hitWidth:Float,
+			hitHeight:Float, highlight:Bool):Void {
 		var tile = new Sprite();
 		tile.name = name;
 		tile.x = x;
 		tile.y = y;
-		tile.addChild(NativeAssets.svg(asset));
-		tile.addChild(hoverCover(width, height));
+		var icon = NativeAssets.svg(asset);
+		tile.addChild(icon);
+		var over = new openfl.display.Shape();
+		over.name = "over";
+		if (highlight) {
+			over.graphics.beginFill(0xFFFFFF, 0.2);
+			over.graphics.drawRect(hitX, hitY, hitWidth, hitHeight);
+			over.graphics.endFill();
+		}
+		over.visible = false;
+		tile.addChild(over);
+		tile.addChild(hitRect(hitX, hitY, hitWidth, hitHeight));
+		listen(tile, openfl.events.MouseEvent.MOUSE_OVER, function(_:openfl.events.MouseEvent):Void {
+			if (highlight) over.visible = true;
+			else icon.transform.colorTransform = OVER_GREY;
+		});
+		listen(tile, openfl.events.MouseEvent.MOUSE_OUT, function(_:openfl.events.MouseEvent):Void {
+			over.visible = false;
+			icon.transform.colorTransform = new openfl.geom.ColorTransform();
+		});
 		parent.addChild(tile);
+	}
+
+	/** Black art drawn as #666666 (white stays white), like the grey OVER-state shapes. */
+	private static final OVER_GREY = new openfl.geom.ColorTransform(0.6, 0.6, 0.6, 1, 102, 102, 102);
+
+	/** An invisible Flash button HIT-state rectangle. */
+	private static function hitRect(x:Float, y:Float, width:Float, height:Float):openfl.display.Shape {
+		var hit = new openfl.display.Shape();
+		hit.name = "hitArea";
+		hit.graphics.beginFill(0x000000, 0);
+		hit.graphics.drawRect(x, y, width, height);
+		hit.graphics.endFill();
+		return hit;
 	}
 
 	private function gravityButton(parent:Sprite, x:Float, y:Float):Void {
@@ -127,6 +162,8 @@ class LevelInfoView extends NativeView {
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Display), 20, 0x000000, false, null, null, null, null,
 			TextFormatAlign.CENTER);
 		text.text = "G";
+		// HIT state: shape 1248 scaled to (-10.23, -11.58) .. (10.63, 8.72).
+		tile.addChild(hitRect(-10.23, -11.58, 20.86, 20.3));
 		listen(tile, openfl.events.MouseEvent.MOUSE_OVER, function(_:openfl.events.MouseEvent):Void text.textColor = 0x666666);
 		listen(tile, openfl.events.MouseEvent.MOUSE_OUT, function(_:openfl.events.MouseEvent):Void text.textColor = 0x000000);
 		parent.addChild(tile);

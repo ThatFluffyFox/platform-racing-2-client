@@ -22,7 +22,7 @@ import pr2.runtime.SvgAsset;
 **/
 class RatingSelect extends Sprite {
 	private var meter:Null<RatingStarMeter>;
-	private var star:Null<Shape>;
+	private var star:Null<Sprite>;
 	private var rating:Float = 3;
 	private var starWidth:Float;
 	private var submission:pr2.gameplay.LevelRating;
@@ -32,7 +32,12 @@ class RatingSelect extends Sprite {
 		submission = new pr2.gameplay.LevelRating(id);
 		meter = new RatingStarMeter();
 		starWidth = RatingStarMeter.WIDTH / 5;
-		star = NativeAssets.svg(StaticSvg.RatingStarHighlight);
+		// Flash sets the HighlightStar's mouseEnabled/mouseChildren to false, so its
+		// glow never widens the control's hover/click area.
+		star = new Sprite();
+		star.mouseEnabled = false;
+		star.mouseChildren = false;
+		star.addChild(NativeAssets.svg(StaticSvg.RatingStarHighlight));
 		scaleX = scaleY = 1.5;
 		star.visible = false;
 		addChild(meter);
@@ -156,6 +161,15 @@ class RatingStarMeter extends Sprite {
 		addChild(content);
 		starMask = SvgAsset.create("assets/svg/ui/rating_stars_mask.svg");
 		starMask.name = "starMask";
+		// RatingSelectGraphic also holds an unmasked, fully transparent copy of the
+		// bar (depth 24): the hover/click area is the whole 55.2 x 11 meter, not
+		// just the star outlines or the rating-scaled fill.
+		var hitArea = new Shape();
+		hitArea.name = "hitArea";
+		hitArea.graphics.beginFill(0x000000, 0);
+		hitArea.graphics.drawRect(0, 0, WIDTH, HEIGHT);
+		hitArea.graphics.endFill();
+		addChild(hitArea);
 		displayRating(3);
 	}
 

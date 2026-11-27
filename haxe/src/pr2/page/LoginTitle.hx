@@ -119,11 +119,7 @@ class LoginTitle extends Sprite {
 		var count = width * height;
 		var alpha = new haxe.ds.Vector<Float>(count);
 		for (index in 0...count) alpha[index] = ((pixels[index] >>> 24) & 0xFF) / 255;
-		var scratch = new haxe.ds.Vector<Float>(count);
-		for (_ in 0...quality) {
-			boxBlur(alpha, scratch, width, height, blur, true);
-			boxBlur(scratch, alpha, width, height, blur, false);
-		}
+		pr2.runtime.AlphaBlur.blurAlpha(alpha, width, height, blur, quality);
 		var glowRed = (color >> 16) & 0xFF;
 		var glowGreen = (color >> 8) & 0xFF;
 		var glowBlue = color & 0xFF;
@@ -144,46 +140,6 @@ class LoginTitle extends Sprite {
 			pixels[index] = (Math.round(outAlpha * 255) << 24) | (Math.round(red) << 16) | (Math.round(green) << 8) | Math.round(blue);
 		}
 		data.setVector(data.rect, pixels);
-	}
-
-	/**
-		One box-blur pass `size` pixels wide along a row (or column), with pixels
-		outside the bitmap treated as transparent. A fractional size blends the
-		neighbouring odd widths so the blur grows smoothly with the display scale.
-	**/
-	private static function boxBlur(source:haxe.ds.Vector<Float>, target:haxe.ds.Vector<Float>, width:Int, height:Int, size:Float,
-			horizontal:Bool):Void {
-		var lower = Math.floor(size);
-		if (lower % 2 == 0) lower--;
-		if (lower < 1) lower = 1;
-		var mix = (size - lower) / 2;
-		if (mix < 0) mix = 0;
-		var lines = horizontal ? height : width;
-		var length = horizontal ? width : height;
-		var stride = horizontal ? 1 : width;
-		var lowerRadius = Std.int((lower - 1) / 2);
-		var upperRadius = lowerRadius + 1;
-		var prefix = new haxe.ds.Vector<Float>(length + 1);
-		for (line in 0...lines) {
-			var start = horizontal ? line * width : line;
-			prefix[0] = 0;
-			for (position in 0...length) prefix[position + 1] = prefix[position] + source[start + position * stride];
-			for (position in 0...length) {
-				var value = windowSum(prefix, length, position - lowerRadius, position + lowerRadius) / lower;
-				if (mix > 0) {
-					var wider = windowSum(prefix, length, position - upperRadius, position + upperRadius) / (lower + 2);
-					value = value * (1 - mix) + wider * mix;
-				}
-				target[start + position * stride] = value;
-			}
-		}
-	}
-
-	/** Sum of positions first..last (inclusive), clipped to the line. **/
-	private static inline function windowSum(prefix:haxe.ds.Vector<Float>, length:Int, first:Int, last:Int):Float {
-		if (first < 0) first = 0;
-		if (last > length - 1) last = length - 1;
-		return last < first ? 0 : prefix[last + 1] - prefix[first];
 	}
 
 	/** Device pixels per stage pixel. **/

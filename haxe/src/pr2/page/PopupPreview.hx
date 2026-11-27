@@ -64,6 +64,7 @@ class PopupPreview extends Sprite {
 			#end
 			case "level-items": showLevelItems();
 			case "level-info": pr2.app.ScreenFactory.levelInfo(6497936);
+			case "level-info-data": showLevelInfoData();
 			#if !pr2_mobile_ui
 			case "player-info": showPlayerInfo();
 			#end
@@ -105,6 +106,18 @@ class PopupPreview extends Sprite {
 	private function setDirectText(parent:openfl.display.DisplayObjectContainer, name:String, value:String):Void {
 		var field = Std.downcast(parent.getChildByName(name), TextField);
 		if (field != null) field.text = value;
+	}
+
+	/** Level info populated offline with sample data, for hover/hit-area checks. */
+	private function showLevelInfoData():Void {
+		pr2.lobby.dialogs.LevelInfoPopup.autoLoadOnCreate = false;
+		var popup = new pr2.lobby.dialogs.LevelInfoPopup(6497936);
+		popup.applyReturnData({
+			live: true, has_pass: false, user_id: 456, title: "Mf's, Fantasy Race", note: "Racing on floating islands? Sounds fun, but don't fall.",
+			version: 5, play_count: 1642759, min_rank: 4, user_name: "Mfs finest", user_group: "1", rating: 4.52, time: 1397779200,
+			gravity: 1, max_time: 120, items: "Laser Gun`Mine`Lightning", song: "2", gameMode: "race", cowboyChance: 5, badHats: ""
+		});
+		pr2.lobby.dialogs.LevelInfoPopup.autoLoadOnCreate = true;
 	}
 
 	private function showLevelItems():Void {
