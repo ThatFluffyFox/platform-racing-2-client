@@ -37,10 +37,13 @@ class ItemDisplay extends Removable {
 		art = new ItemDisplayView();
 		addChild(art);
 		addEventListener(Event.ENTER_FRAME, advanceItemArt);
-		darkLabel = createLabel(2, 55, 0x000000);
-		lightLabel = createLabel(3, 56, 0xFFFFFF);
-		addChild(darkLabel);
+		// holder1 (dark) at (0, 53) and holder2 (white) at (1, 54) each hold the
+		// textBox at (2, 2), whose SWF bounds start at (-2, -2): Flash's gutter.
+		// The dark label is the higher layer, over its white offset copy.
+		darkLabel = createLabel(0, 53, 0x000000);
+		lightLabel = createLabel(1, 54, 0xFFFFFF);
 		addChild(lightLabel);
+		addChild(darkLabel);
 		snakeIcon = createSnakeIcon();
 		addChild(snakeIcon);
 		setItemCode(0);
@@ -89,8 +92,8 @@ class ItemDisplay extends Removable {
 		field.defaultTextFormat = new TextFormat(FontResolver.resolve("Verdana"), 12, color);
 		field.x = x;
 		field.y = y;
-		field.width = 100;
-		field.height = 14.5;
+		field.width = 104;
+		field.height = 18.5;
 		field.alpha = 0.5;
 		field.selectable = false;
 		field.mouseEnabled = false;

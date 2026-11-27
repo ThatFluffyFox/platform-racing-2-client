@@ -8,6 +8,7 @@ import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
 import pr2.display.Removable;
 import pr2.lobby.dialogs.HoverPopup;
+import pr2.runtime.FontResolver;
 import pr2.runtime.SvgAsset;
 import pr2.ui.AuthoredScale9;
 
@@ -41,9 +42,10 @@ class StatsDisplay extends Removable {
 		exactBackground = SvgAsset.createWithoutSymbol(BACKGROUND_ASSET, AuthoredScale9.SQUARE_SYMBOL);
 		exactBackground.name = "exactBackground";
 		art.addChild(exactBackground);
-		speedBox = createStatBox("speedBox", 2.4, 15.5);
-		accelBox = createStatBox("accelBox", 20.25, 15.7);
-		jumpBox = createStatBox("jumpBox", 38.35, 15.3);
+		// Placement x plus the SWF field bounds, which include Flash's 2px gutter.
+		speedBox = createStatBox("speedBox", 2.4 - 2.9, 19.5);
+		accelBox = createStatBox("accelBox", 20.25 - 1.2, 19.7);
+		jumpBox = createStatBox("jumpBox", 38.35 - 0.65, 19.3);
 		art.addChild(speedBox);
 		art.addChild(accelBox);
 		art.addChild(jumpBox);
@@ -58,11 +60,13 @@ class StatsDisplay extends Removable {
 		var field = new TextField();
 		field.name = name;
 		field.x = x;
-		field.y = 3.75;
+		field.y = 3.75 - 2;
 		field.width = width;
-		field.height = 9.75;
+		field.height = 13.75;
 		field.selectable = false;
-		field.defaultTextFormat = new TextFormat("Verdana", 8, 0, false, null, null, null, null,
+		// The SWF embeds Verdana 8; a bare "Verdana" fell back to the browser's
+		// default serif. Route it to the bundled Verdana substitute like other text.
+		field.defaultTextFormat = new TextFormat(FontResolver.resolve("Verdana"), 8, 0, false, null, null, null, null,
 			TextFormatAlign.CENTER);
 		return field;
 	}

@@ -17,10 +17,11 @@ class StatsDisplayTest {
 			"authored stats display art renders");
 		assertEquals(true, display.backgroundPanel.scale9Grid != null,
 			"stats background preserves the SquareBG scale grid");
-		assertNear(2.4, field(display, "speedBox").x, 0.001, "speed field preserves authored x");
-		assertNear(15.5, field(display, "speedBox").width, 0.001, "speed field preserves authored width");
-		assertNear(15.7, field(display, "accelBox").width, 0.001, "acceleration field preserves authored width");
-		assertNear(15.3, field(display, "jumpBox").width, 0.001, "jump field preserves authored width");
+		assertNear(-0.5, field(display, "speedBox").x, 0.001, "speed field starts at the SWF bounds (placement 2.4, gutter -2.9)");
+		assertNear(1.75, field(display, "speedBox").y, 0.001, "stat fields start 2px above their placement, at the SWF bounds");
+		assertNear(19.5, field(display, "speedBox").width, 0.001, "speed field uses the SWF field width");
+		assertNear(19.7, field(display, "accelBox").width, 0.001, "acceleration field uses the SWF field width");
+		assertNear(19.3, field(display, "jumpBox").width, 0.001, "jump field uses the SWF field width");
 		assertEquals("Speed: 0\nAcceleration: 0\nJumping: 0", display.hoverContent(), "default stats render zeroes");
 
 		display.setStats(42, 17, 88);

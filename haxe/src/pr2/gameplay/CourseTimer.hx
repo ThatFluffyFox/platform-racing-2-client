@@ -40,17 +40,17 @@ class CourseTimer extends Removable {
 		addChild(panel);
 
 		// TimerGraphic's `holder` lives at (41, 5.75). Its one text field is
-		// centred at (-38.95, 2), yielding the original (2.05, 7.75) HUD text
-		// origin after composition.
+		// placed at (-38.95, 2); its box starts 2px up-left of that.
 		holder = new Sprite();
 		holder.x = 41;
 		holder.y = 5.75;
 		addChild(holder);
 		timeBox = new TextField();
-		timeBox.x = -38.95;
-		timeBox.y = 2;
-		timeBox.width = 52.95;
-		timeBox.height = 15;
+		// The SWF field bounds (-2, -2)..(54.95, 17) include Flash's 2px text gutter.
+		timeBox.x = -38.95 - 2;
+		timeBox.y = 2 - 2;
+		timeBox.width = 56.95;
+		timeBox.height = 19;
 		timeBox.autoSize = TextFieldAutoSize.NONE;
 		timeBox.selectable = false;
 		timeBox.mouseEnabled = false;

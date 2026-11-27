@@ -314,15 +314,25 @@ class RaceChat extends Sprite {
 	}
 }
 
+/**
+	Field boxes come from the published SWF's DefineEditText bounds, which include
+	Flash's 2px text gutter on every side: a field's origin is its placement plus
+	the bounds minimum (2px up-left of the XFL text box) and it is 4px larger.
+	Using the XFL box drew every line of text 2px low and right, and the input
+	border 4px too small.
+**/
 private class RaceChatView extends Sprite {
-	public static inline final OUTPUT_X:Float = 2;
-	public static inline final OUTPUT_Y:Float = 2;
-	public static inline final OUTPUT_WIDTH:Float = 141;
-	public static inline final OUTPUT_HEIGHT:Float = 116.05;
-	public static inline final INPUT_X:Float = 45;
-	public static inline final INPUT_Y:Float = 129.7;
-	public static inline final INPUT_WIDTH:Float = 100;
-	public static inline final INPUT_HEIGHT:Float = 14.55;
+	public static inline final OUTPUT_X:Float = 0;
+	public static inline final OUTPUT_Y:Float = 0;
+	public static inline final OUTPUT_WIDTH:Float = 145;
+	public static inline final OUTPUT_HEIGHT:Float = 120.05;
+	public static inline final BG_OUTPUT_HEIGHT:Float = 120;
+	public static inline final INPUT_X:Float = 43;
+	public static inline final INPUT_Y:Float = 127.7;
+	public static inline final INPUT_WIDTH:Float = 104;
+	public static inline final INPUT_HEIGHT:Float = 18.55;
+	public static inline final LABEL_WIDTH:Float = 41.7;
+	public static inline final LABEL_HEIGHT:Float = 21.7;
 
 	public final chatInput:TextField;
 	public final topText:TextField;
@@ -333,7 +343,7 @@ private class RaceChatView extends Sprite {
 		// RaceChatGraphic is intentionally transparent. Its authored XFL contains
 		// two offset transcript fields, the input border, and the two-color Chat:
 		// label; the level remains visible behind it.
-		bgText = makeOutput("textBox2", OUTPUT_X, OUTPUT_Y, OUTPUT_WIDTH, 116, 0x808080);
+		bgText = makeOutput("textBox2", OUTPUT_X, OUTPUT_Y, OUTPUT_WIDTH, BG_OUTPUT_HEIGHT, 0x808080);
 		var bg = new Sprite();
 		bg.name = "bg";
 		bg.x = 1;
@@ -347,8 +357,8 @@ private class RaceChatView extends Sprite {
 		top.transform.colorTransform = new ColorTransform(0.5, 0.5, 0.5);
 		top.addChild(topText);
 
-		var whiteLabel = makeLabel(5, 130.9, 0xFFFFFF);
-		var blackLabel = makeLabel(4, 129.9, 0x000000);
+		var whiteLabel = makeLabel(3, 128.9, 0xFFFFFF);
+		var blackLabel = makeLabel(2, 127.9, 0x000000);
 
 		chatInput = new TextField();
 		chatInput.name = "chatInput";
@@ -402,8 +412,8 @@ private class RaceChatView extends Sprite {
 		var field = new TextField();
 		field.x = x;
 		field.y = y;
-		field.width = 33.4;
-		field.height = 14.55;
+		field.width = LABEL_WIDTH;
+		field.height = LABEL_HEIGHT;
 		field.scaleY = 0.999664306640625;
 		field.selectable = false;
 		field.mouseEnabled = false;
