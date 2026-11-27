@@ -51,6 +51,7 @@ class PopupPreview extends Sprite {
 			case "prize": pr2.app.ScreenFactory.prize("hat", 4, "Propeller Hat", "Hold up while wearing this hat to float!", true, false);
 			case "send-message": pr2.app.ScreenFactory.composeMessage("Jiggmin", "Hello from Platform Racing 2!");
 			case "codes": new PMRFCodesPopup();
+			case "login-title": addChild(new LoginTitle());
 			case "credits": pr2.app.ScreenFactory.credits();
 			case "loadouts": new LoadoutsPopup(null, null, null);
 			case "login": addChild(new LoginFlashPopup("LoginPopupGraphic"));

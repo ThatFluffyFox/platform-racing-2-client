@@ -5,9 +5,7 @@ import openfl.display.BitmapData;
 import openfl.display.Sprite;
 import openfl.events.Event;
 import openfl.filters.GlowFilter;
-import openfl.geom.ColorTransform;
 import openfl.geom.Matrix;
-import openfl.geom.Point;
 import openfl.text.TextField;
 import openfl.text.TextFieldAutoSize;
 import openfl.text.TextFormat;
@@ -17,16 +15,17 @@ import pr2.runtime.FontResolver;
 /**
 	The "Platform Racing 2" logo on the login page.
 
-	In the XFL LoginPage symbol (Layer 7) this is live Gwibble text with a
-	white glow (blur 6, strength 2, quality 3). Geometry mirrors the
-	DOMStaticText: tx/ty 81.4/92.4, box 386.8 wide, size 43, centered,
-	lineSpacing -3.
+	In the published SWF's LoginPageGraphic this is a Gwibble text field with a
+	white glow of blur 5, strength 2, quality 3 (the XFL lists blur 6, but the
+	compiled glow Flash drew is 5). Geometry mirrors the field: tx/ty 81.4/92.4,
+	box 386.8 wide, size 43, centered, lineSpacing -3.
 
 	On HTML5, OpenFL draws filtered objects into a cache sized for the 550x400
 	stage and stretches it to the window, which blurs the logo. Flash drew the
 	glow at the output resolution, so here the text and glow are drawn into a
-	bitmap at the stage's on-screen scale and shown at 1:1 device pixels. The
-	bitmap is redrawn when the window's scale changes.
+	bitmap at the stage's on-screen scale and shown at 1:1 device pixels, with
+	Flash's glow computed directly (`applyFlashGlow`). The bitmap is redrawn
+	when the window's scale changes.
 **/
 @:access(openfl.display.Stage)
 class LoginTitle extends Sprite {
@@ -37,10 +36,12 @@ class LoginTitle extends Sprite {
 	private static inline var TEXT_Y:Float = 92.4;
 	private static inline var TEXT_WIDTH:Float = 386.8 + 40;
 	private static inline var TEXT_HEIGHT:Float = 120;
-	private static inline var GLOW_BLUR:Float = 6;
+	private static inline var GLOW_BLUR:Float = 5;
 	// Room for the glow around the text box, in stage pixels.
 	private static inline var GLOW_PAD:Float = 8;
 	private static inline var GLOW_STRENGTH:Float = 2;
+	private static inline var GLOW_QUALITY:Int = 3;
+	private static inline var GLOW_COLOR:Int = 0xFFFFFF;
 
 	private final text:TextField;
 	#if (js && html5)
@@ -60,7 +61,7 @@ class LoginTitle extends Sprite {
 		#else
 		text.x = TEXT_X;
 		text.y = TEXT_Y;
-		text.filters = [new GlowFilter(0xFFFFFF, 1, GLOW_BLUR, GLOW_BLUR, 2, 3)];
+		text.filters = [new GlowFilter(GLOW_COLOR, 1, GLOW_BLUR, GLOW_BLUR, GLOW_STRENGTH, GLOW_QUALITY)];
 		addChild(text);
 		#end
 	}
@@ -88,16 +89,8 @@ class LoginTitle extends Sprite {
 		var height = Math.ceil((TEXT_HEIGHT + pad * 2) * scale);
 		var data = new BitmapData(width, height, true, 0);
 		var matrix = new Matrix(scale, 0, 0, scale, pad * scale, pad * scale);
-
-		// Glow first (OpenFL's GlowFilter output holds only the glow), then the
-		// text drawn over it, as Flash composites an outer glow.
 		data.draw(text, matrix, null, null, null, true);
-		var blur = GLOW_BLUR * scale;
-		data.applyFilter(data, data.rect, new Point(0, 0), new GlowFilter(0xFFFFFF, 1, blur, blur, 1, 3));
-		// Lime's software blur ignores strength; Flash multiplies the glow's
-		// alpha by it (clamped), which gives the logo its solid white rim.
-		data.colorTransform(data.rect, new ColorTransform(1, 1, 1, GLOW_STRENGTH));
-		data.draw(text, matrix, null, null, null, true);
+		applyFlashGlow(data, GLOW_BLUR * scale, GLOW_STRENGTH, GLOW_QUALITY, GLOW_COLOR);
 
 		if (bitmap == null) {
 			bitmap = new Bitmap();
@@ -110,6 +103,87 @@ class LoginTitle extends Sprite {
 		bitmap.scaleX = bitmap.scaleY = 1 / scale;
 		bitmap.x = TEXT_X - pad;
 		bitmap.y = TEXT_Y - pad;
+	}
+
+	/**
+		Flash's outer GlowFilter on `data` in place: the source alpha is blurred
+		by `quality` box-blur passes `blur` pixels wide in each direction, scaled
+		by `strength` and clamped, coloured `color`, and composited under the
+		source. Lime's software GlowFilter uses a different, longer-tailed kernel
+		and ignores strength, which drew a wider, softer halo than Flash.
+	**/
+	public static function applyFlashGlow(data:BitmapData, blur:Float, strength:Float, quality:Int, color:Int):Void {
+		var width = data.width;
+		var height = data.height;
+		var pixels = data.getVector(data.rect);
+		var count = width * height;
+		var alpha = new haxe.ds.Vector<Float>(count);
+		for (index in 0...count) alpha[index] = ((pixels[index] >>> 24) & 0xFF) / 255;
+		var scratch = new haxe.ds.Vector<Float>(count);
+		for (_ in 0...quality) {
+			boxBlur(alpha, scratch, width, height, blur, true);
+			boxBlur(scratch, alpha, width, height, blur, false);
+		}
+		var glowRed = (color >> 16) & 0xFF;
+		var glowGreen = (color >> 8) & 0xFF;
+		var glowBlue = color & 0xFF;
+		for (index in 0...count) {
+			var glow = alpha[index] * strength;
+			if (glow > 1) glow = 1;
+			var pixel = pixels[index];
+			var sourceAlpha = ((pixel >>> 24) & 0xFF) / 255;
+			var outAlpha = sourceAlpha + glow * (1 - sourceAlpha);
+			if (outAlpha <= 0) {
+				pixels[index] = 0;
+				continue;
+			}
+			var glowWeight = glow * (1 - sourceAlpha);
+			var red = (((pixel >> 16) & 0xFF) * sourceAlpha + glowRed * glowWeight) / outAlpha;
+			var green = (((pixel >> 8) & 0xFF) * sourceAlpha + glowGreen * glowWeight) / outAlpha;
+			var blue = ((pixel & 0xFF) * sourceAlpha + glowBlue * glowWeight) / outAlpha;
+			pixels[index] = (Math.round(outAlpha * 255) << 24) | (Math.round(red) << 16) | (Math.round(green) << 8) | Math.round(blue);
+		}
+		data.setVector(data.rect, pixels);
+	}
+
+	/**
+		One box-blur pass `size` pixels wide along a row (or column), with pixels
+		outside the bitmap treated as transparent. A fractional size blends the
+		neighbouring odd widths so the blur grows smoothly with the display scale.
+	**/
+	private static function boxBlur(source:haxe.ds.Vector<Float>, target:haxe.ds.Vector<Float>, width:Int, height:Int, size:Float,
+			horizontal:Bool):Void {
+		var lower = Math.floor(size);
+		if (lower % 2 == 0) lower--;
+		if (lower < 1) lower = 1;
+		var mix = (size - lower) / 2;
+		if (mix < 0) mix = 0;
+		var lines = horizontal ? height : width;
+		var length = horizontal ? width : height;
+		var stride = horizontal ? 1 : width;
+		var lowerRadius = Std.int((lower - 1) / 2);
+		var upperRadius = lowerRadius + 1;
+		var prefix = new haxe.ds.Vector<Float>(length + 1);
+		for (line in 0...lines) {
+			var start = horizontal ? line * width : line;
+			prefix[0] = 0;
+			for (position in 0...length) prefix[position + 1] = prefix[position] + source[start + position * stride];
+			for (position in 0...length) {
+				var value = windowSum(prefix, length, position - lowerRadius, position + lowerRadius) / lower;
+				if (mix > 0) {
+					var wider = windowSum(prefix, length, position - upperRadius, position + upperRadius) / (lower + 2);
+					value = value * (1 - mix) + wider * mix;
+				}
+				target[start + position * stride] = value;
+			}
+		}
+	}
+
+	/** Sum of positions first..last (inclusive), clipped to the line. **/
+	private static inline function windowSum(prefix:haxe.ds.Vector<Float>, length:Int, first:Int, last:Int):Float {
+		if (first < 0) first = 0;
+		if (last > length - 1) last = length - 1;
+		return last < first ? 0 : prefix[last + 1] - prefix[first];
 	}
 
 	/** Device pixels per stage pixel. **/
