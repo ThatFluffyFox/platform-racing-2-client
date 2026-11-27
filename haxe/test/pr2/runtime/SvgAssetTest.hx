@@ -47,6 +47,19 @@ class SvgAssetTest {
 			"group alpha is baked into opaque gradient stops for the OpenFL SVG renderer");
 		assertTrue(preparedGradientOpacity.indexOf('stop-opacity="0.125"') >= 0,
 			"group alpha multiplies an authored gradient stop fade");
+		// Animate exports Flash instance colour transforms as single feColorMatrix
+		// filters (the gladiator body's translucent highlights, item display tints).
+		var alphaFilterSource = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="20" viewBox="0 0 20 20"><defs><filter id="Filter_1" color-interpolation-filters="sRGB"><feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0.21 0" result="result1"/></filter><g id="art"><path fill="#ffffff" d="M 0 0 L 10 0 L 10 10 Z"/></g></defs><g filter="url(#Filter_1)"><use xlink:href="#art"/></g></svg>';
+		var preparedAlphaFilter = SvgAsset.prepare(alphaFilterSource);
+		assertFalse(preparedAlphaFilter.indexOf('filter="url(#Filter_1)"') >= 0, "a colour-matrix filter is removed once baked");
+		assertTrue(preparedAlphaFilter.indexOf('fill-opacity="0.21"') >= 0, "an alpha colour transform fades its painted children");
+		var tintFilterSource = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><defs><filter id="white"><feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"/></filter><linearGradient id="shine"><stop offset="0" stop-color="#336699"/><stop offset="1" stop-color="#000000" stop-opacity="0.5"/></linearGradient></defs><g filter="url(#white)"><path fill="#123456" d="M 0 0 L 10 0 L 10 10 Z"/><path fill="url(#shine)" d="M 0 0 L 5 0 L 5 5 Z"/></g><path fill="url(#shine)" d="M 10 10 L 15 10 L 15 15 Z"/></svg>';
+		var preparedTint = SvgAsset.prepare(tintFilterSource);
+		assertTrue(preparedTint.indexOf('fill="#FFFFFF"') >= 0, "a solid tint colour transform recolours a solid fill");
+		assertFalse(preparedTint.indexOf('#123456') >= 0, "the untinted solid colour is replaced");
+		assertTrue(preparedTint.indexOf('url(#shine__ct') >= 0, "a tinted gradient fill points at a transformed clone");
+		assertTrue(preparedTint.indexOf('fill="url(#shine)"') >= 0, "untransformed users keep the original gradient");
+		assertTrue(preparedTint.indexOf('stop-color="#336699"') >= 0, "the shared original gradient is left untouched");
 		var shape = SvgAsset.createFromText(source);
 		assertTrue(shape.graphics != null, "expanded SVG renders into OpenFL graphics");
 		var nestedSymbolSource = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><g data-xfl-symbol="keep"><path fill="#ff0000" d="M 0 0 L 10 0 L 10 10 Z"/></g><g data-xfl-symbol="remove"><path fill="#00ff00" d="M 10 10 L 20 10 L 20 20 Z"/></g></svg>';

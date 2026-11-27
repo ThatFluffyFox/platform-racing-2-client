@@ -301,50 +301,150 @@ class SvgAsset {
 		expandChildren(root, definitions, false);
 		var expandedDefinitions:Map<String, Xml> = new Map();
 		collectIds(root, expandedDefinitions);
-		bakeGroupOpacity(root, 1, expandedDefinitions, new Map());
+		bakeColorTransforms(root, SvgColorTransform.IDENTITY, expandedDefinitions, new Map());
 		return document.toString();
 	}
 
-	private static function bakeGroupOpacity(node:Xml, inherited:Float, definitions:Map<String, Xml>, gradientFactors:Map<String, Float>):Void {
+	/**
+		Bake group opacity and Animate's colour-transform filters into the paint.
+
+		Animate exports a Flash instance colour transform (alpha, tint, brightness)
+		as `filter="url(#…)"` pointing at a single diagonal `feColorMatrix`.
+		`format.svg` ignores filters, so those instances drew at full opacity in
+		their authored colours (e.g. the gladiator body's translucent highlights
+		painted it white). Fold each such transform, composed down the group tree,
+		into fill/stroke colours and gradient stops like Flash's per-instance
+		ColorTransform. Gradients are cloned per transform so a shared gradient is
+		never transformed twice.
+	**/
+	private static function bakeColorTransforms(node:Xml, inherited:SvgColorTransform, definitions:Map<String, Xml>,
+		gradientClones:Map<String, String>):Void {
 		if (node.nodeType != Xml.Element || localName(node.nodeName) == "defs") return;
-		var local = 1.0;
+		var local = SvgColorTransform.IDENTITY;
 		if (node.exists("opacity")) {
 			var parsed = Std.parseFloat(node.get("opacity"));
-			if (!Math.isNaN(parsed)) local = parsed;
+			if (!Math.isNaN(parsed)) local = SvgColorTransform.alpha(parsed);
 			node.remove("opacity");
 		}
-		var combined = inherited * local;
-		if (isPaintedElement(localName(node.nodeName))) {
-			multiplyOpacity(node, "fill-opacity", combined);
-			multiplyGradientOpacity(node, "fill", combined, definitions, gradientFactors);
-			multiplyGradientOpacity(node, "stroke", combined, definitions, gradientFactors);
-			multiplyOpacity(node, "stroke-opacity", combined);
-			combined = 1;
+		var filter = node.get("filter");
+		if (filter != null) {
+			var transform = colorMatrixFilter(filter, definitions);
+			if (transform != null) {
+				local = transform.then(local);
+				node.remove("filter");
+			}
 		}
-		for (child in node.elements()) bakeGroupOpacity(child, combined, definitions, gradientFactors);
+		var combined = local.then(inherited);
+		if (isPaintedElement(localName(node.nodeName))) {
+			if (!combined.isIdentity()) {
+				transformPaint(node, "fill", combined, definitions, gradientClones);
+				transformPaint(node, "stroke", combined, definitions, gradientClones);
+			}
+			combined = SvgColorTransform.IDENTITY;
+		}
+		for (child in node.elements()) bakeColorTransforms(child, combined, definitions, gradientClones);
 	}
 
-	/** `format.svg` applies path alpha to solid fills but not gradient fills. */
-	private static function multiplyGradientOpacity(node:Xml, paintAttribute:String, inherited:Float, definitions:Map<String, Xml>,
-		gradientFactors:Map<String, Float>):Void {
-		if (inherited == 1) return;
-		var paint = node.get(paintAttribute);
-		if (paint == null || !StringTools.startsWith(paint, "url(#") || !StringTools.endsWith(paint, ")")) return;
-		var id = paint.substr(5, paint.length - 6);
-		var gradient = definitions.get(id);
-		if (gradient == null) return;
-		var previous = gradientFactors.get(id);
-		if (previous != null && previous == inherited) return;
-		var factor = previous == null || previous == 0 ? inherited : inherited / previous;
-		for (stop in gradient.elements()) multiplyOpacity(stop, "stop-opacity", factor);
-		gradientFactors.set(id, inherited);
+	/** The colour transform of a filter made only of one diagonal `feColorMatrix`, else null. **/
+	private static function colorMatrixFilter(reference:String, definitions:Map<String, Xml>):Null<SvgColorTransform> {
+		var id = paintReference(reference);
+		if (id == null) return null;
+		var filter = definitions.get(id);
+		if (filter == null || localName(filter.nodeName) != "filter") return null;
+		var primitives = [for (child in filter.elements()) child];
+		if (primitives.length != 1 || localName(primitives[0].nodeName) != "feColorMatrix") return null;
+		var matrix = primitives[0];
+		var input = matrix.get("in");
+		if (input != null && input != "SourceGraphic") return null;
+		var type = matrix.get("type");
+		if (type != null && type != "matrix") return null;
+		var text = matrix.get("values");
+		if (text == null) return null;
+		var values = [for (part in ~/[\s,]+/g.split(StringTools.trim(text))) Std.parseFloat(part)];
+		if (values.length != 20) return null;
+		for (row in 0...4) {
+			for (column in 0...4) {
+				if (row != column && values[row * 5 + column] != 0) return null;
+			}
+		}
+		for (value in values) if (Math.isNaN(value)) return null;
+		return new SvgColorTransform([values[0], values[6], values[12], values[18]], [values[4], values[9], values[14], values[19]]);
 	}
 
-	private static function multiplyOpacity(node:Xml, attribute:String, inherited:Float):Void {
-		if (inherited == 1) return;
-		var own = node.exists(attribute) ? Std.parseFloat(node.get(attribute)) : 1.0;
+	private static function paintReference(paint:Null<String>):Null<String> {
+		if (paint == null) return null;
+		paint = StringTools.trim(paint);
+		if (!StringTools.startsWith(paint, "url(#") || !StringTools.endsWith(paint, ")")) return null;
+		return paint.substr(5, paint.length - 6);
+	}
+
+	private static function transformPaint(node:Xml, attribute:String, transform:SvgColorTransform, definitions:Map<String, Xml>,
+		gradientClones:Map<String, String>):Void {
+		var paint = node.get(attribute);
+		var opacityAttribute = attribute + "-opacity";
+		var id = paintReference(paint);
+		if (id != null) {
+			// `format.svg` applies path alpha to solid fills but not gradient fills.
+			var clone = transformedGradient(id, transform, definitions, gradientClones);
+			if (clone != null) node.set(attribute, 'url(#$clone)');
+			return;
+		}
+		if (paint == null && attribute == "stroke") return;
+		if (paint == "none") return;
+		var color = parseColor(paint == null ? "#000000" : paint);
+		if (color == null) {
+			// Unknown paint: keep the colour and still apply the alpha part.
+			var own = node.exists(opacityAttribute) ? Std.parseFloat(node.get(opacityAttribute)) : 1.0;
+			if (Math.isNaN(own)) own = 1;
+			node.set(opacityAttribute, Std.string(transform.alphaOf(own)));
+			return;
+		}
+		var own = node.exists(opacityAttribute) ? Std.parseFloat(node.get(opacityAttribute)) : 1.0;
 		if (Math.isNaN(own)) own = 1;
-		node.set(attribute, Std.string(own * inherited));
+		node.set(attribute, formatColor(transform.colorOf(color)));
+		node.set(opacityAttribute, Std.string(transform.alphaOf(own)));
+	}
+
+	private static function transformedGradient(id:String, transform:SvgColorTransform, definitions:Map<String, Xml>,
+		gradientClones:Map<String, String>):Null<String> {
+		var key = id + "|" + transform.key();
+		if (gradientClones.exists(key)) return gradientClones.get(key);
+		var gradient = definitions.get(id);
+		if (gradient == null || gradient.parent == null) return null;
+		var clone = Xml.parse(gradient.toString()).firstElement();
+		var cloneId = '${id}__ct${Lambda.count(gradientClones)}';
+		clone.set("id", cloneId);
+		for (stop in clone.elements()) {
+			if (localName(stop.nodeName) != "stop") continue;
+			var color = parseColor(stop.exists("stop-color") ? stop.get("stop-color") : "#000000");
+			if (color != null) stop.set("stop-color", formatColor(transform.colorOf(color)));
+			var own = stop.exists("stop-opacity") ? Std.parseFloat(stop.get("stop-opacity")) : 1.0;
+			if (Math.isNaN(own)) own = 1;
+			stop.set("stop-opacity", Std.string(transform.alphaOf(own)));
+		}
+		gradient.parent.addChild(clone);
+		definitions.set(cloneId, clone);
+		gradientClones.set(key, cloneId);
+		return cloneId;
+	}
+
+	private static function parseColor(paint:String):Null<Int> {
+		paint = StringTools.trim(paint);
+		if (StringTools.startsWith(paint, "#")) {
+			var hex = paint.substr(1);
+			if (hex.length == 3) hex = hex.charAt(0) + hex.charAt(0) + hex.charAt(1) + hex.charAt(1) + hex.charAt(2) + hex.charAt(2);
+			if (hex.length != 6) return null;
+			return Std.parseInt("0x" + hex);
+		}
+		return switch (paint.toLowerCase()) {
+			case "black": 0x000000;
+			case "white": 0xFFFFFF;
+			default: null;
+		};
+	}
+
+	private static function formatColor(color:Int):String {
+		return "#" + StringTools.hex(color & 0xFFFFFF, 6);
 	}
 
 	private static function isPaintedElement(name:String):Bool {
