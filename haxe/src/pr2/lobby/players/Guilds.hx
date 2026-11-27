@@ -51,7 +51,11 @@ class Guilds extends PlayersListHolder {
 		source = new DirectorySource();
 		source.start("guilds", function(entry) addListing(new GuildEntry(entry.name, entry.guildId, entry.activeMembers, entry.gpToday)), function() {
 			applySort(sortState, NAME_MODE); hideLoadingGraphic();
-		}, function(_) hideLoadingGraphic());
+		}, function(message) {
+			// Flash's SuperLoader shows a failed list load in a message popup.
+			hideLoadingGraphic();
+			pr2.app.ScreenFactory.message(message);
+		});
 	}
 
 	private function clickName(_:MouseEvent):Void {

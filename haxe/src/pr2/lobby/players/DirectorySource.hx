@@ -4,6 +4,7 @@ import haxe.Json;
 import pr2.net.CommandHandler;
 import pr2.net.LobbySocket;
 import pr2.net.ServerConfig;
+import pr2.net.SuperLoader;
 import pr2.net.TextLoader;
 import pr2.util.AsyncRemovalGuard;
 
@@ -28,7 +29,15 @@ class DirectorySource {
 			done(); // The roster protocol has no completion frame, matching Flash.
 		} else {
 			var guild = mode == "guilds";
-			guard.watch((guild ? guildFetch : userFetch)(guild ? ServerConfig.guildsTopUrl() : ServerConfig.userListUrl(mode), guard.wrap(function(body) {
+			var url = guild ? ServerConfig.guildsTopUrl() : ServerConfig.userListUrl(mode);
+			guard.watch((guild ? guildFetch : userFetch)(url, guard.wrap(function(body) {
+				// Flash's SuperLoader reports a server `error` (such as the
+				// user_list_get.php rate limit) as "Error: <message>".
+				var decoded = SuperLoader.decodeJson(url, body, false);
+				if (!decoded.success && decoded.data != null) {
+					error("Error: " + decoded.message);
+					return;
+				}
 				try {
 					var parsed:Dynamic = Json.parse(body);
 					var values:Dynamic = Reflect.field(parsed, guild ? "guilds" : "users");

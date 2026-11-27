@@ -13,7 +13,12 @@ class PlayersUserListLoader extends PlayersTabList {
 	public function new(mode:String) { super(); this.mode = mode; }
 	override public function initialize():Void {
 		super.initialize(); source = new DirectorySource();
-		source.start(mode, function(entry) addUserEntry(entry.name, entry.group, entry.rank, entry.hats, entry.status), hideLoadingGraphic, function(_) hideLoadingGraphic());
+		source.start(mode, function(entry) addUserEntry(entry.name, entry.group, entry.rank, entry.hats, entry.status), hideLoadingGraphic, showLoadError);
+	}
+	/** Flash's SuperLoader shows a failed list load in a message popup. */
+	private function showLoadError(message:String):Void {
+		hideLoadingGraphic();
+		pr2.app.ScreenFactory.message(message);
 	}
 	override public function remove():Void {
 		if (source != null) source.remove(); source = null;
