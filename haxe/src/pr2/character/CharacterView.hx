@@ -176,6 +176,10 @@ class CharacterView extends Sprite {
 		var cache = ExplicitBitmapCache.attach(artwork, {
 			scale: effectiveScale,
 			padding: PART_CACHE_PADDING,
+			// Drawn 1:1 on screen: AUTO snaps it to whole pixels when unrotated (Flash's
+			// default for bitmaps). NEVER left it at fractional offsets, where WebGL's
+			// interpolation smeared every outline by about a pixel.
+			pixelSnapping: PixelSnapping.AUTO,
 			bitmapName: '__characterPartCache_$cacheKey'
 		});
 		if (!cache.valid) {
@@ -228,7 +232,7 @@ class CharacterView extends Sprite {
 			renderedFrames.push(data);
 		}
 		while (overlay.numChildren > 0) overlay.removeChildAt(0);
-		var bitmap = new Bitmap(renderedFrames[hatAnimationFrames[index] - 1], PixelSnapping.NEVER, true);
+		var bitmap = new Bitmap(renderedFrames[hatAnimationFrames[index] - 1], PixelSnapping.AUTO, true);
 		bitmap.name = "__animatedHatOverlayCache";
 		bitmap.scaleX = bitmap.scaleY = 1 / effectiveScale;
 		bitmap.x = union.x - PART_CACHE_PADDING / effectiveScale;
