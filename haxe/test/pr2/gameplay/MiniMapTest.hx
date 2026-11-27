@@ -78,6 +78,16 @@ class MiniMapTest {
 		assertEquals(MiniMapDot.LOCAL_COLOR, localDot.markerColorForTests(), "native dot selects local frame colour");
 		localDot.remove();
 
+		// Flash: width = height = 4 / scale on a hairline-outlined 4px square, and
+		// the zero-width hairline adds nothing to that width.
+		var sizedDot = new MiniMapDot();
+		sizedDot.fitTo(4, 0.25);
+		assertClose(4.0, sizedDot.scaleX, "dot scale makes its square 4 stage pixels under a quarter-scale map");
+		assertClose(4.0, sizedDot.scaleY, "dot keeps a square aspect");
+		sizedDot.fitTo(4, 2);
+		assertClose(0.5, sizedDot.scaleX, "dot shrinks under an enlarged map");
+		sizedDot.remove();
+
 		var minimap = new MiniMap();
 		minimap.addBlock(ObjectCodes.BLOCK_FINISH, 30, 60);
 		var finishLayer:Sprite = cast Reflect.field(minimap, "finishSprite");

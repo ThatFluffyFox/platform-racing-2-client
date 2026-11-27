@@ -165,7 +165,9 @@ class MiniMap extends Removable {
 		var i = 0;
 		while (i < layer.numChildren) {
 			var child:DisplayObject = layer.getChildAt(i);
-			child.width = child.height = 4 / (layerScale * layer.scaleX);
+			var dot = Std.downcast(child, MiniMapDot);
+			if (dot != null) dot.fitTo(4, layerScale * layer.scaleX);
+			else child.width = child.height = 4 / (layerScale * layer.scaleX);
 			i++;
 		}
 	}
