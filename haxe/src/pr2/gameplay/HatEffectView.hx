@@ -12,6 +12,7 @@ class HatEffectView extends Sprite {
 	public final fixedArt:Sprite;
 	public final fixedBelowArt:Sprite;
 	public final fixedAboveArt:Sprite;
+	public final standInArt:Sprite;
 	public final animatedOverlay:Sprite;
 	public var currentFrame(default, null):Int = 1;
 	public var overlayCurrentFrame(default, null):Int = 1;
@@ -29,6 +30,9 @@ class HatEffectView extends Sprite {
 		fixedArt = new Sprite();
 		fixedArt.name = "static";
 		addChild(fixedArt);
+		standInArt = new Sprite();
+		standInArt.name = "staticUnderSecondary";
+		addChild(standInArt);
 		colorMC2 = new Sprite();
 		colorMC2.name = "colorMC2";
 		addChild(colorMC2);
@@ -44,11 +48,13 @@ class HatEffectView extends Sprite {
 	public function setHatId(frame:Int):Void {
 		currentFrame = frame;
 		var channels = hatChannels(frame);
-		setChannel(colorMC, channels.primary);
+		setChannel(colorMC, channels.primary, true);
 		setChannel(fixedArt, channels.fixed);
-		setChannel(colorMC2, channels.secondary);
+		setChannel(colorMC2, channels.secondary, true);
 		setChannel(fixedBelowArt, channels.fixedBelow);
 		setChannel(fixedAboveArt, channels.fixedAbove);
+		while (standInArt.numChildren > 0) standInArt.removeChildAt(0);
+		if (channels.fixedUnderSecondary != null) standInArt.addChild(new pr2.runtime.StandInSvgShape(channels.fixedUnderSecondary, colorMC2));
 		overlayFrames = channels.overlayAnimation == null ? [] : channels.overlayAnimation.frames.copy();
 		overlayCurrentFrame = 1;
 		renderOverlayFrame();
@@ -68,10 +74,10 @@ class HatEffectView extends Sprite {
 		animatedOverlay.addChild(art);
 	}
 
-	private static function setChannel(holder:Sprite, path:Null<String>):Void {
+	private static function setChannel(holder:Sprite, path:Null<String>, tinted:Bool = false):Void {
 		while (holder.numChildren > 0) holder.removeChildAt(0);
 		if (path == null) return;
-		var art = SvgAsset.create(path);
+		var art:openfl.display.Shape = tinted ? new pr2.runtime.TintedSvgShape(path) : SvgAsset.create(path);
 		art.name = path;
 		holder.addChild(art);
 	}

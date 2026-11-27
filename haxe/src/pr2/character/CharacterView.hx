@@ -348,13 +348,14 @@ class CharacterView extends Sprite {
 		if (isEmptyPart(kind, partId(kind))) return;
 		var channels = partVariant(kind, partId(kind));
 		addFixedLayer(artwork, channels.fixedBelow, "staticBelow");
-		var primary = SvgAsset.create(partChannelAsset(channels, "primary"));
+		var primary = new pr2.runtime.TintedSvgShape(partChannelAsset(channels, "primary"));
 		primary.name = "primary";
 		artwork.addChild(primary);
 		var fixed = SvgAsset.create(partChannelAsset(channels, "static"));
 		fixed.name = "static";
 		artwork.addChild(fixed);
-		var secondary = SvgAsset.create(partChannelAsset(channels, "secondary"));
+		addFixedLayer(artwork, channels.fixedUnderSecondary, "staticUnderSecondary");
+		var secondary = new pr2.runtime.TintedSvgShape(partChannelAsset(channels, "secondary"));
 		secondary.name = "secondary";
 		artwork.addChild(secondary);
 		addFixedLayer(artwork, channels.fixedAbove, "staticAbove");
@@ -384,13 +385,14 @@ class CharacterView extends Sprite {
 		artwork.name = "artwork";
 		slot.addChild(artwork);
 		addFixedLayer(artwork, channels.fixedBelow, "staticBelow");
-		var primary = SvgAsset.create(channels.primary);
+		var primary = new pr2.runtime.TintedSvgShape(channels.primary);
 		primary.name = "primary";
 		artwork.addChild(primary);
 		var fixed = SvgAsset.create(channels.fixed);
 		fixed.name = "static";
 		artwork.addChild(fixed);
-		var secondary = SvgAsset.create(channels.secondary);
+		addFixedLayer(artwork, channels.fixedUnderSecondary, "staticUnderSecondary");
+		var secondary = new pr2.runtime.TintedSvgShape(channels.secondary);
 		secondary.name = "secondary";
 		artwork.addChild(secondary);
 		addFixedLayer(artwork, channels.fixedAbove, "staticAbove");
@@ -610,7 +612,8 @@ class CharacterView extends Sprite {
 		if (previous == null) throw 'Animated body channel ${animation.channel} is missing';
 		var index = artwork.getChildIndex(previous);
 		artwork.removeChild(previous);
-		var replacement = SvgAsset.create(animation.frames[bodyChannelAnimationFrame - 1]);
+		var asset = animation.frames[bodyChannelAnimationFrame - 1];
+		var replacement:Shape = animation.channel == "static" ? SvgAsset.create(asset) : new pr2.runtime.TintedSvgShape(asset);
 		replacement.name = animation.channel;
 		artwork.addChildAt(replacement, index);
 	}
@@ -997,13 +1000,7 @@ class CharacterView extends Sprite {
 	private function applyPartColorToArtwork(kind:String, artwork:Sprite):Void {
 		var color = partColors.get(kind);
 		if (color == null) throw 'Character part $kind has no color';
-		var primary = Std.downcast(artwork.getChildByName("primary"), Shape);
-		if (primary != null) primary.transform.colorTransform = authoredColors ? DEFAULT_COLOR_TRANSFORM : solidColor(color.primary);
-		var secondary = Std.downcast(artwork.getChildByName("secondary"), Shape);
-		if (secondary != null) {
-			secondary.visible = color.secondary >= 0;
-			if (secondary.visible) secondary.transform.colorTransform = authoredColors ? DEFAULT_COLOR_TRANSFORM : solidColor(color.secondary);
-		}
+		tintChannels(artwork, color.primary, color.secondary, authoredColors);
 	}
 
 	private function applyAllHatColors():Void {
@@ -1017,13 +1014,30 @@ class CharacterView extends Sprite {
 
 	private function applyHatColorToArtwork(index:Int, artwork:Sprite):Void {
 		var color = hatColors[index];
-		var primary = Std.downcast(artwork.getChildByName("primary"), Shape);
-		if (primary != null) primary.transform.colorTransform = authoredColors ? DEFAULT_COLOR_TRANSFORM : solidColor(color.primary);
-		var secondary = Std.downcast(artwork.getChildByName("secondary"), Shape);
+		tintChannels(artwork, color.primary, color.secondary, authoredColors);
+	}
+
+	/** Flash `applyPartColor`: solid colour on colorMC, and on colorMC2 unless it is -1 (hidden). **/
+	private static function tintChannels(artwork:Sprite, primaryColor:Int, secondaryColor:Int, authored:Bool = false):Void {
+		var primary = artwork.getChildByName("primary");
+		if (primary != null) tintChannel(primary, primaryColor, authored);
+		var secondary = artwork.getChildByName("secondary");
 		if (secondary != null) {
-			secondary.visible = color.secondary >= 0;
-			if (secondary.visible) secondary.transform.colorTransform = authoredColors ? DEFAULT_COLOR_TRANSFORM : solidColor(color.secondary);
+			secondary.visible = secondaryColor >= 0;
+			if (secondary.visible) tintChannel(secondary, secondaryColor, authored);
 		}
+		var standIn = artwork.getChildByName("staticUnderSecondary");
+		if (standIn != null) standIn.visible = secondary == null || !secondary.visible;
+	}
+
+	/** `authored` (part previews) leaves the channel in its own authored colours. **/
+	private static function tintChannel(channel:openfl.display.DisplayObject, color:Int, authored:Bool = false):Void {
+		var tinted = Std.downcast(channel, pr2.runtime.TintedSvgShape);
+		if (authored) {
+			if (tinted != null) tinted.untint();
+			else channel.transform.colorTransform = DEFAULT_COLOR_TRANSFORM;
+		} else if (tinted != null) tinted.tint(color);
+		else channel.transform.colorTransform = solidColor(color);
 	}
 
 	private function applyHatAttachments():Void {

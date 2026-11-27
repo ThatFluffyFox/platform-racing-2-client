@@ -97,6 +97,7 @@ class PrizePartSymbol extends Sprite {
 	private var fixed:Null<Shape>;
 	private var fixedBelow:Null<Shape>;
 	private var fixedAbove:Null<Shape>;
+	private var standIn:Null<pr2.runtime.StandInSvgShape>;
 	private var overlay:Null<Sprite>;
 	private var overlayFrames:Array<String> = [];
 	public var overlayCurrentFrame(default, null):Int = 0;
@@ -137,6 +138,15 @@ class PrizePartSymbol extends Sprite {
 		addChildAt(fixed, getChildIndex(colorMC) + 1);
 		fixedBelow = addFixedLayer(variant.fixedBelow, "staticBelow", 0, registration.x, registration.y);
 		fixedAbove = addFixedLayer(variant.fixedAbove, "staticAbove", getChildIndex(colorMC2) + 1, registration.x, registration.y);
+		if (standIn != null && standIn.parent == this) removeChild(standIn);
+		standIn = null;
+		if (variant.fixedUnderSecondary != null) {
+			standIn = new pr2.runtime.StandInSvgShape(variant.fixedUnderSecondary, colorMC2);
+			standIn.name = "staticUnderSecondary";
+			standIn.x = registration.x;
+			standIn.y = registration.y;
+			addChildAt(standIn, getChildIndex(colorMC2));
+		}
 		colorMC.x = colorMC2.x = registration.x;
 		colorMC.y = colorMC2.y = registration.y;
 		colorMC.setAsset(variant.primary, frame);

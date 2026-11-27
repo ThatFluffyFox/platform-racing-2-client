@@ -44,6 +44,7 @@ class TestCourseHatPickerView extends NativeView {
 		secondary.name = "colorMC2";
 		secondary.visible = id == 16;
 		hat.addChild(secondary);
+		pr2.runtime.StandInSvgShape.addUnder(channels.fixedUnderSecondary, secondary, "fixedUnderSecondary");
 		pr2.character.CharacterView.addFixedLayer(hat, channels.fixedAbove, "fixedAbove");
 		if (channels.overlayAnimation != null && channels.overlayAnimation.frames.length > 0) {
 			overlayFrames = channels.overlayAnimation.frames.copy();
