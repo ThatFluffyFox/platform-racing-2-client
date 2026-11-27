@@ -205,7 +205,7 @@ def part_variants(kind: str, include_excluded: bool = False) -> list[dict[str, o
                         for frame in range(1, 22)
                     ],
                 }
-                for channel in ("primary", "static")
+                for channel in ("primary", "static", "secondary")
             ]
         variants.append(record)
     return variants

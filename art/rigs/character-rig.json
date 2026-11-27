@@ -673,6 +673,34 @@
                 "assets/svg/character/body/021_bubble/static_frames/frame_020.svg",
                 "assets/svg/character/body/021_bubble/static_frames/frame_021.svg"
               ]
+            },
+            {
+              "channel": "secondary",
+              "frameRate": 30,
+              "endBehavior": "loop",
+              "frames": [
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_001.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_002.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_003.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_004.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_005.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_006.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_007.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_008.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_009.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_010.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_011.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_012.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_013.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_014.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_015.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_016.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_017.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_018.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_019.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_020.svg",
+                "assets/svg/character/body/021_bubble/secondary_frames/frame_021.svg"
+              ]
             }
           ]
         },
