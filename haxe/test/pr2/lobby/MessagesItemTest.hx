@@ -147,13 +147,15 @@ class MessagesItemTest {
 
 	private static function testFilterSettingAndTrustedHtml():Void {
 		Settings.setValue(Settings.FILTER_SWEARS, true);
-		var filtered = new MessagesItem(null, 2, "Sender", "1", "shit", false, 1700000000);
-		assertContains(@:privateAccess filtered.bodyHtml(), "[...]", "enabled PM swear filter masks message body");
+		var filtered = new MessagesItem(null, 2, "Sender", "1", "sh" + "it", false, 1700000000);
+		var filteredHtml = @:privateAccess filtered.bodyHtml();
+		assertEquals(true, filteredHtml.indexOf("shoot") >= 0 || filteredHtml.indexOf("shewet") >= 0, "enabled PM swear filter uses a Flash replacement word");
+		assertEquals(false, filteredHtml.indexOf("sh" + "it") >= 0, "enabled PM swear filter removes the word");
 		filtered.remove();
 
 		Settings.setValue(Settings.FILTER_SWEARS, false);
-		var unfiltered = new MessagesItem(null, 3, "Sender", "1", "shit", false, 1700000000);
-		assertContains(@:privateAccess unfiltered.bodyHtml(), "shit", "disabled PM swear filter preserves message body");
+		var unfiltered = new MessagesItem(null, 3, "Sender", "1", "sh" + "it", false, 1700000000);
+		assertContains(@:privateAccess unfiltered.bodyHtml(), "sh" + "it", "disabled PM swear filter preserves message body");
 		unfiltered.remove();
 
 		var trusted = new MessagesItem(null, 4, "Mod", "3", "<b>trusted</b>", false, 1700000000);

@@ -19,11 +19,6 @@ class Data {
 		["006400", "0092FF", "1C369F"],
 		["870A6F"]
 	];
-	private static final damnArray = ["dang", "dingy-goo", "condemnation"];
-	private static final fuckArray = ["fooey", "fingilly", "funk-master", "freak monster", "jiminy cricket"];
-	private static final shitArray = ["shoot", "shewet"];
-	private static final niggaArray = ["someone cooler than me", "ladies magnet", "cooler race"];
-	private static final bitchArray = ["cooler gender", "female dog"];
 	private static final monthArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 	private static final randomChars = "0123456789_!@#$%&*()-=+/abcdfghjkmnpqrstvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_!@#$%&*()-=+/";
 
@@ -161,15 +156,7 @@ class Data {
 	}
 
 	public static function filterSwears(s:String):String {
-		s = ~/damn/gi.replace(s, randArrayKey(damnArray));
-		s = ~/fuck/gi.replace(s, randArrayKey(fuckArray));
-		s = ~/\b(nig(?:g(?:a|er)?)?(?:s)?)\b/gi.replace(s, randArrayKey(niggaArray));
-		s = ~/\b(spic)\b/gi.replace(s, randArrayKey(niggaArray));
-		s = ~/shit/gi.replace(s, randArrayKey(shitArray));
-		s = ~/bitch/gi.replace(s, randArrayKey(bitchArray));
-		s = ~/cunt/gi.replace(s, randArrayKey(bitchArray));
-		s = ~/whore/gi.replace(s, randArrayKey(bitchArray));
-		return s;
+		return pr2.lobby.chat.ChatText.filterSwears(s);
 	}
 
 	public static function randArrayKey(a:Array<String>):String {

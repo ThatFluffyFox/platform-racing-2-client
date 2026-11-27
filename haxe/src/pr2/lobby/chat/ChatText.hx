@@ -39,22 +39,59 @@ class ChatText {
 		return filterSwears(cleanHTML(trimWhitespace(s)));
 	}
 
-	// The original substitutes a random themed replacement per matched swear. The
-	// random arrays aren't shipped here, so each match collapses to a fixed mask;
-	// the matching set is preserved so filtered/unfiltered behavior stays distinct.
+	// Flash `Data.filterSwears`: each pattern is replaced, case-insensitively,
+	// with one random entry of its themed list (picked once per pattern per
+	// call). The matched words are stored ROT13-encoded so the source never
+	// spells them out; `swearPattern` decodes them when the patterns are built.
+	private static final swearReplacements:Array<Array<String>> = [
+		["dang", "dingy-goo", "condemnation"],
+		["fooey", "fingilly", "funk-master", "freak monster", "jiminy cricket"],
+		["shoot", "shewet"],
+		["someone cooler than me", "ladies magnet", "cooler race"],
+		["cooler gender", "female dog"],
+	];
+	// [encoded word, whole-word suffix pattern or null, replacement list index],
+	// in Flash's order.
+	private static final swearRules:Array<Array<Dynamic>> = [
+		["qnza", null, 0],
+		["shpx", null, 1],
+		["avt", "(?:g(?:a|er)?)?(?:s)?", 3],
+		["fcvp", "", 3],
+		["fuvg", null, 2],
+		["ovgpu", null, 4],
+		["phag", null, 4],
+		["juber", null, 4],
+	];
+	private static var swearPatterns:Array<EReg>;
+
+	private static function rot13(s:String):String {
+		var out = new StringBuf();
+		for (i in 0...s.length) {
+			var c = s.charCodeAt(i);
+			if (c >= "a".code && c <= "z".code) {
+				c = "a".code + (c - "a".code + 13) % 26;
+			}
+			out.addChar(c);
+		}
+		return out.toString();
+	}
+
+	private static function swearPattern(rule:Array<Dynamic>):EReg {
+		var word = rot13(rule[0]);
+		var suffix:String = rule[1];
+		return suffix == null ? new EReg(word, "gi") : new EReg("\\b(" + word + suffix + ")\\b", "gi");
+	}
+
 	public static function filterSwears(s:String):String {
-		var masks = [
-			~/damn/gi,
-			~/fuck/gi,
-			~/\b(nig(?:g(?:a|er)?)?(?:s)?)\b/gi,
-			~/\b(spic)\b/gi,
-			~/shit/gi,
-			~/bitch/gi,
-			~/cunt/gi,
-			~/whore/gi,
-		];
-		for (re in masks) {
-			s = re.replace(s, "[...]");
+		if (s == null) {
+			return s;
+		}
+		if (swearPatterns == null) {
+			swearPatterns = [for (rule in swearRules) swearPattern(rule)];
+		}
+		for (i in 0...swearRules.length) {
+			var choices = swearReplacements[swearRules[i][2]];
+			s = swearPatterns[i].replace(s, choices[Math.floor(Math.random() * choices.length)]);
 		}
 		return s;
 	}
