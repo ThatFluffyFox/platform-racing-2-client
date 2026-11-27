@@ -1,6 +1,8 @@
 package pr2.lobby.account;
 
+import openfl.display.DisplayObject;
 import openfl.display.Sprite;
+import openfl.geom.Matrix;
 
 /** Live character-backed preview for a single catalog part. */
 class PartPreview extends Sprite {
@@ -48,6 +50,37 @@ class PartPreview extends Sprite {
 		} else if (selected == "head") {
 			character.display.hatSocket.visible = false;
 		}
+	}
+
+	/**
+		Place the preview so the part's rig node (Flash's hatsMC, headsMC, bodyMC
+		or footMC) sits at `authored`, the matrix of that clip in the Flash popup.
+		Flash shows a single foot, so the back foot is hidden.
+	**/
+	public function placePart(type:String, authored:Matrix):Void {
+		var rigRoot = Std.downcast(character.display.getChildByName("rigRoot"), Sprite);
+		if (rigRoot == null) return;
+		var anchor:Null<DisplayObject> = switch (type) {
+			case "HAT": character.display.hatSocket.getChildByName("hat1");
+			case "HEAD": rigRoot.getChildByName("head");
+			case "BODY": rigRoot.getChildByName("body");
+			case "FEET": rigRoot.getChildByName("frontFoot");
+			default: null;
+		};
+		if (anchor == null) return;
+		if (type == "FEET") {
+			var backFoot = rigRoot.getChildByName("backFoot");
+			if (backFoot != null) backFoot.visible = false;
+		}
+		var placement = new Matrix();
+		var node:Null<DisplayObject> = anchor;
+		while (node != null && node != this) {
+			placement.concat(node.transform.matrix);
+			node = node.parent;
+		}
+		placement.invert();
+		placement.concat(authored);
+		transform.matrix = placement;
 	}
 
 	public function showEpic():Void {

@@ -181,6 +181,23 @@ class PartPopup extends Popup {
 		if (["HAT", "HEAD", "BODY", "FEET"].indexOf(type) == -1) return null;
 		var target = new PartPreview(type, id, has);
 		var detail = Std.isOfType(root, PartPopupView);
+		if (detail || Std.isOfType(root, PartInfoListingView)) {
+			// Flash shows the part clip at its authored place in PartPopupGraphic
+			// (Symbol 1252) or PartInfoListingGraphic (Symbol 1253).
+			var authored = authoredPartMatrix(type, detail);
+			if (id == 29 && type == "BODY") {
+				authored.ty += 10;
+				authored.a /= fredScaleDivisor;
+				authored.b /= fredScaleDivisor;
+				authored.c /= fredScaleDivisor;
+				authored.d /= fredScaleDivisor;
+			} else if (id == 14 && type == "HAT" && !detail) {
+				authored.ty += 10;
+			}
+			target.placePart(type, authored);
+			root.addChildAt(target, Std.int(Math.min(2, root.numChildren)));
+			return target;
+		}
 		target.x = detail ? -130 : (type == "HAT" || type == "HEAD" ? 59 : 55);
 		target.y = 30;
 		target.scaleX = target.scaleY = fredScaleDivisor <= 0 ? 1 : 2 / fredScaleDivisor;
@@ -193,6 +210,19 @@ class PartPopup extends Popup {
 		}
 		root.addChildAt(target, Std.int(Math.min(2, root.numChildren)));
 		return target;
+	}
+
+	private static function authoredPartMatrix(type:String, detail:Bool):openfl.geom.Matrix {
+		return switch (type) {
+			case "HAT": detail ? new openfl.geom.Matrix(0.44720458984375, 0, 0, 0.462921142578125, -121.15, 28.75)
+				: new openfl.geom.Matrix(0.335678100585938, 0, 0, 0.3349609375, 64, 69);
+			case "HEAD": detail ? new openfl.geom.Matrix(0.336868286132812, 0.116531372070312, -0.112716674804688, 0.348129272460938, -139.1, -28.35)
+				: new openfl.geom.Matrix(0.212387084960938, 0.0711212158203125, -0.071258544921875, 0.211944580078125, 56.2, 30.15);
+			case "BODY": detail ? new openfl.geom.Matrix(0.313735961914062, 0, 0, 0.324630737304688, -128.75, -18.15)
+				: new openfl.geom.Matrix(0.235565185546875, 0, 0, 0.23504638671875, 56.1, 38.95);
+			default: detail ? new openfl.geom.Matrix(0.66552734375, 0, 0, 0.688888549804688, -135.65, 7.1)
+				: new openfl.geom.Matrix(0.49932861328125, 0, 0, 0.498275756835938, 47.8, 65.7);
+		};
 	}
 
 	public static function setupDjinnPreview(root:openfl.display.DisplayObjectContainer, type:String, id:Int, has:Bool, x:Float,

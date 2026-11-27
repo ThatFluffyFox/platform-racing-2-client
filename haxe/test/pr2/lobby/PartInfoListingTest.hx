@@ -81,8 +81,10 @@ class PartInfoListingTest {
 		assertClose(7, close.x, "Close keeps XFL X");
 		assertClose(61.5, close.y, "Close keeps XFL Y");
 		var preview = popup.targetForTests();
-		assertClose(-130, preview.x, "detail preview uses authored left registration");
 		var rigRoot = Std.downcast(preview.character.display.getChildByName("rigRoot"), Sprite);
+		var headOrigin = preview.parent.globalToLocal(rigRoot.getChildByName("head").localToGlobal(new openfl.geom.Point(0, 0)));
+		assertEquals(true, Math.abs(headOrigin.x + 139.1) < 0.001, "detail head sits at the authored headsMC X");
+		assertEquals(true, Math.abs(headOrigin.y + 28.35) < 0.001, "detail head sits at the authored headsMC Y");
 		assertEquals(true, rigRoot.getChildByName("head").visible, "head detail keeps head channel visible");
 		assertEquals(false, rigRoot.getChildByName("body").visible, "head detail hides body channel");
 		assertEquals(false, rigRoot.getChildByName("frontFoot").visible, "head detail hides front foot channel");
