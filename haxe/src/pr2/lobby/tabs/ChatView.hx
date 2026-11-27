@@ -1,9 +1,11 @@
 package pr2.lobby.tabs;
 
 import openfl.display.Sprite;
+import openfl.events.MouseEvent;
 import openfl.text.TextField;
 import openfl.text.TextFormat;
 import pr2.assets.NativeAssetIds.FontAsset;
+import pr2.assets.NativeAssetIds.StaticSvg;
 import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
 import pr2.ui.controls.GameTextArea;
@@ -85,22 +87,47 @@ class ChatView extends NativeView {
 	}
 }
 
+/**
+	XFL `Buttons/Symbol 1213` (`InfoButton`), placed unscaled in `ChatGraphic`:
+	a grey circle with a "?" that turns yellow on hover.
+**/
 private class InfoButton extends Sprite {
+	private final art = new Sprite();
+	private var over = false;
+	private var down = false;
+
 	public function new() {
 		super();
 		name = "infoButton";
 		buttonMode = useHandCursor = true;
+		mouseChildren = false;
 		graphics.beginFill(0xFFFFFF, 0);
 		graphics.drawRect(0, 0, 15, 16);
 		graphics.endFill();
-		var text = new TextField();
-		text.x = 2.1;
-		text.y = -0.2;
-		text.width = 6.1;
-		text.height = 16;
-		text.selectable = false;
-		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0x000000);
-		text.text = "?";
-		addChild(text);
+		addChild(art);
+		addEventListener(MouseEvent.MOUSE_OVER, function(_) { over = true; redraw(); });
+		addEventListener(MouseEvent.MOUSE_OUT, function(_) { over = down = false; redraw(); });
+		addEventListener(MouseEvent.MOUSE_DOWN, function(_) { down = true; redraw(); });
+		addEventListener(MouseEvent.MOUSE_UP, function(_) { down = false; redraw(); });
+		redraw();
+	}
+
+	private function redraw():Void {
+		art.removeChildren();
+		art.addChild(NativeAssets.svg(down ? StaticSvg.LevelItemInfoDown : over ? StaticSvg.LevelItemInfoOver : StaticSvg.LevelItemInfoUp));
+		// openfl-svg does not render the authored SVG <text>; restore the "?"
+		// with the same static-text placement as the account part buttons.
+		var question = new TextField();
+		question.mouseEnabled = false;
+		question.selectable = false;
+		question.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, over || down ? 0xFFFF00 : 0x000000);
+		question.text = "?";
+		question.scaleX = 0.906539916992188;
+		question.scaleY = 0.731430053710938;
+		question.x = -40.2 + 46.65 * question.scaleX - 2 * question.scaleX;
+		question.y = -0.2 + (12.06 - 2 - 11.14) * question.scaleY;
+		question.width = 6.7 + 4;
+		question.height = 20;
+		art.addChild(question);
 	}
 }
