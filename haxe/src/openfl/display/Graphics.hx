@@ -1,4 +1,4 @@
-// Copied from OpenFL 9.5.2 (openfl/display/Graphics.hx) with one PR2 change,
+// Copied from OpenFL 9.5.2 (openfl/display/Graphics.hx) with PR2 changes,
 // marked below. It shadows the library file through the haxe/src class path; re-copy it when OpenFL is upgraded.
 package openfl.display;
 
@@ -92,6 +92,11 @@ import js.html.CanvasRenderingContext2D;
 	// private var __cachedTexture:RenderTexture;
 	@:noCompletion private var __owner:DisplayObject;
 	@:noCompletion private var __width:Int;
+	// PR2: device-space linear transform the rotated cache was last drawn with.
+	@:noCompletion private var __pr2RotatedA:Float = 0;
+	@:noCompletion private var __pr2RotatedB:Float = 0;
+	@:noCompletion private var __pr2RotatedC:Float = 0;
+	@:noCompletion private var __pr2RotatedD:Float = 0;
 	@:noCompletion private var __worldTransform:Matrix;
 	#if (js && html5)
 	@:noCompletion private var __canvas:CanvasElement;
@@ -2029,6 +2034,69 @@ import js.html.CanvasRenderingContext2D;
 		__worldTransform.b = inverseA * parentTransform.b;
 		__worldTransform.c = inverseD * parentTransform.c;
 		__worldTransform.d = inverseD * parentTransform.d;
+
+		#if (js && html5 && !openfl_disable_graphics_pixel_snapping)
+		// PR2 change: Flash rasterizes rotated and skewed vectors straight to the
+		// screen. OpenFL draws them unrotated and lets the GPU rotate the bitmap,
+		// which resamples it and softens every edge (most visibly on the posed
+		// character parts). Draw them through their full device-space matrix into
+		// a screen-aligned bitmap placed on a whole device pixel instead.
+		if ((parentTransform.b != 0 || parentTransform.c != 0) && __owner.__worldScale9Grid == null && displayMatrix != null
+			&& displayMatrix.b == 0 && displayMatrix.c == 0 && displayMatrix.a > 0 && displayMatrix.d > 0)
+		{
+			var deviceA = parentTransform.a * displayMatrix.a;
+			var deviceB = parentTransform.b * displayMatrix.d;
+			var deviceC = parentTransform.c * displayMatrix.a;
+			var deviceD = parentTransform.d * displayMatrix.d;
+			var w = __bounds.width;
+			var h = __bounds.height;
+			var minX = Math.min(Math.min(0, deviceA * w), Math.min(deviceC * h, deviceA * w + deviceC * h));
+			var maxX = Math.max(Math.max(0, deviceA * w), Math.max(deviceC * h, deviceA * w + deviceC * h));
+			var minY = Math.min(Math.min(0, deviceB * w), Math.min(deviceD * h, deviceB * w + deviceD * h));
+			var maxY = Math.max(Math.max(0, deviceB * w), Math.max(deviceD * h, deviceB * w + deviceD * h));
+			var rotatedWidth = maxX - minX;
+			var rotatedHeight = maxY - minY;
+			// Redrawn whenever the rotation changes, so large art (a whole level
+			// turning with a rotate block) keeps OpenFL's rotated-bitmap path.
+			if (rotatedWidth >= 1 && rotatedHeight >= 1 && rotatedWidth * rotatedHeight <= 512 * 512
+				&& (maxTextureWidth == null || rotatedWidth + 1 <= maxTextureWidth)
+				&& (maxTextureHeight == null || rotatedHeight + 1 <= maxTextureHeight))
+			{
+				var originX = (__bounds.x * parentTransform.a + __bounds.y * parentTransform.c + parentTransform.tx) * displayMatrix.a;
+				var originY = (__bounds.x * parentTransform.b + __bounds.y * parentTransform.d + parentTransform.ty) * displayMatrix.d;
+				var pixelX = Math.floor(originX + minX);
+				var pixelY = Math.floor(originY + minY);
+				__renderTransform.a = deviceA;
+				__renderTransform.b = deviceB;
+				__renderTransform.c = deviceC;
+				__renderTransform.d = deviceD;
+				__renderTransform.tx = originX - pixelX;
+				__renderTransform.ty = originY - pixelY;
+				__worldTransform.a = 1 / displayMatrix.a;
+				__worldTransform.b = 0;
+				__worldTransform.c = 0;
+				__worldTransform.d = 1 / displayMatrix.d;
+				__worldTransform.tx = pixelX / displayMatrix.a;
+				__worldTransform.ty = pixelY / displayMatrix.d;
+				var rotatedBitmapWidth = Math.ceil(rotatedWidth + 1.0);
+				var rotatedBitmapHeight = Math.ceil(rotatedHeight + 1.0);
+				if (rotatedBitmapWidth != __width || rotatedBitmapHeight != __height || deviceA != __pr2RotatedA || deviceB != __pr2RotatedB
+					|| deviceC != __pr2RotatedC || deviceD != __pr2RotatedD)
+				{
+					__dirty = true;
+				}
+				__pr2RotatedA = deviceA;
+				__pr2RotatedB = deviceB;
+				__pr2RotatedC = deviceC;
+				__pr2RotatedD = deviceD;
+				__width = rotatedBitmapWidth;
+				__height = rotatedBitmapHeight;
+				return;
+			}
+		}
+		if (__pr2RotatedA != 0 || __pr2RotatedB != 0 || __pr2RotatedC != 0 || __pr2RotatedD != 0) __dirty = true;
+		__pr2RotatedA = __pr2RotatedB = __pr2RotatedC = __pr2RotatedD = 0;
+		#end
 
 		var x = __bounds.x;
 		var y = __bounds.y;
