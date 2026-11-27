@@ -1,6 +1,7 @@
 package pr2.levelEditor;
 
 import openfl.display.Bitmap;
+import openfl.display.PixelSnapping;
 import openfl.display.Sprite;
 import openfl.display.Stage;
 import openfl.events.Event;
@@ -406,6 +407,7 @@ class EditorBlockObject extends Sprite {
 			bitmap.width = LevelEditor.segSize;
 			bitmap.height = LevelEditor.segSize;
 			bitmap.smoothing = false;
+			bitmap.pixelSnapping = PixelSnapping.ALWAYS; // Flash Block: unsmoothed, snapped (drawn crisp when scaled)
 			holder.addChild(bitmap);
 		} else throw 'Missing authored block bitmap for code $code';
 		var rotation = LevelRenderer.arrowOverlayRotation(code);

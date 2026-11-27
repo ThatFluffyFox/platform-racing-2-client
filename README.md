@@ -223,6 +223,15 @@ Sharp text and outlines in the browser:
   pixels. Rounding up pushed shapes out of their bitmaps at the top and left,
   cutting off edge lines such as the HUD panels' top borders. Re-copy it when
   OpenFL is upgraded.
+- `pr2.runtime.Html5PixelRatioSync` follows `devicePixelRatio` after load.
+  Lime and OpenFL read it once, so browser zoom or a move to another monitor
+  left the canvas at the old density, stretched and blurry.
+- `haxe/src/openfl/display/_internal/Context3DBitmap.hx` is OpenFL 9.5.2's
+  file with one change (marked in it): a bitmap with smoothing off and
+  `PixelSnapping.ALWAYS` (every block, as Flash's `Block` makes them) is
+  drawn unsmoothed when the stage is scaled up, like Flash, instead of
+  OpenFL smoothing every bitmap on a scaled stage. Re-copy it when OpenFL is
+  upgraded.
 
 Browser development path:
 

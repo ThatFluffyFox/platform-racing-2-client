@@ -1,6 +1,7 @@
 package pr2.level;
 
 import openfl.display.Bitmap;
+import openfl.display.PixelSnapping;
 import openfl.display.BitmapData;
 import openfl.display.Shape;
 import openfl.display.Sprite;
@@ -28,6 +29,7 @@ class BlockViewFactory {
 			// where the parent cooldown ColorTransform does not affect a Shape child.
 			var background = new Bitmap(new BitmapData(LevelRenderer.TILE_SIZE, LevelRenderer.TILE_SIZE, false, teleportBlockColor(block.options)));
 			background.smoothing = false;
+			background.pixelSnapping = PixelSnapping.ALWAYS; // Flash Block: unsmoothed, snapped (drawn crisp when scaled)
 			container.addChild(background);
 		}
 
@@ -35,6 +37,7 @@ class BlockViewFactory {
 		if (data != null) {
 			var bitmap = new Bitmap(data);
 			bitmap.smoothing = false;
+			bitmap.pixelSnapping = PixelSnapping.ALWAYS; // Flash Block: unsmoothed, snapped (drawn crisp when scaled)
 			bitmap.width = LevelRenderer.TILE_SIZE;
 			bitmap.height = LevelRenderer.TILE_SIZE;
 			container.addChild(bitmap);
@@ -63,6 +66,7 @@ class BlockViewFactory {
 		if (data != null) {
 			var bitmap = new Bitmap(data);
 			bitmap.smoothing = false;
+			bitmap.pixelSnapping = PixelSnapping.ALWAYS; // Flash Block: unsmoothed, snapped (drawn crisp when scaled)
 			bitmap.width = LevelRenderer.TILE_SIZE;
 			bitmap.height = LevelRenderer.TILE_SIZE;
 			overlay.addChild(bitmap);
