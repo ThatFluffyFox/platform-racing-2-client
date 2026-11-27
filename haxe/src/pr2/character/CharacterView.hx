@@ -101,6 +101,14 @@ class CharacterView extends Sprite {
 	private var idleTicking:Bool = false;
 	private var superJumpWobbleRandom:Void->Float = Math.random;
 	private var partBitmapCacheEnabled:Bool = #if pr2_explicit_character_part_bitmap_cache true #else false #end;
+	/**
+		Part caches are drawn each frame through their rotating, scaling slots.
+		At 1:1 that resampling blurred every outline; rasterizing at twice the
+		on-screen density and sampling it down keeps the parts as crisp as
+		Flash's vector rendering (3x and up start to alias), and stays cheaper
+		than drawing vectors every frame.
+	**/
+	private static inline final PART_CACHE_SUPERSAMPLE:Float = 2;
 	private final partBitmapCaches:StringMap<ExplicitBitmapCache> = new StringMap();
 	private final partBitmapCacheScales:StringMap<Float> = new StringMap();
 	@:allow(pr2.character.CharacterViewTest)
@@ -264,7 +272,7 @@ class CharacterView extends Sprite {
 		var pixelWidth = stage.window.width * stage.window.scale;
 		var pixelHeight = stage.window.height * stage.window.scale;
 		var stageScale = Math.min(pixelWidth / Constants.STAGE_WIDTH, pixelHeight / Constants.STAGE_HEIGHT);
-		return Math.max(stableScaleX, stableScaleY) * stageScale;
+		return Math.max(stableScaleX, stableScaleY) * stageScale * PART_CACHE_SUPERSAMPLE;
 	}
 
 	private static function invalidateVectorCache(object:DisplayObject):Void {
