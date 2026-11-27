@@ -22,6 +22,9 @@ class CursorEyedropper extends CustomCursor {
 	private var exclusions:Array<DisplayObject> = [];
 	private var cursorContainer:Null<BitmapData>;
 	private var sampleSource:Null<DisplayObject>;
+	#if html5
+	private var html5SamplePending:Bool = false;
+	#end
 
 	public function new(?sampleSource:DisplayObject) {
 		super();
@@ -76,6 +79,10 @@ class CursorEyedropper extends CustomCursor {
 
 	private function maybeUpdate(_:Event):Void {
 		if (!pr2.runtime.FrameClock.shouldRunBrowserFrame()) return;
+		#if html5
+		// Keep the cursor hidden until the click's sample frame has been drawn.
+		if (html5SamplePending) return;
+		#end
 		var me = getMouse();
 		var targetObj = me != null ? Std.downcast(me.target, DisplayObject) : null;
 		if (targetObj == null && sampleSource != null) {
@@ -119,6 +126,13 @@ class CursorEyedropper extends CustomCursor {
 	override function mouseDownHandler(e:MouseEvent):Void {
 		if (visible) {
 			e.stopImmediatePropagation();
+			#if html5
+			if (Std.isOfType(currentSampleSource(), Stage)) {
+				sampleHtml5AfterRender(CustomCursor.eventStagePoint(e));
+				super.mouseDownHandler(e);
+				return;
+			}
+			#end
 			drawEyedropper();
 			updateColor();
 			dispatchEvent(new Event(Event.COMPLETE));
@@ -198,6 +212,27 @@ class CursorEyedropper extends CustomCursor {
 	}
 
 	#if html5
+	/**
+		WebGL clears the canvas once the browser has shown a frame (the context
+		does not preserve its drawing buffer), so a read from the click handler
+		returned blank pixels and every pick came out black. Read the pixel right
+		after OpenFL draws the next frame instead, with the eyedropper hidden for
+		that frame as Flash's drawEyedropper hides it while capturing.
+	**/
+	private function sampleHtml5AfterRender(stagePoint:Point):Void {
+		var sourceStage = currentStage();
+		if (sourceStage == null || sourceStage.window == null || html5SamplePending) return;
+		html5SamplePending = true;
+		visible = false;
+		sourceStage.window.onRender.add(function(_):Void {
+			html5SamplePending = false;
+			var sampled = sampleHtml5StagePixel(stagePoint);
+			color = sampled == null ? -1 : sampled;
+			visible = true;
+			dispatchEvent(new Event(Event.COMPLETE));
+		}, true, -100);
+	}
+
 	private function sampleHtml5StagePixel(stagePoint:Point):Null<Int> {
 		try {
 			var canvas:Dynamic = js.Browser.document.querySelector("canvas");
