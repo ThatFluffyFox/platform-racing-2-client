@@ -239,7 +239,8 @@ class PartPopup extends Popup {
 		character.scaleX = character.scaleY = 1;
 		character.x = x;
 		character.y = y;
-		if (!has) character.alpha = 0.1;
+		// Flash fades only the Djinn's frost particles: c.djinnUpdateAlpha(0.1).
+		if (!has) character.djinnUpdateAlpha(0.1);
 		var insert = Std.int(Math.min(2, root.numChildren));
 		root.addChildAt(character, insert);
 		return character;

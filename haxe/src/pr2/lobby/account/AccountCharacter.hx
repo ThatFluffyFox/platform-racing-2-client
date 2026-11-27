@@ -34,6 +34,10 @@ class AccountCharacter extends Sprite {
 
 	public final display:CharacterView;
 
+	/** Flash `DjinnEffects`: frost particles for Frost Djinn bodies and feet (id 35). */
+	private var djinnEmitters:Array<pr2.character.ParticleEmitter> = [];
+	private var djinnAlpha:Float = 0.5;
+
 	public function new(hatId:Int = 1, headId:Int = 1, bodyId:Int = 1, feetId:Int = 1) {
 		super();
 		this.hat1 = hatId;
@@ -52,6 +56,43 @@ class AccountCharacter extends Sprite {
 		// standing idle plays continuously. Drive it from the stage clock; the
 		// listener is released automatically when the preview is detached.
 		display.enableIdleAnimation();
+		addEventListener(openfl.events.Event.ADDED_TO_STAGE, function(_):Void updateDjinnEffects());
+		addEventListener(openfl.events.Event.REMOVED_FROM_STAGE, function(_):Void clearDjinnEffects());
+	}
+
+	/** Flash `Character.djinnUpdateAlpha`: fades the frost particles (unowned previews use 0.1). */
+	public function djinnUpdateAlpha(newAlpha:Float):Void {
+		djinnAlpha = newAlpha;
+		updateDjinnEffects();
+	}
+
+	private function updateDjinnEffects():Void {
+		clearDjinnEffects();
+		if (parent == null || stage == null) return;
+		if (body == 35) {
+			addDjinnEmitter("body", bodyColor, bodyColor2, 16, null, null, 2, 3, 1.05, 0.9, -10, 10, -1, -0.75, -15, -10);
+		}
+		if (feet == 35) {
+			addDjinnEmitter("frontFoot", feetColor, feetColor2, 8, -2, 2, null, null, null, null, -5, 5, 0.075, 0.1, 0, 0);
+			addDjinnEmitter("backFoot", feetColor, feetColor2, 8, -2, 2, null, null, null, null, -5, 5, 0.075, 0.1, 0, 0);
+		}
+	}
+
+	private function addDjinnEmitter(slotName:String, color:Int, color2:Int, life:Int, minVelX:Null<Float>, maxVelX:Null<Float>, minVelY:Null<Float>,
+			maxVelY:Null<Float>, fricX:Null<Float>, fricY:Null<Float>, minOffsetY:Float, maxOffsetY:Float, minScale:Float, maxScale:Float, offsetX:Float,
+			offsetY:Float):Void {
+		var target = display.effectTarget(slotName);
+		if (target == null) return;
+		djinnEmitters.push(new pr2.character.PositionedParticleEmitter(75, 999999999, target, parent, {
+			graphic: "DjinnIceGraphic", colors: [color, color2], life: life, startAlpha: djinnAlpha / 5, minVelAlpha: 0, maxVelAlpha: djinnAlpha,
+			minVelX: minVelX, maxVelX: maxVelX, minVelY: minVelY, maxVelY: maxVelY, velScaleX: 0.1, velScaleY: 0.1, fricX: fricX, fricY: fricY,
+			minOffsetX: -5, maxOffsetX: 5, minOffsetY: minOffsetY, maxOffsetY: maxOffsetY, minScale: minScale, maxScale: maxScale
+		}, offsetX, offsetY));
+	}
+
+	private function clearDjinnEffects():Void {
+		for (emitter in djinnEmitters) emitter.remove();
+		djinnEmitters = [];
 	}
 
 	public function setColors(hatColor:Int, hatColor2:Int, headColor:Int, headColor2:Int, bodyColor:Int, bodyColor2:Int, feetColor:Int,
@@ -118,6 +159,7 @@ class AccountCharacter extends Sprite {
 			feet: {primary: feetColor, secondary: feetColor2}
 		});
 		display.setHatIds([hat1, 1, 1, 1]);
+		updateDjinnEffects();
 		display.setHatSlotColors([
 			{primary: hat1Color, secondary: hat1Color2},
 			{primary: 0, secondary: -1},
@@ -147,6 +189,7 @@ class AccountCharacter extends Sprite {
 	}
 
 	public function remove():Void {
+		clearDjinnEffects();
 		if (display.parent == this) {
 			removeChild(display);
 		}
