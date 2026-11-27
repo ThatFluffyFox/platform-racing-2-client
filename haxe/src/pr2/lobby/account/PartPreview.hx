@@ -19,8 +19,6 @@ class PartPreview extends Sprite {
 		var feet = type == "FEET" ? id : 1;
 		character = new AccountCharacter(hat, head, body, feet);
 		character.setColors(0x6C91C2, -1, 0xD2A779, -1, 0x7399C8, -1, 0x545E70, -1);
-		isolatePart(type);
-		addChild(character);
 		// EpicFlash belongs on the authored part artwork. The old compatibility
 		// runtime applied its color transform to the preview clip itself; a
 		// separately drawn purple ring was never part of the Flash composition.
@@ -28,6 +26,12 @@ class PartPreview extends Sprite {
 		epicTarget.name = "epicTarget";
 		secondaryVisible = type == "HAT" && id == 16;
 		if (secondaryVisible) character.setHatColors(0xD3B13B, 0xF2DE79);
+		// Flash stops the part clip on its frame (no idle) in its authored colours.
+		character.display.showAsPartPreview();
+		// Isolate last: re-applying the appearance (the cheese hat's colours
+		// above) shows every part again.
+		isolatePart(type);
+		addChild(character);
 		alpha = owned ? 1 : 0.1;
 	}
 

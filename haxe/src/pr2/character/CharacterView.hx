@@ -94,6 +94,10 @@ class CharacterView extends Sprite {
 	private var activeItem:Null<RigHeldItem>;
 	private final heldItemArtworkCache:StringMap<Sprite> = new StringMap();
 	private var idleAnimationEnabled:Bool = false;
+	/** Part previews hold the pose; only the part and hat clips keep playing. */
+	private var poseHeld:Bool = false;
+	/** Part previews show each part clip's authored colours, as Flash's part menus do. */
+	private var authoredColors:Bool = false;
 	private var idleTicking:Bool = false;
 	private var superJumpWobbleRandom:Void->Float = Math.random;
 	private var partBitmapCacheEnabled:Bool = #if pr2_explicit_character_part_bitmap_cache true #else false #end;
@@ -580,13 +584,15 @@ class CharacterView extends Sprite {
 	}
 
 	public function advanceOneFrame():Void {
-		if (currentFrame < frameCount) {
-			currentFrame++;
-			if (currentFrame == frameCount) signalLastFrame();
-		} else if (animation.endBehavior == "loop") {
-			currentFrame = 1;
+		if (!poseHeld) {
+			if (currentFrame < frameCount) {
+				currentFrame++;
+				if (currentFrame == frameCount) signalLastFrame();
+			} else if (animation.endBehavior == "loop") {
+				currentFrame = 1;
+			}
+			applyFrame();
 		}
-		applyFrame();
 		advanceItemAction();
 		advancePartChannelAnimations();
 		advanceHatAnimations();
@@ -701,6 +707,18 @@ class CharacterView extends Sprite {
 			disposePartBitmapCaches();
 			disposeHatBitmapCaches();
 		}
+	}
+
+	/**
+		Show parts the way Flash's part menus do: the part clip stopped on its
+		frame in its authored colours, with no character idle. Animated part and
+		hat clips (such as the propeller) keep playing.
+	**/
+	public function showAsPartPreview():Void {
+		poseHeld = true;
+		authoredColors = true;
+		applyAllPartColors();
+		applyAllHatColors();
 	}
 
 	public function enableIdleAnimation():Void {
@@ -998,11 +1016,11 @@ class CharacterView extends Sprite {
 		var color = partColors.get(kind);
 		if (color == null) throw 'Character part $kind has no color';
 		var primary = Std.downcast(artwork.getChildByName("primary"), Shape);
-		if (primary != null) primary.transform.colorTransform = solidColor(color.primary);
+		if (primary != null) primary.transform.colorTransform = authoredColors ? DEFAULT_COLOR_TRANSFORM : solidColor(color.primary);
 		var secondary = Std.downcast(artwork.getChildByName("secondary"), Shape);
 		if (secondary != null) {
 			secondary.visible = color.secondary >= 0;
-			if (secondary.visible) secondary.transform.colorTransform = solidColor(color.secondary);
+			if (secondary.visible) secondary.transform.colorTransform = authoredColors ? DEFAULT_COLOR_TRANSFORM : solidColor(color.secondary);
 		}
 		syncEpicCoveredStatic(artwork, secondary);
 	}
@@ -1019,11 +1037,11 @@ class CharacterView extends Sprite {
 	private function applyHatColorToArtwork(index:Int, artwork:Sprite):Void {
 		var color = hatColors[index];
 		var primary = Std.downcast(artwork.getChildByName("primary"), Shape);
-		if (primary != null) primary.transform.colorTransform = solidColor(color.primary);
+		if (primary != null) primary.transform.colorTransform = authoredColors ? DEFAULT_COLOR_TRANSFORM : solidColor(color.primary);
 		var secondary = Std.downcast(artwork.getChildByName("secondary"), Shape);
 		if (secondary != null) {
 			secondary.visible = color.secondary >= 0;
-			if (secondary.visible) secondary.transform.colorTransform = solidColor(color.secondary);
+			if (secondary.visible) secondary.transform.colorTransform = authoredColors ? DEFAULT_COLOR_TRANSFORM : solidColor(color.secondary);
 		}
 		syncEpicCoveredStatic(artwork, secondary);
 	}
