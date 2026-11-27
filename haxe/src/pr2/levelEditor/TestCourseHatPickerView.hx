@@ -33,6 +33,7 @@ class TestCourseHatPickerView extends NativeView {
 		overlayFrames = [];
 		overlayCurrentFrame = 0;
 		var channels = hatChannels(id);
+		pr2.character.CharacterView.addFixedLayer(hat, channels.fixedBelow, "fixedBelow");
 		var primary = SvgAsset.create(channels.primary);
 		primary.name = "colorMC";
 		hat.addChild(primary);
@@ -43,6 +44,7 @@ class TestCourseHatPickerView extends NativeView {
 		secondary.name = "colorMC2";
 		secondary.visible = id == 16;
 		hat.addChild(secondary);
+		pr2.character.CharacterView.addFixedLayer(hat, channels.fixedAbove, "fixedAbove");
 		if (channels.overlayAnimation != null && channels.overlayAnimation.frames.length > 0) {
 			overlayFrames = channels.overlayAnimation.frames.copy();
 			overlay = new Sprite();

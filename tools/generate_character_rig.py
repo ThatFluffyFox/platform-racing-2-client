@@ -169,9 +169,17 @@ def part_variants(kind: str, include_excluded: bool = False) -> list[dict[str, o
         }
         # Propeller and Jigg keep their nested MovieClip animation above a static
         # base. Their generated frames share the hat container's local origin.
+        # Static art the XFL stacks under colorMC or over colorMC2; see
+        # tools/split_character_static_layers.py.
+        for field, file_name in (("fixedBelow", "static_below.svg"), ("fixedAbove", "static_above.svg")):
+            if (directory / file_name).exists():
+                record[field] = f"assets/svg/character/{kind}/{directory.name}/{file_name}"
         if kind == "hat" and part_id in ANIMATED_HAT_OVERLAYS:
             overlay = ANIMATED_HAT_OVERLAYS[part_id]
             record["fixed"] = f"assets/svg/character/hat/{directory.name}/static_base.svg"
+            record.pop("fixedAbove", None)
+            if (directory / "static_base_above.svg").exists():
+                record["fixedAbove"] = f"assets/svg/character/hat/{directory.name}/static_base_above.svg"
             record["overlayAnimation"] = {
                 "frameRate": 30,
                 "endBehavior": "loop",

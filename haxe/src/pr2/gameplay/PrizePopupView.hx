@@ -95,6 +95,8 @@ class PrizePartSymbol extends Sprite {
 	public final colorMC2:PrizePartSymbolChannel;
 	private final kind:String;
 	private var fixed:Null<Shape>;
+	private var fixedBelow:Null<Shape>;
+	private var fixedAbove:Null<Shape>;
 	private var overlay:Null<Sprite>;
 	private var overlayFrames:Array<String> = [];
 	public var overlayCurrentFrame(default, null):Int = 0;
@@ -128,14 +130,28 @@ class PrizePartSymbol extends Sprite {
 		fixed.name = "static";
 		fixed.x = registration.x;
 		fixed.y = registration.y;
-		// Character parts are authored primary -> fixed line/detail art ->
-		// secondary. Keep the same stacking order used by CharacterView.
-		addChildAt(fixed, 1);
+		// Character parts are authored below art -> primary -> fixed line/detail
+		// art -> secondary -> above art. Keep the order used by CharacterView.
+		if (fixedBelow != null && fixedBelow.parent == this) removeChild(fixedBelow);
+		if (fixedAbove != null && fixedAbove.parent == this) removeChild(fixedAbove);
+		addChildAt(fixed, getChildIndex(colorMC) + 1);
+		fixedBelow = addFixedLayer(variant.fixedBelow, "staticBelow", 0, registration.x, registration.y);
+		fixedAbove = addFixedLayer(variant.fixedAbove, "staticAbove", getChildIndex(colorMC2) + 1, registration.x, registration.y);
 		colorMC.x = colorMC2.x = registration.x;
 		colorMC.y = colorMC2.y = registration.y;
 		colorMC.setAsset(variant.primary, frame);
 		colorMC2.setAsset(variant.secondary, frame);
 		setOverlay(variant, registration.x, registration.y);
+	}
+
+	private function addFixedLayer(asset:Null<String>, name:String, index:Int, x:Float, y:Float):Null<Shape> {
+		if (asset == null) return null;
+		var shape = SvgAsset.create(asset);
+		shape.name = name;
+		shape.x = x;
+		shape.y = y;
+		addChildAt(shape, index);
+		return shape;
 	}
 
 	private function setOverlay(variant:RigPartChannels, registrationX:Float, registrationY:Float):Void {

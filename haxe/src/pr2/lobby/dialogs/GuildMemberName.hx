@@ -53,15 +53,16 @@ class GuildMemberName extends Sprite {
 	private static function createOwnerHat():Sprite {
 		var result = new Sprite();
 		var channels = ownerHatChannels();
-		var fixed = SvgAsset.create(channels.fixed);
-		fixed.name = "fixed";
-		result.addChild(fixed);
 		var primary = SvgAsset.create(channels.primary);
 		primary.name = "colorMC";
 		result.addChild(primary);
+		var fixed = SvgAsset.create(channels.fixed);
+		fixed.name = "fixed";
+		result.addChild(fixed);
 		var secondary = SvgAsset.create(channels.secondary);
 		secondary.name = "colorMC2";
 		result.addChild(secondary);
+		pr2.character.CharacterView.addFixedLayer(result, channels.fixedAbove, "fixedAbove");
 		return result;
 	}
 

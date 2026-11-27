@@ -295,7 +295,8 @@ class EditorBlockOptionsTest {
 		assertNear(56, hat.transform.matrix.tx, "hat picker hat x");
 		assertNear(20, hat.transform.matrix.ty, "hat picker hat y");
 		picker.setHat(2);
-		assertEquals(3, hat.numChildren, "hat picker mounts all authored color channels");
+		assertEquals(4, hat.numChildren, "hat picker mounts all authored color channels and the art above them");
+		assertEquals(3, hat.getChildIndex(hat.getChildByName("fixedAbove")), "art authored over colorMC2 stays above it");
 		assertEquals(false, hat.getChildByName("colorMC2").visible, "ordinary hat hides the secondary channel like Flash");
 		assertEquals(null, hat.getChildByName("animatedOverlay"), "static hats do not mount an animation overlay");
 		picker.setHat(16);
