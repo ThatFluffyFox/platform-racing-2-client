@@ -79,6 +79,9 @@ class CharacterView extends Sprite {
 	public var jetFireScale(default, null):Float = 1;
 	public var jetFireAlpha(default, null):Float = 1;
 	public var bodyChannelAnimationFrame(default, null):Int = 1;
+	// Same as bodyChannelAnimationFrame for heads with animated channels (the
+	// bubble head's face spins through Symbol 753's 101 frames).
+	public var headChannelAnimationFrame(default, null):Int = 1;
 
 	private final rig:CharacterRigDefinition;
 	private final rigRoot:Sprite;
@@ -365,14 +368,14 @@ class CharacterView extends Sprite {
 		if (isEmptyPart(kind, partId(kind))) return;
 		var channels = partVariant(kind, partId(kind));
 		addFixedLayer(artwork, channels.fixedBelow, "staticBelow");
-		var primary = new pr2.runtime.TintedSvgShape(partChannelAsset(channels, "primary"));
+		var primary = new pr2.runtime.TintedSvgShape(partChannelAsset(channels, "primary", kind));
 		primary.name = "primary";
 		artwork.addChild(primary);
-		var fixed = SvgAsset.create(partChannelAsset(channels, "static"));
+		var fixed = SvgAsset.create(partChannelAsset(channels, "static", kind));
 		fixed.name = "static";
 		artwork.addChild(fixed);
 		addFixedLayer(artwork, channels.fixedUnderSecondary, "staticUnderSecondary");
-		var secondary = new pr2.runtime.TintedSvgShape(partChannelAsset(channels, "secondary"));
+		var secondary = new pr2.runtime.TintedSvgShape(partChannelAsset(channels, "secondary", kind));
 		secondary.name = "secondary";
 		artwork.addChild(secondary);
 		addFixedLayer(artwork, channels.fixedAbove, "staticAbove");
@@ -501,6 +504,7 @@ class CharacterView extends Sprite {
 		validatePartIds(ids);
 		disposePartBitmapCaches();
 		if (partIds.body != ids.body) bodyChannelAnimationFrame = 1;
+		if (partIds.head != ids.head) headChannelAnimationFrame = 1;
 		partIds = copyPartIds(ids);
 		for (slotName in slots.keys()) {
 			var kind = slotKinds.get(slotName);
@@ -609,27 +613,36 @@ class CharacterView extends Sprite {
 	}
 
 	private function advancePartChannelAnimations():Void {
-		if (isEmptyPart("body", partIds.body)) return;
-		var channels = partVariant("body", partIds.body);
+		advanceKindChannelAnimations("body");
+		advanceKindChannelAnimations("head");
+	}
+
+	private function channelAnimationFrame(kind:String):Int return kind == "head" ? headChannelAnimationFrame : bodyChannelAnimationFrame;
+
+	private function advanceKindChannelAnimations(kind:String):Void {
+		if (isEmptyPart(kind, partId(kind))) return;
+		var channels = partVariant(kind, partId(kind));
 		if (channels.channelAnimations == null || channels.channelAnimations.length == 0) return;
 		var frameCount = channels.channelAnimations[0].frames.length;
-		bodyChannelAnimationFrame = bodyChannelAnimationFrame >= frameCount ? 1 : bodyChannelAnimationFrame + 1;
+		var frame = channelAnimationFrame(kind);
+		frame = frame >= frameCount ? 1 : frame + 1;
+		if (kind == "head") headChannelAnimationFrame = frame; else bodyChannelAnimationFrame = frame;
 		for (slotName in slots.keys()) {
-			if (slotKinds.get(slotName) != "body") continue;
+			if (slotKinds.get(slotName) != kind) continue;
 			disposePartBitmapCache(slotName);
 			var artwork = Std.downcast(requireSlot(slotName).getChildByName("artwork"), Sprite);
 			if (artwork == null) continue;
-			for (animation in channels.channelAnimations) replaceAnimatedPartChannel(artwork, animation);
-			applyPartColorToArtwork("body", artwork);
+			for (animation in channels.channelAnimations) replaceAnimatedPartChannel(artwork, animation, frame);
+			applyPartColorToArtwork(kind, artwork);
 		}
 	}
 
-	private function replaceAnimatedPartChannel(artwork:Sprite, animation:RigPartChannelAnimation):Void {
+	private function replaceAnimatedPartChannel(artwork:Sprite, animation:RigPartChannelAnimation, frame:Int):Void {
 		var previous = artwork.getChildByName(animation.channel);
-		if (previous == null) throw 'Animated body channel ${animation.channel} is missing';
+		if (previous == null) throw 'Animated part channel ${animation.channel} is missing';
 		var index = artwork.getChildIndex(previous);
 		artwork.removeChild(previous);
-		var asset = animation.frames[bodyChannelAnimationFrame - 1];
+		var asset = animation.frames[frame - 1];
 		var replacement:Shape = animation.channel == "static" ? SvgAsset.create(asset) : new pr2.runtime.TintedSvgShape(asset);
 		replacement.name = animation.channel;
 		artwork.addChildAt(replacement, index);
@@ -643,9 +656,9 @@ class CharacterView extends Sprite {
 		parent.addChild(shape);
 	}
 
-	private function partChannelAsset(channels:RigPartChannels, channel:String):String {
+	private function partChannelAsset(channels:RigPartChannels, channel:String, kind:String = "body"):String {
 		if (channels.channelAnimations != null) {
-			for (animation in channels.channelAnimations) if (animation.channel == channel) return animation.frames[bodyChannelAnimationFrame - 1];
+			for (animation in channels.channelAnimations) if (animation.channel == channel) return animation.frames[channelAnimationFrame(kind) - 1];
 		}
 		return switch (channel) {
 			case "primary": channels.primary;
@@ -881,7 +894,6 @@ class CharacterView extends Sprite {
 		var index = currentFrame - 1;
 		var shareSuperJumpEffects = currentState == "superJump";
 		var suppressSuperJumpColorTransform = currentState == "superJump" && !SUPER_JUMP_COLOR_TRANSFORM_ENABLED;
-		var sharedColor:Null<RigColorTransform> = null;
 		var sharedBlur:Null<RigBlur> = null;
 		for (slotDefinition in animation.slots) {
 			var target = requireSlot(slotDefinition.name);
@@ -903,20 +915,18 @@ class CharacterView extends Sprite {
 			);
 			target.alpha = source.alpha;
 			if (shareSuperJumpEffects) {
-				applyFrameEffects(target, null, null);
+				// Flash colours each layer itself: the weapon layer only takes the
+				// final yellow charge (frames 40-51), not the fade before it. The
+				// blur stays shared on the rig root below.
+				applyFrameEffects(target, suppressSuperJumpColorTransform ? null : source.colorTransform, null);
 				if (slotDefinition.name == "body") {
-					sharedColor = source.colorTransform;
 					sharedBlur = source.blur;
 				}
 			} else {
 				applyFrameEffects(target, source.colorTransform, source.blur);
 			}
 		}
-		applyFrameEffects(
-			rigRoot,
-			shareSuperJumpEffects && !suppressSuperJumpColorTransform ? sharedColor : null,
-			shareSuperJumpEffects ? sharedBlur : null
-		);
+		applyFrameEffects(rigRoot, null, shareSuperJumpEffects ? sharedBlur : null);
 		positionHeadArtwork();
 	}
 
