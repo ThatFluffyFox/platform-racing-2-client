@@ -125,9 +125,15 @@ class MiniMap extends Removable {
 
 		var pixelW = numLimit(blockSprite.width, 1, MAX_SPACE_WIDTH);
 		var pixelH = numLimit(blockSprite.height, 1, MAX_SPACE_WIDTH);
-		bitmapData = new BitmapData(Math.ceil(pixelW), Math.ceil(pixelH), true, 0);
+		// Flash drew this bitmap at the size it is shown. The HTML5 stage is
+		// scaled up to fit the window, so bake it at the output resolution and
+		// shrink the Bitmap back; a stage-sized bitmap was stretched and blurry.
+		var outputScale = outputPixelScale();
+		bitmapData = new BitmapData(Math.ceil(pixelW * outputScale), Math.ceil(pixelH * outputScale), true, 0);
 		bitmap = new Bitmap(bitmapData);
-		bitmapData.draw(frame);
+		bitmapData.draw(frame, new openfl.geom.Matrix(outputScale, 0, 0, outputScale));
+		bitmap.scaleX = bitmap.scaleY = 1 / outputScale;
+		bitmap.smoothing = outputScale != 1;
 
 		blockSprite.graphics.clear();
 		blockSprite = new Sprite();
@@ -220,6 +226,19 @@ class MiniMap extends Removable {
 		var fitW = MAX_SPACE_WIDTH / bitmapWidth;
 		var fitH = MAX_SPACE_HEIGHT / bitmapHeight;
 		return fitW < fitH ? fitW : fitH;
+	}
+
+	/** Device pixels per stage pixel in the browser (1 elsewhere). */
+	private static function outputPixelScale():Float {
+		#if (js && html5)
+		var stage = pr2.app.AppStage.stage;
+		if (stage != null) {
+			var matrix = @:privateAccess stage.__displayMatrix;
+			var scale = Math.sqrt(matrix.a * matrix.a + matrix.b * matrix.b);
+			if (scale > 1) return Math.min(scale, 8);
+		}
+		#end
+		return 1;
 	}
 
 	/** Port of Data.numLimit. */
