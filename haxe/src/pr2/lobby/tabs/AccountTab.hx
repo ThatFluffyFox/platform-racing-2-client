@@ -77,8 +77,9 @@ class AccountTab extends Page {
 	}
 
 	override public function initialize():Void {
+		// Flash AccountInfo adds its art only once setCustomizeInfo arrives, so
+		// the rank token buttons never show on their own while it loads.
 		art = new AccountInfoView();
-		addChild(art);
 		rankUp = DisplayUtil.directChildByName(art, "rankTokenUp_bt");
 		rankDown = DisplayUtil.directChildByName(art, "rankTokenDown_bt");
 		loadouts = DisplayUtil.directChildByName(art, "loadouts_bt");
@@ -106,6 +107,7 @@ class AccountTab extends Page {
 			return;
 		}
 		resetControls();
+		if (art != null && art.parent == null) addChildAt(art, 0);
 		rank = data.rank;
 		rankTokensUsed = data.rankTokensUsed;
 		rankTokensAvailable = data.rankTokensAvailable;
