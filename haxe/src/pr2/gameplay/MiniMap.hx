@@ -3,8 +3,6 @@ package pr2.gameplay;
 import openfl.display.Bitmap;
 import openfl.display.BitmapData;
 import openfl.display.DisplayObject;
-import openfl.display.LineScaleMode;
-import openfl.display.Shape;
 import openfl.display.Sprite;
 import openfl.geom.Rectangle;
 import pr2.display.Removable;
@@ -38,6 +36,7 @@ class MiniMap extends Removable {
 	private var playerDots:Sprite = new Sprite();
 	private var scale:Float = 1;
 	private var blockCount:Int = 0;
+	private final drawnBlocks:Map<String, Bool> = new Map();
 
 	public function new() {
 		super();
@@ -65,13 +64,8 @@ class MiniMap extends Removable {
 		Native equivalent of MiniMapFinishGraphic: a 4 x 4 green square centred
 		on the finish block, with Flash's white hairline outline.
 	**/
-	public static function createFinishMarker():Shape {
-		var marker = new Shape();
-		marker.graphics.lineStyle(0, 0xFFFFFF, 1, false, LineScaleMode.NONE);
-		marker.graphics.beginFill(0x00CC00);
-		marker.graphics.drawRect(-2, -2, 4, 4);
-		marker.graphics.endFill();
-		return marker;
+	public static function createFinishMarker():MiniMapMarker {
+		return new MiniMapMarker(0x00CC00, 0xFFFFFF, -2, -2);
 	}
 
 	/** Removes a finish box previously placed at the given (centre) coordinates. */
@@ -87,14 +81,23 @@ class MiniMap extends Removable {
 		}
 	}
 
+	/**
+		Flash begins a fill per block, but its rasterizer covers all the fills of
+		one Graphics together, so touching blocks merge into a solid silhouette.
+		A browser canvas fills each path on its own and the anti-aliased shared
+		edges left a grey seam between every block. Draw the blocks as sub-paths
+		of the single fill opened in the constructor instead; a block repeated at
+		the same spot is skipped so the even-odd fill cannot cancel it out.
+	**/
 	private function drawBlock(blockX:Float, blockY:Float):Void {
-		blockSprite.graphics.beginFill(0);
+		var key = blockX + "," + blockY;
+		if (drawnBlocks.exists(key)) return;
+		drawnBlocks.set(key, true);
 		blockSprite.graphics.moveTo(blockX, blockY);
 		blockSprite.graphics.lineTo(blockX + BLOCK_SIZE, blockY);
 		blockSprite.graphics.lineTo(blockX + BLOCK_SIZE, blockY + BLOCK_SIZE);
 		blockSprite.graphics.lineTo(blockX, blockY + BLOCK_SIZE);
 		blockSprite.graphics.lineTo(blockX, blockY);
-		blockSprite.graphics.endFill();
 	}
 
 	/** Creates a player dot, adds it to the live dot layer, and returns it. */
@@ -165,8 +168,8 @@ class MiniMap extends Removable {
 		var i = 0;
 		while (i < layer.numChildren) {
 			var child:DisplayObject = layer.getChildAt(i);
-			var dot = Std.downcast(child, MiniMapDot);
-			if (dot != null) dot.fitTo(4, layerScale * layer.scaleX);
+			var marker = Std.downcast(child, MiniMapMarker);
+			if (marker != null) marker.fitTo(4, layerScale * layer.scaleX);
 			else child.width = child.height = 4 / (layerScale * layer.scaleX);
 			i++;
 		}
