@@ -14,6 +14,7 @@ class OptionsSettings {
 	public static function setSound(value:Float):Void Settings.setValue(Settings.SOUND_VOLUME, Std.int(value));
 	public static function setDrawArt(value:Bool):Void Settings.setValue(Settings.DRAW_ART, value);
 	public static function setSwearFilter(value:Bool):Void Settings.setValue(Settings.FILTER_SWEARS, value);
+	public static function setCharacterCache(mode:Int):Void Settings.setValue(Settings.CHARACTER_CACHE, mode);
 	public static function setSongEnabled(songId:Int, enabled:Bool):Void {
 		if (!SONGS.exists(songId)) return;
 		var disabled:Array<Int> = [];

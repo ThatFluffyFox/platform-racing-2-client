@@ -7,6 +7,8 @@ class Settings {
 	public static inline var SOUND_VOLUME:String = "soundLevel";
 	public static inline var DRAW_ART:String = "drawArt";
 	public static inline var FILTER_SWEARS:String = "filterSwears";
+	/** Race character part cache: 0 draws vectors, 1 or 2 caches at that density. */
+	public static inline var CHARACTER_CACHE:String = "characterCache";
 	public static inline var ALTERNATE_CONTROLS:String = "altCtrl";
 	public static inline var LE_TEST_STATS:String = "leTestStats";
 	public static inline var LE_TEST_HAT:String = "leTestHat";
@@ -19,6 +21,7 @@ class Settings {
 	public static var soundLevel:Int = 100;
 	public static var drawArt:Bool = true;
 	public static var filterSwears:Bool = true;
+	public static var characterCache:Int = 2;
 	public static var altCtrl:Dynamic = cloneObject(DEFAULT_ALT_CONTROLS);
 	public static var leTestStats:Dynamic = cloneObject(DEFAULT_LE_TEST_STATS);
 	public static var leTestHat:Int = 2;
@@ -31,6 +34,7 @@ class Settings {
 		SOUND_VOLUME,
 		DRAW_ART,
 		FILTER_SWEARS,
+		CHARACTER_CACHE,
 		ALTERNATE_CONTROLS,
 		LE_TEST_STATS,
 		LE_TEST_HAT,
@@ -225,6 +229,7 @@ class Settings {
 			case SOUND_VOLUME: soundLevel;
 			case DRAW_ART: drawArt;
 			case FILTER_SWEARS: filterSwears;
+			case CHARACTER_CACHE: characterCache;
 			case ALTERNATE_CONTROLS: altCtrl;
 			case LE_TEST_STATS: leTestStats;
 			case LE_TEST_HAT: leTestHat;
@@ -246,6 +251,9 @@ class Settings {
 				drawArt = value;
 			case FILTER_SWEARS:
 				filterSwears = value;
+			case CHARACTER_CACHE:
+				var mode:Null<Int> = Std.isOfType(value, Int) || Std.isOfType(value, Float) ? Std.int(value) : null;
+				characterCache = mode == null ? 2 : Std.int(Math.max(0, Math.min(2, mode)));
 			case ALTERNATE_CONTROLS:
 				altCtrl = value;
 			case LE_TEST_STATS:

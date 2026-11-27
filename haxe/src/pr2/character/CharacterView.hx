@@ -102,13 +102,14 @@ class CharacterView extends Sprite {
 	private var superJumpWobbleRandom:Void->Float = Math.random;
 	private var partBitmapCacheEnabled:Bool = #if pr2_explicit_character_part_bitmap_cache true #else false #end;
 	/**
-		Part caches are drawn each frame through their rotating, scaling slots.
-		At 1:1 that resampling blurred every outline; rasterizing at twice the
-		on-screen density and sampling it down keeps the parts as crisp as
-		Flash's vector rendering (3x and up start to alias), and stays cheaper
-		than drawing vectors every frame.
+		The part cache density last applied from Options > characters
+		(`Settings.characterCache`): 0 draws vectors, 1 or 2 caches each part at
+		that multiple of its on-screen density. Caches are drawn each frame through
+		their rotating, scaling slots; at 1x that resampling softens outlines, while
+		2x keeps them as crisp as Flash's vectors (3x and up start to alias) and is
+		still cheaper than drawing vectors every frame.
 	**/
-	private static inline final PART_CACHE_SUPERSAMPLE:Float = 2;
+	private var appliedCacheMode:Int = -1;
 	private final partBitmapCaches:StringMap<ExplicitBitmapCache> = new StringMap();
 	private final partBitmapCacheScales:StringMap<Float> = new StringMap();
 	@:allow(pr2.character.CharacterViewTest)
@@ -163,6 +164,14 @@ class CharacterView extends Sprite {
 	**/
 	private function refreshPartVectorCaches(_:Event):Void {
 		if (!partBitmapCacheEnabled) return;
+		// Options > characters: Off draws vectors, 1x/2x cache at that density.
+		var mode = pr2.lobby.account.Settings.characterCache;
+		if (mode != appliedCacheMode) {
+			disposePartBitmapCaches();
+			disposeHatBitmapCaches();
+			appliedCacheMode = mode;
+		}
+		if (mode <= 0) return;
 		for (slotName in BITMAP_CACHE_SLOTS) {
 			var part = requireSlot(slotName);
 			var artwork = Std.downcast(part.getChildByName("artwork"), Sprite);
@@ -272,7 +281,7 @@ class CharacterView extends Sprite {
 		var pixelWidth = stage.window.width * stage.window.scale;
 		var pixelHeight = stage.window.height * stage.window.scale;
 		var stageScale = Math.min(pixelWidth / Constants.STAGE_WIDTH, pixelHeight / Constants.STAGE_HEIGHT);
-		return Math.max(stableScaleX, stableScaleY) * stageScale * PART_CACHE_SUPERSAMPLE;
+		return Math.max(stableScaleX, stableScaleY) * stageScale * Math.max(1, pr2.lobby.account.Settings.characterCache);
 	}
 
 	private static function invalidateVectorCache(object:DisplayObject):Void {

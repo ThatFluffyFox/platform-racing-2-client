@@ -38,10 +38,21 @@ class OptionsView extends NativeView {
 		// contains the shadow source shape, so apply the authored alpha to the
 		// complete asset to preserve the slightly translucent Flash result.
 		panel.alpha = 0.901960784313726;
+		// Wider than the authored panel: the cached sprites column sits left of art.
+		panel.x -= 70;
+		panel.width += 70;
 		addChild(panel);
 		highlight("artHighlight", -93.05, -71.5);
+		highlight("cacheHighlight", -167, -15.55);
 		highlight("filterHighlight", -28.15, -71.5);
-		componentButton("close_bt", "Close", -50, 106.5, 100);
+		// Close and the title stay centred on the widened panel (35px left of the authored centre).
+		componentButton("close_bt", "Close", -85, 106.5, 100);
+		var cacheLabel = label("cached\nsprites", "cacheLabel", -202, -119, 70, 30, 12, false, TextFormatAlign.CENTER);
+		cacheLabel.multiline = true;
+		cacheLabel.text = "cached\nsprites";
+		componentButton("cacheOff_bt", "Off", -192, -82.45, 50);
+		componentButton("cache1x_bt", "1x", -192, -54.5, 50);
+		componentButton("cache2x_bt", "2x", -192, -26.55, 50);
 		label("↑", null, -68.75, -2.8, 16, 14.6, 12, false, TextFormatAlign.CENTER);
 		input("wasdUp", -68.75, 14.5);
 		label("↓", null, -68.75, 51.95, 16, 14.6, 12, false, TextFormatAlign.CENTER);
@@ -74,7 +85,7 @@ class OptionsView extends NativeView {
 		label("art", "artLabel", -106.2, -104.5, 26, 14.55, 12, false, TextFormatAlign.CENTER);
 		componentButton("artOff_bt", "Off", -118.2, -54.5, 50);
 		componentButton("artOn_bt", "On", -118.2, -82.45, 50);
-		title = label("-- Options --", null, -53, -133, 106, 17.05, 14, true, TextFormatAlign.CENTER);
+		title = label("-- Options --", null, -88, -133, 106, 17.05, 14, true, TextFormatAlign.CENTER);
 	}
 
 	private function slider(name:String, x:Float, y:Float):Void {

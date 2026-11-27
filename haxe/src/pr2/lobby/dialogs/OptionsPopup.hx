@@ -27,15 +27,19 @@ class OptionsPopup extends Popup {
 	private var hoverCleanups:Array<Void->Void> = [];
 	private var filterSwears:Bool;
 	private var drawArt:Bool;
+	private var characterCache:Int;
 	private var accountButtons:Null<PopupButtonStack>;
 	private var hoverActive:Null<HoverPopup>;
 
 	public function new() {
 		super();
 		art = new OptionsView();
+		// Keep the panel centred now that it extends 70px further left.
+		art.x = 35;
 		addChild(art);
 		filterSwears = Settings.getValue(Settings.FILTER_SWEARS, true);
 		drawArt = Settings.getValue(Settings.DRAW_ART, true);
+		characterCache = Settings.characterCache;
 
 		var music = slider("musicSlider");
 		var sound = slider("soundSlider");
@@ -53,11 +57,15 @@ class OptionsPopup extends Popup {
 		loadControls();
 		setHighlight("filterHighlight", filterSwears);
 		setHighlight("artHighlight", drawArt);
+		setCacheHighlight(characterCache);
 
 		bind("filterOn_bt", function() setFilter(true));
 		bind("filterOff_bt", function() setFilter(false));
 		bind("artOn_bt", function() setDrawArt(true));
 		bind("artOff_bt", function() setDrawArt(false));
+		bind("cacheOff_bt", function() setCharacterCache(0));
+		bind("cache1x_bt", function() setCharacterCache(1));
+		bind("cache2x_bt", function() setCharacterCache(2));
 		bind("music_bt", toggleSongsMenu);
 		bindHover("music_bt", hoverMusic, hoverOut);
 		bind("close_bt", startFadeOut);
@@ -165,6 +173,19 @@ class OptionsPopup extends Popup {
 		OptionsSettings.setDrawArt(value);
 		setHighlight("artHighlight", value);
 	}
+	/** Off draws characters as vectors; 1x/2x cache their parts at that density. */
+	private function setCharacterCache(mode:Int):Void {
+		characterCache = mode;
+		OptionsSettings.setCharacterCache(mode);
+		setCacheHighlight(mode);
+	}
+
+	private function setCacheHighlight(mode:Int):Void {
+		var target = DisplayUtil.directChildByName(art, "cacheHighlight");
+		// Off / 1x / 2x stack like art's On / Off: centre the highlight on the chosen button.
+		if (target != null) target.y = -71.45 + mode * 27.95;
+	}
+
 	private function setHighlight(name:String, value:Bool):Void { var target = DisplayUtil.directChildByName(art, name); if (target != null) target.y = value ? TRUE_Y : FALSE_Y; }
 
 	private function hoverMusic():Void {
@@ -228,6 +249,7 @@ class OptionsPopup extends Popup {
 		saveControls();
 		Settings.setValue(Settings.DRAW_ART, drawArt);
 		Settings.setValue(Settings.FILTER_SWEARS, filterSwears);
+		Settings.setValue(Settings.CHARACTER_CACHE, characterCache);
 		for (cleanup in hoverCleanups) cleanup();
 		hoverCleanups = [];
 		for (binding in bindings) LobbyArt.unbind(binding);

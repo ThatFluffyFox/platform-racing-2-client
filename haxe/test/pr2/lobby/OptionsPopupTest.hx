@@ -46,9 +46,9 @@ class OptionsPopupTest {
 		Settings.setValue(Settings.DISABLED_SONGS, ["2", "17"]);
 		var popup = new OptionsPopup();
 		var view = optionsView(popup);
-		assertNear(-137.5, view.panel.x, 0.000001, "options ShadowBG keeps XFL X");
+		assertNear(-207.5, view.panel.x, 0.000001, "options ShadowBG extends 70px left of its XFL X for the cached sprites column");
 		assertNear(-145, view.panel.y, 0.000001, "options ShadowBG keeps XFL Y");
-		assertNear(1.01094055175781, view.panel.scaleX, 0.000001, "options ShadowBG keeps XFL horizontal scale");
+		assertNear(1.26829349293428, view.panel.scaleX, 0.000001, "options ShadowBG grows 70px past its XFL width for the cached sprites column");
 		assertNear(1.51835632324219, view.panel.scaleY, 0.000001, "options ShadowBG keeps XFL vertical scale");
 		assertNear(0.901960784313726, view.panel.alpha, 0.000001, "options ShadowBG keeps authored translucent alpha");
 		assertEquals("-- Options --", view.title.text, "options title keeps exact authored copy");
