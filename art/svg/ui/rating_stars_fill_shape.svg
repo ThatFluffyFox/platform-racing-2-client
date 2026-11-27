@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="550px" height="400px" viewBox="0 0 550 400" preserveAspectRatio="none" data-xfl-root="MovieClips/Symbol 1068 masked by MovieClips/Symbol 1065">
+  <defs>
+    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="27.6" y1="-0.25" x2="27.6" y2="11.25" spreadMethod="pad"><stop offset="0%" stop-color="#50CD18" /><stop offset="100%" stop-color="#248E58" /></linearGradient>
+  </defs>
+    <path fill="url(#g)" stroke="none" d="M 11 4.1 L 11 4.05 6.55 4.4 6.55 4.35 5.45 0 4.4 4.35 0 4.1 0 4.15 3.55 6.45 1.95 10.65 5.4 7.8 5.45 7.85 8.9 10.7 7.2 6.55 11 4.1 Z" />
+    <path fill="url(#g)" stroke="none" d="M 22.05 4.1 L 22.05 4.05 17.6 4.4 17.6 4.35 16.5 0 15.45 4.35 11.05 4.1 11.05 4.15 14.6 6.45 13 10.65 16.45 7.8 16.5 7.85 19.95 10.7 18.25 6.55 22.05 4.1 Z" />
+    <path fill="url(#g)" stroke="none" d="M 33.1 4.1 L 33.1 4.05 28.65 4.4 28.65 4.35 27.55 0 26.5 4.35 22.1 4.1 22.1 4.15 25.65 6.45 24.05 10.65 27.5 7.8 27.55 7.85 31 10.7 29.3 6.55 33.1 4.1 Z" />
+    <path fill="url(#g)" stroke="none" d="M 44.15 4.1 L 44.15 4.05 39.7 4.4 39.7 4.35 38.6 0 37.55 4.35 33.15 4.1 33.15 4.15 36.7 6.45 35.1 10.65 38.55 7.8 38.6 7.85 42.05 10.7 40.35 6.55 44.15 4.1 Z" />
+    <path fill="url(#g)" stroke="none" d="M 55.2 4.1 L 55.2 4.05 50.75 4.4 50.75 4.35 49.65 0 48.6 4.35 44.2 4.1 44.2 4.15 47.75 6.45 46.15 10.65 49.6 7.8 49.65 7.85 53.1 10.7 51.4 6.55 55.2 4.1 Z" />
+</svg>

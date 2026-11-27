@@ -142,19 +142,20 @@ class RatingStarMeter extends Sprite {
 
 	public function new() {
 		super();
+		// Flash masks the gradient bars with the star shapes (Symbol 1065). A
+		// WebGL stencil mask has no anti-aliasing, so the stars use the same
+		// gradients drawn directly on the star outlines instead.
 		var content = new Sprite();
 		content.name = "maskedContent";
-		background = SvgAsset.create("assets/svg/ui/rating_stars_background.svg");
+		background = SvgAsset.create("assets/svg/ui/rating_stars_background_shape.svg");
 		background.name = "background";
-		fill = SvgAsset.create("assets/svg/ui/rating_stars_fill.svg");
+		fill = SvgAsset.create("assets/svg/ui/rating_stars_fill_shape.svg");
 		fill.name = "bar";
 		content.addChild(background);
 		content.addChild(fill);
 		addChild(content);
 		starMask = SvgAsset.create("assets/svg/ui/rating_stars_mask.svg");
 		starMask.name = "starMask";
-		addChild(starMask);
-		content.mask = starMask;
 		displayRating(3);
 	}
 
