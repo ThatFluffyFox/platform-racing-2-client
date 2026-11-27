@@ -217,6 +217,12 @@ Sharp text and outlines in the browser:
   file with one change (marked in it): shapes with a scale9Grid (the panels
   and buttons) are rasterized at the full output scale too, so their outlines
   stay sharp. Re-copy it when OpenFL is upgraded.
+- `haxe/src/openfl/display/Graphics.hx` is OpenFL 9.5.2's file with its
+  changes marked: cached shape bitmaps snap down to the device pixel instead of
+  to the nearest one, and scale9 shapes offset by the leftover in their own
+  pixels. Rounding up pushed shapes out of their bitmaps at the top and left,
+  cutting off edge lines such as the HUD panels' top borders. Re-copy it when
+  OpenFL is upgraded.
 
 Browser development path:
 

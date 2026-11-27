@@ -512,6 +512,7 @@ private class HairlineSvgShape extends Shape {
 	private final renderHairlines:(Graphics, Float) -> Void;
 	private final authoredBounds:Rectangle;
 	private var lastThickness:Float = Math.NaN;
+	private var lastPadded:Bool = false;
 
 	public function new(renderHairlines:(Graphics, Float) -> Void, authoredBounds:Rectangle) {
 		super();
@@ -540,12 +541,19 @@ private class HairlineSvgShape extends Shape {
 	}
 
 	public function refreshAt(thickness:Float):Void {
-		if (!Math.isNaN(lastThickness) && Math.abs(lastThickness - thickness) < 0.000001) return;
+		var padded = scale9Grid != null;
+		if (!Math.isNaN(lastThickness) && Math.abs(lastThickness - thickness) < 0.000001 && padded == lastPadded) return;
 		lastThickness = thickness;
+		lastPadded = padded;
 		renderHairlines(graphics, thickness);
 		// HTML5 needs a positive local width to rasterize a one-device-pixel
 		// hairline, but that width must not enlarge Flash's zero-width bounds.
 		// Layout and scale9 sizing therefore continue to use the authored bounds.
-		graphics.__bounds = authoredBounds.clone();
+		var bounds = authoredBounds.clone();
+		// Scale9 panels are rasterized only inside their bounds, which cut off the
+		// outer half of their edge lines (the pale top border of panels all but
+		// vanished). Pad them by one line width so each edge stays a solid pixel.
+		if (padded) bounds.inflate(thickness, thickness);
+		graphics.__bounds = bounds;
 	}
 }
