@@ -44,6 +44,10 @@ class EditorDrawableLayer extends Sprite {
 		addChild(rasterCanvas);
 		addChild(brushCanvas);
 		rasterTiles = new ArtRasterTiles(rasterCanvas);
+		// A new layer has no saved art to index. Without finishing indexing here,
+		// strokes drawn before any level was loaded (or New pressed) were never
+		// turned into tiles and vanished as soon as the stroke ended.
+		rasterTiles.applyAll(drawActions);
 		brushCanvas.graphics.lineStyle(brushSize, color);
 	}
 
