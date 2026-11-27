@@ -225,7 +225,8 @@ class PlayerPopup extends Popup {
 		if (guildBox.parent != null) {
 			guildBox.parent.removeChild(guildBox);
 		}
-		guildNameClip = new GuildName(guildId, Dyn.string(ret, "guildName", ""), Dyn.string(ret, "emblem", ""), true, true);
+		// Flash passes boldText here, but its player popup shows the guild in regular weight.
+		guildNameClip = new GuildName(guildId, Dyn.string(ret, "guildName", ""), Dyn.string(ret, "emblem", ""), false, true);
 		guildNameClip.x = -40;
 		guildNameClip.y = 64;
 		playerInfo.addChild(guildNameClip);
