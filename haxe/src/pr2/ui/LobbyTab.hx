@@ -37,7 +37,10 @@ class LobbyTab extends Sprite {
 		textBox = new TextField();
 		textBox.name = "textBox";
 		textBox.x = 5;
-		textBox.y = 2;
+		// XFL places the label at y 2, but DejaVu Sans (standing in for Flash's
+		// Verdana device font) draws about 1.5 px lower. Raise it so descenders
+		// end on the tab's bottom edge as in Flash instead of hanging below it.
+		textBox.y = 0.5;
 		textBox.height = 14.55;
 		textBox.selectable = false;
 		textBox.mouseEnabled = false;
