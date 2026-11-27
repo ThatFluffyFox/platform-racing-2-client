@@ -242,14 +242,18 @@ private class PartInfoButton extends Sprite {
 		var question = new TextField();
 		question.mouseEnabled = false;
 		question.selectable = false;
-		question.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, over || down ? 0xFFFF00 : 0x000000, false, null, null,
-			null, null, TextFormatAlign.CENTER);
+		question.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, over || down ? 0xFFFF00 : 0x000000);
 		question.text = "?";
-		question.x = 0.5;
-		question.y = -3.2;
-		question.width = 7;
+		// Buttons/Symbol 1213: 12px static "?" at left 46.65 under matrix
+		// (0.9065, 0.7314, -40.2, -0.2). Static text has no 2px gutter, and its
+		// baseline sits at Verdana's ascent (12.06) below the top.
+		question.scaleX = 0.906539916992188;
+		question.scaleY = 0.731430053710938;
+		question.x = -40.2 + 46.65 * question.scaleX - 2 * question.scaleX;
+		question.y = -0.2 + (12.06 - 2 - 11.14) * question.scaleY;
+		question.width = 6.7 + 4;
 		// Tall enough for the question mark's dot below the baseline.
-		question.height = 16;
+		question.height = 20;
 		art.addChild(question);
 	}
 }
