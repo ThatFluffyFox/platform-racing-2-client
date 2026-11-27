@@ -6,6 +6,7 @@ import pr2.lobby.LobbyArt;
 import pr2.lobby.dialogs.MessagePopup;
 import pr2.lobby.dialogs.Popup;
 import pr2.runtime.EpicFlash;
+import pr2.ui.CustomScrollBar;
 import pr2.lobby.store.StorePopupView;
 import pr2.util.DisplayUtil;
 
@@ -21,6 +22,7 @@ class PartInfoPopup extends Popup {
 	private var art:Null<StorePopupView>;
 	private var closeBinding:Null<LobbyArt.Binding>;
 	private var holder:Null<DisplayObjectContainer>;
+	private var scroll:Null<CustomScrollBar>;
 	private var listings:Array<PartInfoListing> = [];
 	private var epicFlash:EpicFlash = new EpicFlash();
 
@@ -54,6 +56,15 @@ class PartInfoPopup extends Popup {
 		if (coinsBg != null) coinsBg.visible = false;
 		if (coins != null) coins.visible = false;
 		closeBinding = LobbyArt.bind(DisplayUtil.directChildByName(art, "close_bt"), startFadeOut);
+		if (holder != null) {
+			// Flash PartInfoPopup scrolls the listings like the store popup.
+			scroll = new CustomScrollBar();
+			scroll.x = 202;
+			scroll.y = -115;
+			scroll.height = 225;
+			addChild(scroll);
+			scroll.init(holder, 225, 225);
+		}
 		populateParts();
 		if (!epicFlash.isEmpty()) {
 			epicFlash.start();
@@ -79,6 +90,10 @@ class PartInfoPopup extends Popup {
 		listings.resize(0);
 		LobbyArt.unbind(closeBinding);
 		closeBinding = null;
+		if (scroll != null) {
+			scroll.remove();
+			scroll = null;
+		}
 		holder = null;
 		if (art != null) {
 			art.dispose();
