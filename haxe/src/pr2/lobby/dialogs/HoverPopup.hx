@@ -17,6 +17,7 @@ class HoverPopup extends InfoPopup {
 	private var bg:Null<openfl.display.Sprite>;
 	/** Unscaled ShadowBG width: Flash's `width` of the popup (filters excluded). */
 	private var panelWidth:Float = 0;
+	private static inline var TEXT_WIDTH:Float = 150;
 
 	public function new(title:String, content:String, target:DisplayObject) {
 		super();
@@ -50,9 +51,26 @@ class HoverPopup extends InfoPopup {
 	override private function set_width(value:Float):Float {
 		if (panelWidth > 0) {
 			scaleX = value / panelWidth;
+			keepTextUnstretched();
 			return value;
 		}
 		return super.set_width(value);
+	}
+
+	/**
+		Flash draws this tooltip's text in the device font Arial, which Flash
+		cannot stretch: resizing the popup (the level info rating hover halves its
+		width) narrows the background and the text's wrap width, but the glyphs keep
+		their normal proportions. Counter-scale each field to match.
+	**/
+	private function keepTextUnstretched():Void {
+		if (scaleX == 0) return;
+		for (index in 0...numChildren) {
+			var field = Std.downcast(getChildAt(index), TextField);
+			if (field == null) continue;
+			field.scaleX = 1 / scaleX;
+			field.width = TEXT_WIDTH * scaleX;
+		}
 	}
 
 	/**
@@ -133,7 +151,7 @@ class HoverPopup extends InfoPopup {
 		var t = new TextField();
 		var f = new TextFormat(FontResolver.resolve("Arial"));
 		t.defaultTextFormat = f;
-		t.width = 150;
+		t.width = TEXT_WIDTH;
 		t.height = 1;
 		t.x = 5;
 		t.multiline = true;
