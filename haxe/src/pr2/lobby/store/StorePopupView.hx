@@ -20,7 +20,8 @@ class StorePopupView extends NativeView {
 		super();
 		panel = panelAt("panel", -225, -175, 1.65446472167969, 1.62315368652344);
 		coinsPanel = panelAt("coinsLeftBg", -225, 140, 1.65446472167969, 0.183242797851562);
-		field("titleBox", -211.75, -162.05, 423.75, 14.55, 12, true, TextFormatAlign.CENTER, 0x000000);
+		// Authored XFL text; StorePopup replaces it when the vault sends a sale title.
+		field("titleBox", -211.75, -162.05, 423.75, 14.55, 12, true, TextFormatAlign.CENTER, 0x000000).text = "-- Vault of Magics --";
 		field("coinsLeftBox", -222.75, 149.5, 445.75, 14.55, 12, true, TextFormatAlign.CENTER, 0xBB0000);
 		var holder = new Sprite();
 		holder.name = "itemsHolder";
@@ -52,7 +53,7 @@ class StorePopupView extends NativeView {
 	}
 
 	private function field(name:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool, align:TextFormatAlign,
-		color:Int):Void {
+		color:Int):TextField {
 		var text = new TextField();
 		text.name = name;
 		text.x = x;
@@ -62,5 +63,6 @@ class StorePopupView extends NativeView {
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, color, bold, null, null, null, null, align);
 		addChild(text);
+		return text;
 	}
 }

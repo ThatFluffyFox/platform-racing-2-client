@@ -7,6 +7,7 @@ import pr2.animation.TimelineClip;
 import pr2.assets.NativeAssetIds.StaticSvg;
 import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
+import pr2.runtime.FontResolver;
 
 /** Authored blank component skin with the XFL text/icon overlay and glow timeline. */
 class LobbySpecialButton extends GameButton {
@@ -42,7 +43,7 @@ class LobbySpecialButton extends GameButton {
 		var field = new TextField();
 		field.mouseEnabled = false;
 		field.selectable = false;
-		field.defaultTextFormat = new TextFormat("Verdana", 10, color);
+		field.defaultTextFormat = new TextFormat(FontResolver.resolve("Verdana"), 10, color);
 		field.text = value;
 		field.width = width + 4;
 		field.height = 12.15 + 4;

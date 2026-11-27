@@ -71,10 +71,13 @@ class LobbyShellParityTest {
 		footer.moreGamesButton.glow.dispatchEvent(new Event(Event.ENTER_FRAME));
 		assertEquals(1, footer.moreGamesButton.glow.currentFrame, "Kong MovieClip loops frame 41 to frame 1");
 
-		assertEquals(1, footer.vaultButton.glow.totalFrames, "Vault glow is the exact static XFL frame");
-		assertEquals(false, footer.vaultButton.glow.looping, "Vault does not invent animation");
+		assertEquals(41, footer.vaultButton.glow.totalFrames, "Vault glow pulses on the Kong glow timeline");
+		assertEquals(true, footer.vaultButton.glow.looping, "Vault glow loops like the Kong glow");
+		footer.vaultButton.glow.gotoAndStop(1);
 		var vaultGlow = glowFilter(footer.vaultButton.glow.getChildAt(0).filters[0]);
-		assertNear(0, vaultGlow.blurX, "Vault authored glow blur remains zero");
+		assertNear(5, vaultGlow.blurX, "Vault glow starts at Animate's default blur");
+		footer.vaultButton.glow.gotoAndStop(21);
+		assertNear(15, glowFilter(footer.vaultButton.glow.getChildAt(0).filters[0]).blurX, "Vault glow peaks with the Kong pulse");
 		assertEquals(true, vaultGlow.knockout, "Vault glow preserves knockout metadata");
 
 		footer.dispose();
