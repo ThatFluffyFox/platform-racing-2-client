@@ -144,6 +144,8 @@ class Course extends Sprite {
 	// network notification itself is emitted here, mirroring Flash Game.finish.
 	public var onFinish:Null<LocalPlayerState->Void> = null;
 	public var onOutOfTime:Null<Void->Void> = null;
+	// Flash `Game.onCountdownFinish` hook (fades the prize popup out).
+	public var onCountdownFinished:Null<Void->Void> = null;
 	public var onPlayJumpSound:Null<Float->Float->Void> = null;
 	public var onPlayCharacterSound:Null<pr2.character.Character.CharacterSoundRequest->Void> = null;
 	public var onStartJetSound:Null<pr2.character.Character.CharacterSoundRequest->Void> = null;
@@ -874,6 +876,9 @@ class Course extends Sprite {
 		spawnMinionEggs();
 		if (localCharacter != null) {
 			localCharacter.initNetworkEmission();
+		}
+		if (onCountdownFinished != null) {
+			onCountdownFinished();
 		}
 	}
 

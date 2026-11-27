@@ -141,6 +141,7 @@ class GamePage extends Page implements GameCommandDelegate {
 			course = new Course(level, data, config, null, onCourseFrame);
 			course.onFinish = onLocalFinish;
 			course.onOutOfTime = onCourseOutOfTime;
+			course.onCountdownFinished = closePrizePopup;
 			if (pendingLocalInit != null) {
 				var localInit = pendingLocalInit;
 				course.createLocalCharacter(localInit);
@@ -503,7 +504,7 @@ class GamePage extends Page implements GameCommandDelegate {
 	}
 
 	public function beginRace():Void {
-		closePrizePopup();
+		// Flash fades the prize popup at countdown finish, not countdown start.
 		if (!raceStartReceived) {
 			raceStartReceived = true;
 			var clock = FrameClock.current;

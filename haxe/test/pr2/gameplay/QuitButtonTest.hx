@@ -168,7 +168,9 @@ class QuitButtonTest {
 		});
 		var preRace = PrizePopup.instance;
 		game.beginRace();
-		assertEquals(true, preRace.fadeOutStarted, "beginRace fades out the active prize popup");
+		assertEquals(false, preRace.fadeOutStarted, "beginRace keeps the prize popup up through the countdown");
+		@:privateAccess game.closePrizePopup();
+		assertEquals(true, preRace.fadeOutStarted, "countdown finish fades out the active prize popup");
 
 		var artifact = new PlaceArtifact({levelId: 12345, x: 10, y: 20, rot: 0});
 		game.remove();
