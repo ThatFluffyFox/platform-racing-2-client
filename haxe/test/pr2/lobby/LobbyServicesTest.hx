@@ -1550,7 +1550,10 @@ class LobbyServicesTest {
 		var listingQuestion = Std.downcast(DisplayUtil.findByName(lifecycleItem, "questionMark"), TextField);
 		assertNotNull(listingQuestion, "level listing info button restores the authored question mark");
 		assertEquals("?", listingQuestion.text, "level listing info button displays the original question mark");
-		assertEquals(true, Math.abs(listingQuestion.x - 0.277) < 0.001, "level listing question mark keeps its corrected horizontal offset");
+		var questionCircle = listingQuestion.parent.getChildAt(0).getBounds(listingQuestion.parent);
+		var questionCentre = listingQuestion.x + (2 + listingQuestion.textWidth / 2) * listingQuestion.scaleX;
+		assertEquals(true, Math.abs(questionCentre - (questionCircle.x + questionCircle.width / 2)) < 0.001,
+			"level listing question mark is centred on its circle");
 		assertEquals(true, Math.abs(listingQuestion.y + 0.99) < 0.001, "level listing question mark keeps its corrected vertical offset");
 		assertEquals(true, Math.abs(listingQuestion.scaleY - 0.7314) < 0.001, "level listing question mark keeps the authored squash");
 		assertEquals(true, lifecycleItem.coverShownForTests(), "rank-gated item shows access cover before cleanup");

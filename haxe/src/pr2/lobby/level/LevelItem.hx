@@ -772,7 +772,8 @@ private class LevelItemIconButton extends NativeControl {
 			case Plus: down ? StaticSvg.LevelItemPlusDown : over ? StaticSvg.LevelItemPlusOver : StaticSvg.LevelItemPlusUp;
 			case Minus: down ? StaticSvg.MinusButtonDown : over ? StaticSvg.MinusButtonOver : StaticSvg.MinusButtonUp;
 		};
-		addChild(NativeAssets.svg(asset));
+		var art = NativeAssets.svg(asset);
+		addChild(art);
 		if (kind == Info) {
 			// openfl-svg does not render the authored SVG <text>, so restore the
 			// question mark from XFL `Buttons/Symbol 1213` as a native text field.
@@ -792,6 +793,10 @@ private class LevelItemIconButton extends NativeControl {
 			question.width = 6.7 + 4;
 			// Tall enough for the question mark's dot below the baseline.
 			question.height = 20;
+			// DejaVu's "?" is narrower than Verdana's, which left it off-centre in
+			// the unscaled circle; centre the glyph on the circle horizontally.
+			var circle = art.getBounds(this);
+			if (circle.width > 0) question.x = circle.x + circle.width / 2 - (2 + question.textWidth / 2) * question.scaleX;
 			addChild(question);
 		}
 	}
