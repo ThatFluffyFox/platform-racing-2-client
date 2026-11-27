@@ -2041,7 +2041,13 @@ import js.html.CanvasRenderingContext2D;
 		// which resamples it and softens every edge (most visibly on the posed
 		// character parts). Draw them through their full device-space matrix into
 		// a screen-aligned bitmap placed on a whole device pixel instead.
-		if ((parentTransform.b != 0 || parentTransform.c != 0) && __owner.__worldScale9Grid == null && displayMatrix != null
+		// Only when drawing straight to the screen (the stage's display matrix):
+		// shapes inside an offscreen filter render (such as the blurred head of
+		// the run animation) keep OpenFL's own path.
+		var stageDisplay = __owner.stage != null ? @:privateAccess __owner.stage.__displayMatrix : null;
+		var drawingToScreen = stageDisplay != null && displayMatrix != null && displayMatrix.a == stageDisplay.a && displayMatrix.d == stageDisplay.d
+			&& displayMatrix.tx == stageDisplay.tx && displayMatrix.ty == stageDisplay.ty;
+		if (drawingToScreen && (parentTransform.b != 0 || parentTransform.c != 0) && __owner.__worldScale9Grid == null && displayMatrix != null
 			&& displayMatrix.b == 0 && displayMatrix.c == 0 && displayMatrix.a > 0 && displayMatrix.d > 0)
 		{
 			var deviceA = parentTransform.a * displayMatrix.a;
@@ -2062,8 +2068,12 @@ import js.html.CanvasRenderingContext2D;
 				&& (maxTextureWidth == null || rotatedWidth + 1 <= maxTextureWidth)
 				&& (maxTextureHeight == null || rotatedHeight + 1 <= maxTextureHeight))
 			{
-				var originX = (__bounds.x * parentTransform.a + __bounds.y * parentTransform.c + parentTransform.tx) * displayMatrix.a;
-				var originY = (__bounds.x * parentTransform.b + __bounds.y * parentTransform.d + parentTransform.ty) * displayMatrix.d;
+				// Device position of the bounds origin, including the display
+				// matrix's translation (non-zero for a letterboxed stage and for the
+				// offscreen renderer that draws a filtered parent such as a blurred
+				// head in the run animation).
+				var originX = (__bounds.x * parentTransform.a + __bounds.y * parentTransform.c + parentTransform.tx) * displayMatrix.a + displayMatrix.tx;
+				var originY = (__bounds.x * parentTransform.b + __bounds.y * parentTransform.d + parentTransform.ty) * displayMatrix.d + displayMatrix.ty;
 				var pixelX = Math.floor(originX + minX);
 				var pixelY = Math.floor(originY + minY);
 				__renderTransform.a = deviceA;
@@ -2076,8 +2086,8 @@ import js.html.CanvasRenderingContext2D;
 				__worldTransform.b = 0;
 				__worldTransform.c = 0;
 				__worldTransform.d = 1 / displayMatrix.d;
-				__worldTransform.tx = pixelX / displayMatrix.a;
-				__worldTransform.ty = pixelY / displayMatrix.d;
+				__worldTransform.tx = (pixelX - displayMatrix.tx) / displayMatrix.a;
+				__worldTransform.ty = (pixelY - displayMatrix.ty) / displayMatrix.d;
 				var rotatedBitmapWidth = Math.ceil(rotatedWidth + 1.0);
 				var rotatedBitmapHeight = Math.ceil(rotatedHeight + 1.0);
 				if (rotatedBitmapWidth != __width || rotatedBitmapHeight != __height || deviceA != __pr2RotatedA || deviceB != __pr2RotatedB
@@ -2096,6 +2106,11 @@ import js.html.CanvasRenderingContext2D;
 		}
 		if (__pr2RotatedA != 0 || __pr2RotatedB != 0 || __pr2RotatedC != 0 || __pr2RotatedD != 0) __dirty = true;
 		__pr2RotatedA = __pr2RotatedB = __pr2RotatedC = __pr2RotatedD = 0;
+		// OpenFL's path below only sets a/d of the raster matrix, so clear the
+		// rotation a previous frame left there (parts alternate between rotated
+		// and upright frames in the run cycle; a stale skew sheared them).
+		__renderTransform.b = 0;
+		__renderTransform.c = 0;
 		#end
 
 		var x = __bounds.x;
