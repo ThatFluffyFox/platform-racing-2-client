@@ -22,6 +22,10 @@ class CursorEyedropper extends CustomCursor {
 	private var exclusions:Array<DisplayObject> = [];
 	private var cursorContainer:Null<BitmapData>;
 	private var sampleSource:Null<DisplayObject>;
+	/** Level Editor: Shift previews and picks from the layer being edited. */
+	private var shiftHeld:Bool = false;
+	private var lastLayerSampleKey:String = "";
+	private var lastLayerSample:Int = -1;
 	#if html5
 	/** Flash's cursorContainer: the frame captured when the eyedropper appears. */
 	private var frameCapture:Null<js.lib.Uint8Array>;
@@ -210,12 +214,40 @@ class CursorEyedropper extends CustomCursor {
 		return exclusions.indexOf(d) != -1;
 	}
 
+	override function mouseMoveHandler(e:MouseEvent):Void {
+		shiftHeld = e.shiftKey;
+		super.mouseMoveHandler(e);
+	}
+
+	override function keyDownHandler(e:openfl.events.KeyboardEvent):Void {
+		if (e.keyCode == openfl.ui.Keyboard.SHIFT) shiftHeld = true;
+	}
+
+	override function keyUpHandler(e:openfl.events.KeyboardEvent):Void {
+		if (e.keyCode == openfl.ui.Keyboard.SHIFT) shiftHeld = false;
+	}
+
 	private function updateColor():Void {
 		var me = getMouse();
 		if (me == null) {
 			color = -1;
 			return;
 		}
+		var editor = pr2.levelEditor.LevelEditor.editor;
+		var layer = shiftHeld && editor != null ? editor.eyedropperLayer() : null;
+		if (layer != null) {
+			// Preview what a Shift-click picks: the layer being edited only.
+			var point = CustomCursor.eventStagePoint(me);
+			var key = layer.name + ":" + Math.floor(point.x) + ":" + Math.floor(point.y);
+			if (key != lastLayerSampleKey) {
+				lastLayerSampleKey = key;
+				var sampled = sampleLayerPixel(layer, point);
+				lastLayerSample = sampled == null ? -1 : sampled;
+			}
+			color = lastLayerSample;
+			return;
+		}
+		lastLayerSampleKey = "";
 		var source = currentSampleSource();
 		if (source == null) {
 			color = -1;
