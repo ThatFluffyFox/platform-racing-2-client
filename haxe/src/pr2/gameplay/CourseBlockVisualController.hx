@@ -76,7 +76,8 @@ class CourseBlockVisualController {
 							worldXOf(event),
 							worldYOf(event),
 							worldTileX(event.toTileX),
-							worldTileY(event.toTileY)
+							worldTileY(event.toTileY),
+							owner.level.blockAt(event.toTileX, event.toTileY)
 						);
 					}
 			}
@@ -109,7 +110,8 @@ class CourseBlockVisualController {
 				displayed = owner.displayedMoveBlockPositions.get(worldBlock);
 			}
 			if (displayed.worldX != currentWorldX || displayed.worldY != currentWorldY) {
-				owner.levelRenderer.moveBlockDisplay(displayed.worldX, displayed.worldY, currentWorldX, currentWorldY);
+				// Only this block's own display: another move block may already stand where it was.
+				owner.levelRenderer.moveBlockDisplay(displayed.worldX, displayed.worldY, currentWorldX, currentWorldY, worldBlock);
 				owner.displayedMoveBlockPositions.set(worldBlock, {
 					worldX: currentWorldX,
 					worldY: currentWorldY,
