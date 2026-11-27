@@ -96,6 +96,8 @@ class CustomizeCharacterScreen extends Sprite {
 			var page = Std.parseInt(normalized.substr("parts-".length));
 			if (page == null || page < 0) throw 'Unknown character parity case $parityCase';
 			addPartPage(page);
+		} else if (StringTools.startsWith(normalized, "single-")) {
+			addSingleCharacter(normalized.substr("single-".length));
 		} else if (StringTools.startsWith(normalized, "items-")) {
 			var page = Std.parseInt(normalized.substr("items-".length));
 			if (page == null || page < 0) throw 'Unknown character parity case $parityCase';
@@ -210,6 +212,37 @@ class CustomizeCharacterScreen extends Sprite {
 			addParityCell('${spec.name} ${spec.frame} / $state', view, index);
 			if (specIndex % 2 == 1) view.scaleX = -0.88;
 		}
+	}
+
+	/**
+		One standing character, large, for pixel comparison against the Flash
+		reference: `single-<head>-<body>-<feet>-<hat>[-<state>-<frame>[-<scale>]]`
+		(state lower-cased, default stand frame 1, scale 4), drawn at x=275,
+		y=330 with primary 0x2A66D9 and secondary 0xD9332A.
+	**/
+	private function addSingleCharacter(spec:String):Void {
+		removeChildren();
+		graphics.clear();
+		graphics.beginFill(0xFFFFFF);
+		graphics.drawRect(0, 0, Constants.STAGE_WIDTH, Constants.STAGE_HEIGHT);
+		graphics.endFill();
+		var fields = spec.split("-");
+		var state = fields.length > 4 ? fields[4] : "stand";
+		var frame = fields.length > 5 ? Std.parseInt(fields[5]) : 1;
+		var scale = fields.length > 6 ? Std.parseFloat(fields[6]) : 4;
+		if (Math.isNaN(scale) || scale <= 0) throw 'Unknown single character scale in $spec';
+		var values = [for (part in fields.slice(0, 4)) Std.parseInt(part)];
+		if (values.length != 4 || values.indexOf(null) != -1 || frame == null) throw 'Unknown single character case $spec';
+		state = [for (name in CharacterView.STATE_NAMES) if (name.toLowerCase() == state) name][0];
+		if (state == null) throw 'Unknown single character state in $spec';
+		var view = new CharacterView(0x2A66D9, 0xD9332A, null, state, {head: values[0], body: values[1], feet: values[2]}, [values[3], 1, 1, 1]);
+		view.name = "characterParityView";
+		view.gotoFrame(frame);
+		view.x = 275;
+		view.y = 330;
+		view.scaleX = view.scaleY = scale;
+		parityViews.push(view);
+		addChild(view);
 	}
 
 	private function addPartPage(page:Int):Void {
