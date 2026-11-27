@@ -40,6 +40,24 @@ typedef RigPartChannels = {
 	var secondary:String;
 	@:optional var channelAnimations:Array<RigPartChannelAnimation>;
 	@:optional var overlayAnimation:RigPartOverlayAnimation;
+	/**
+		How many of static.svg's layer groups (bottom to top) Flash draws below
+		the primary colour (`under`) and between the primary and epic colours
+		(`middle`). The remaining fixed layers draw above the epic colour.
+		Absent means all fixed art sits between the two colours.
+	**/
+	@:optional var fixedBands:RigPartFixedBands;
+}
+
+typedef RigPartFixedBands = {
+	var under:Int;
+	var middle:Int;
+	/**
+		The middle band is the uncoloured copy of the epic artwork. Flash's
+		renderer lets the epic clip's identical shapes cover it completely, so it
+		only shows while the part has no epic colour.
+	**/
+	@:optional var middleHiddenByEpic:Bool;
 }
 
 typedef RigPartChannelAnimation = {

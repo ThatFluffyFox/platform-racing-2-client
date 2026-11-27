@@ -14,49 +14,79 @@
           "name": "classic",
           "fixed": "assets/svg/character/head/001_classic/static.svg",
           "primary": "assets/svg/character/head/001_classic/primary.svg",
-          "secondary": "assets/svg/character/head/001_classic/secondary.svg"
+          "secondary": "assets/svg/character/head/001_classic/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 2,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 2,
           "name": "tired",
           "fixed": "assets/svg/character/head/002_tired/static.svg",
           "primary": "assets/svg/character/head/002_tired/primary.svg",
-          "secondary": "assets/svg/character/head/002_tired/secondary.svg"
+          "secondary": "assets/svg/character/head/002_tired/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 3,
           "name": "smiler",
           "fixed": "assets/svg/character/head/003_smiler/static.svg",
           "primary": "assets/svg/character/head/003_smiler/primary.svg",
-          "secondary": "assets/svg/character/head/003_smiler/secondary.svg"
+          "secondary": "assets/svg/character/head/003_smiler/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 4,
           "name": "flower",
           "fixed": "assets/svg/character/head/004_flower/static.svg",
           "primary": "assets/svg/character/head/004_flower/primary.svg",
-          "secondary": "assets/svg/character/head/004_flower/secondary.svg"
+          "secondary": "assets/svg/character/head/004_flower/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 5,
           "name": "classic_girl",
           "fixed": "assets/svg/character/head/005_classic_girl/static.svg",
           "primary": "assets/svg/character/head/005_classic_girl/primary.svg",
-          "secondary": "assets/svg/character/head/005_classic_girl/secondary.svg"
+          "secondary": "assets/svg/character/head/005_classic_girl/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 2
+          }
         },
         {
           "id": 6,
           "name": "goof",
           "fixed": "assets/svg/character/head/006_goof/static.svg",
           "primary": "assets/svg/character/head/006_goof/primary.svg",
-          "secondary": "assets/svg/character/head/006_goof/secondary.svg"
+          "secondary": "assets/svg/character/head/006_goof/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 7,
           "name": "downer",
           "fixed": "assets/svg/character/head/007_downer/static.svg",
           "primary": "assets/svg/character/head/007_downer/primary.svg",
-          "secondary": "assets/svg/character/head/007_downer/secondary.svg"
+          "secondary": "assets/svg/character/head/007_downer/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 8,
@@ -77,28 +107,46 @@
           "name": "unicorn",
           "fixed": "assets/svg/character/head/010_unicorn/static.svg",
           "primary": "assets/svg/character/head/010_unicorn/primary.svg",
-          "secondary": "assets/svg/character/head/010_unicorn/secondary.svg"
+          "secondary": "assets/svg/character/head/010_unicorn/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 11,
           "name": "bird",
           "fixed": "assets/svg/character/head/011_bird/static.svg",
           "primary": "assets/svg/character/head/011_bird/primary.svg",
-          "secondary": "assets/svg/character/head/011_bird/secondary.svg"
+          "secondary": "assets/svg/character/head/011_bird/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 12,
           "name": "sun",
           "fixed": "assets/svg/character/head/012_sun/static.svg",
           "primary": "assets/svg/character/head/012_sun/primary.svg",
-          "secondary": "assets/svg/character/head/012_sun/secondary.svg"
+          "secondary": "assets/svg/character/head/012_sun/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 13,
           "name": "candy",
           "fixed": "assets/svg/character/head/013_candy/static.svg",
           "primary": "assets/svg/character/head/013_candy/primary.svg",
-          "secondary": "assets/svg/character/head/013_candy/secondary.svg"
+          "secondary": "assets/svg/character/head/013_candy/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 14,
@@ -112,14 +160,24 @@
           "name": "football_helmet",
           "fixed": "assets/svg/character/head/015_football_helmet/static.svg",
           "primary": "assets/svg/character/head/015_football_helmet/primary.svg",
-          "secondary": "assets/svg/character/head/015_football_helmet/secondary.svg"
+          "secondary": "assets/svg/character/head/015_football_helmet/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 16,
           "name": "basketball",
           "fixed": "assets/svg/character/head/016_basketball/static.svg",
           "primary": "assets/svg/character/head/016_basketball/primary.svg",
-          "secondary": "assets/svg/character/head/016_basketball/secondary.svg"
+          "secondary": "assets/svg/character/head/016_basketball/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 17,
@@ -133,91 +191,155 @@
           "name": "cat",
           "fixed": "assets/svg/character/head/018_cat/static.svg",
           "primary": "assets/svg/character/head/018_cat/primary.svg",
-          "secondary": "assets/svg/character/head/018_cat/secondary.svg"
+          "secondary": "assets/svg/character/head/018_cat/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 19,
           "name": "elephant",
           "fixed": "assets/svg/character/head/019_elephant/static.svg",
           "primary": "assets/svg/character/head/019_elephant/primary.svg",
-          "secondary": "assets/svg/character/head/019_elephant/secondary.svg"
+          "secondary": "assets/svg/character/head/019_elephant/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 20,
           "name": "ant",
           "fixed": "assets/svg/character/head/020_ant/static.svg",
           "primary": "assets/svg/character/head/020_ant/primary.svg",
-          "secondary": "assets/svg/character/head/020_ant/secondary.svg"
+          "secondary": "assets/svg/character/head/020_ant/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 21,
           "name": "astronaut",
           "fixed": "assets/svg/character/head/021_astronaut/static.svg",
           "primary": "assets/svg/character/head/021_astronaut/primary.svg",
-          "secondary": "assets/svg/character/head/021_astronaut/secondary.svg"
+          "secondary": "assets/svg/character/head/021_astronaut/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 22,
           "name": "alien",
           "fixed": "assets/svg/character/head/022_alien/static.svg",
           "primary": "assets/svg/character/head/022_alien/primary.svg",
-          "secondary": "assets/svg/character/head/022_alien/secondary.svg"
+          "secondary": "assets/svg/character/head/022_alien/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 23,
           "name": "dino",
           "fixed": "assets/svg/character/head/023_dino/static.svg",
           "primary": "assets/svg/character/head/023_dino/primary.svg",
-          "secondary": "assets/svg/character/head/023_dino/secondary.svg"
+          "secondary": "assets/svg/character/head/023_dino/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 24,
           "name": "armor",
           "fixed": "assets/svg/character/head/024_armor/static.svg",
           "primary": "assets/svg/character/head/024_armor/primary.svg",
-          "secondary": "assets/svg/character/head/024_armor/secondary.svg"
+          "secondary": "assets/svg/character/head/024_armor/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 25,
           "name": "fairy",
           "fixed": "assets/svg/character/head/025_fairy/static.svg",
           "primary": "assets/svg/character/head/025_fairy/primary.svg",
-          "secondary": "assets/svg/character/head/025_fairy/secondary.svg"
+          "secondary": "assets/svg/character/head/025_fairy/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 26,
           "name": "gingerbread",
           "fixed": "assets/svg/character/head/026_gingerbread/static.svg",
           "primary": "assets/svg/character/head/026_gingerbread/primary.svg",
-          "secondary": "assets/svg/character/head/026_gingerbread/secondary.svg"
+          "secondary": "assets/svg/character/head/026_gingerbread/secondary.svg",
+          "fixedBands": {
+            "under": 1,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 27,
           "name": "bubble",
           "fixed": "assets/svg/character/head/027_bubble/static.svg",
           "primary": "assets/svg/character/head/027_bubble/primary.svg",
-          "secondary": "assets/svg/character/head/027_bubble/secondary.svg"
+          "secondary": "assets/svg/character/head/027_bubble/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 28,
           "name": "king",
           "fixed": "assets/svg/character/head/028_king/static.svg",
           "primary": "assets/svg/character/head/028_king/primary.svg",
-          "secondary": "assets/svg/character/head/028_king/secondary.svg"
+          "secondary": "assets/svg/character/head/028_king/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 29,
           "name": "queen",
           "fixed": "assets/svg/character/head/029_queen/static.svg",
           "primary": "assets/svg/character/head/029_queen/primary.svg",
-          "secondary": "assets/svg/character/head/029_queen/secondary.svg"
+          "secondary": "assets/svg/character/head/029_queen/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 30,
           "name": "sir",
           "fixed": "assets/svg/character/head/030_sir/static.svg",
           "primary": "assets/svg/character/head/030_sir/primary.svg",
-          "secondary": "assets/svg/character/head/030_sir/secondary.svg"
+          "secondary": "assets/svg/character/head/030_sir/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 31,
@@ -231,21 +353,34 @@
           "name": "taco",
           "fixed": "assets/svg/character/head/032_taco/static.svg",
           "primary": "assets/svg/character/head/032_taco/primary.svg",
-          "secondary": "assets/svg/character/head/032_taco/secondary.svg"
+          "secondary": "assets/svg/character/head/032_taco/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 33,
           "name": "slender",
           "fixed": "assets/svg/character/head/033_slender/static.svg",
           "primary": "assets/svg/character/head/033_slender/primary.svg",
-          "secondary": "assets/svg/character/head/033_slender/secondary.svg"
+          "secondary": "assets/svg/character/head/033_slender/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 34,
           "name": "santa",
           "fixed": "assets/svg/character/head/034_santa/static.svg",
           "primary": "assets/svg/character/head/034_santa/primary.svg",
-          "secondary": "assets/svg/character/head/034_santa/secondary.svg"
+          "secondary": "assets/svg/character/head/034_santa/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 35,
@@ -259,49 +394,81 @@
           "name": "reindeer",
           "fixed": "assets/svg/character/head/036_reindeer/static.svg",
           "primary": "assets/svg/character/head/036_reindeer/primary.svg",
-          "secondary": "assets/svg/character/head/036_reindeer/secondary.svg"
+          "secondary": "assets/svg/character/head/036_reindeer/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 37,
           "name": "crocodile",
           "fixed": "assets/svg/character/head/037_crocodile/static.svg",
           "primary": "assets/svg/character/head/037_crocodile/primary.svg",
-          "secondary": "assets/svg/character/head/037_crocodile/secondary.svg"
+          "secondary": "assets/svg/character/head/037_crocodile/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 38,
           "name": "valentine",
           "fixed": "assets/svg/character/head/038_valentine/static.svg",
           "primary": "assets/svg/character/head/038_valentine/primary.svg",
-          "secondary": "assets/svg/character/head/038_valentine/secondary.svg"
+          "secondary": "assets/svg/character/head/038_valentine/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 39,
           "name": "bunny",
           "fixed": "assets/svg/character/head/039_bunny/static.svg",
           "primary": "assets/svg/character/head/039_bunny/primary.svg",
-          "secondary": "assets/svg/character/head/039_bunny/secondary.svg"
+          "secondary": "assets/svg/character/head/039_bunny/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 40,
           "name": "gecko",
           "fixed": "assets/svg/character/head/040_gecko/static.svg",
           "primary": "assets/svg/character/head/040_gecko/primary.svg",
-          "secondary": "assets/svg/character/head/040_gecko/secondary.svg"
+          "secondary": "assets/svg/character/head/040_gecko/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 41,
           "name": "bat",
           "fixed": "assets/svg/character/head/041_bat/static.svg",
           "primary": "assets/svg/character/head/041_bat/primary.svg",
-          "secondary": "assets/svg/character/head/041_bat/secondary.svg"
+          "secondary": "assets/svg/character/head/041_bat/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 42,
           "name": "sea",
           "fixed": "assets/svg/character/head/042_sea/static.svg",
           "primary": "assets/svg/character/head/042_sea/primary.svg",
-          "secondary": "assets/svg/character/head/042_sea/secondary.svg"
+          "secondary": "assets/svg/character/head/042_sea/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 43,
@@ -315,14 +482,22 @@
           "name": "jackolantern",
           "fixed": "assets/svg/character/head/044_jackolantern/static.svg",
           "primary": "assets/svg/character/head/044_jackolantern/primary.svg",
-          "secondary": "assets/svg/character/head/044_jackolantern/secondary.svg"
+          "secondary": "assets/svg/character/head/044_jackolantern/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 45,
           "name": "xmas",
           "fixed": "assets/svg/character/head/045_xmas/static.svg",
           "primary": "assets/svg/character/head/045_xmas/primary.svg",
-          "secondary": "assets/svg/character/head/045_xmas/secondary.svg"
+          "secondary": "assets/svg/character/head/045_xmas/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 46,
@@ -336,14 +511,22 @@
           "name": "blobfish",
           "fixed": "assets/svg/character/head/047_blobfish/static.svg",
           "primary": "assets/svg/character/head/047_blobfish/primary.svg",
-          "secondary": "assets/svg/character/head/047_blobfish/secondary.svg"
+          "secondary": "assets/svg/character/head/047_blobfish/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 48,
           "name": "turkey",
           "fixed": "assets/svg/character/head/048_turkey/static.svg",
           "primary": "assets/svg/character/head/048_turkey/primary.svg",
-          "secondary": "assets/svg/character/head/048_turkey/secondary.svg"
+          "secondary": "assets/svg/character/head/048_turkey/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 49,
@@ -372,14 +555,23 @@
           "name": "classic",
           "fixed": "assets/svg/character/body/001_classic/static.svg",
           "primary": "assets/svg/character/body/001_classic/primary.svg",
-          "secondary": "assets/svg/character/body/001_classic/secondary.svg"
+          "secondary": "assets/svg/character/body/001_classic/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 2,
           "name": "strap",
           "fixed": "assets/svg/character/body/002_strap/static.svg",
           "primary": "assets/svg/character/body/002_strap/primary.svg",
-          "secondary": "assets/svg/character/body/002_strap/secondary.svg"
+          "secondary": "assets/svg/character/body/002_strap/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 2
+          }
         },
         {
           "id": 3,
@@ -407,21 +599,36 @@
           "name": "collar",
           "fixed": "assets/svg/character/body/006_collar/static.svg",
           "primary": "assets/svg/character/body/006_collar/primary.svg",
-          "secondary": "assets/svg/character/body/006_collar/secondary.svg"
+          "secondary": "assets/svg/character/body/006_collar/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 7,
           "name": "miss_pr2",
           "fixed": "assets/svg/character/body/007_miss_pr2/static.svg",
           "primary": "assets/svg/character/body/007_miss_pr2/primary.svg",
-          "secondary": "assets/svg/character/body/007_miss_pr2/secondary.svg"
+          "secondary": "assets/svg/character/body/007_miss_pr2/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 8,
           "name": "belt",
           "fixed": "assets/svg/character/body/008_belt/static.svg",
           "primary": "assets/svg/character/body/008_belt/primary.svg",
-          "secondary": "assets/svg/character/body/008_belt/secondary.svg"
+          "secondary": "assets/svg/character/body/008_belt/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 9,
@@ -435,7 +642,12 @@
           "name": "bird",
           "fixed": "assets/svg/character/body/010_bird/static.svg",
           "primary": "assets/svg/character/body/010_bird/primary.svg",
-          "secondary": "assets/svg/character/body/010_bird/secondary.svg"
+          "secondary": "assets/svg/character/body/010_bird/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 11,
@@ -449,7 +661,12 @@
           "name": "bee",
           "fixed": "assets/svg/character/body/012_bee/static.svg",
           "primary": "assets/svg/character/body/012_bee/primary.svg",
-          "secondary": "assets/svg/character/body/012_bee/secondary.svg"
+          "secondary": "assets/svg/character/body/012_bee/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 13,
@@ -463,7 +680,12 @@
           "name": "cat",
           "fixed": "assets/svg/character/body/014_cat/static.svg",
           "primary": "assets/svg/character/body/014_cat/primary.svg",
-          "secondary": "assets/svg/character/body/014_cat/secondary.svg"
+          "secondary": "assets/svg/character/body/014_cat/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 15,
@@ -484,28 +706,47 @@
           "name": "ant",
           "fixed": "assets/svg/character/body/017_ant/static.svg",
           "primary": "assets/svg/character/body/017_ant/primary.svg",
-          "secondary": "assets/svg/character/body/017_ant/secondary.svg"
+          "secondary": "assets/svg/character/body/017_ant/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 18,
           "name": "astronaut",
           "fixed": "assets/svg/character/body/018_astronaut/static.svg",
           "primary": "assets/svg/character/body/018_astronaut/primary.svg",
-          "secondary": "assets/svg/character/body/018_astronaut/secondary.svg"
+          "secondary": "assets/svg/character/body/018_astronaut/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 19,
           "name": "alien",
           "fixed": "assets/svg/character/body/019_alien/static.svg",
           "primary": "assets/svg/character/body/019_alien/primary.svg",
-          "secondary": "assets/svg/character/body/019_alien/secondary.svg"
+          "secondary": "assets/svg/character/body/019_alien/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 20,
           "name": "galaxy",
           "fixed": "assets/svg/character/body/020_galaxy/static.svg",
           "primary": "assets/svg/character/body/020_galaxy/primary.svg",
-          "secondary": "assets/svg/character/body/020_galaxy/secondary.svg"
+          "secondary": "assets/svg/character/body/020_galaxy/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 21,
@@ -577,56 +818,95 @@
           "name": "dino",
           "fixed": "assets/svg/character/body/022_dino/static.svg",
           "primary": "assets/svg/character/body/022_dino/primary.svg",
-          "secondary": "assets/svg/character/body/022_dino/secondary.svg"
+          "secondary": "assets/svg/character/body/022_dino/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 23,
           "name": "armor",
           "fixed": "assets/svg/character/body/023_armor/static.svg",
           "primary": "assets/svg/character/body/023_armor/primary.svg",
-          "secondary": "assets/svg/character/body/023_armor/secondary.svg"
+          "secondary": "assets/svg/character/body/023_armor/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 24,
           "name": "fairy",
           "fixed": "assets/svg/character/body/024_fairy/static.svg",
           "primary": "assets/svg/character/body/024_fairy/primary.svg",
-          "secondary": "assets/svg/character/body/024_fairy/secondary.svg"
+          "secondary": "assets/svg/character/body/024_fairy/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 25,
           "name": "gingerbread",
           "fixed": "assets/svg/character/body/025_gingerbread/static.svg",
           "primary": "assets/svg/character/body/025_gingerbread/primary.svg",
-          "secondary": "assets/svg/character/body/025_gingerbread/secondary.svg"
+          "secondary": "assets/svg/character/body/025_gingerbread/secondary.svg",
+          "fixedBands": {
+            "under": 1,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 26,
           "name": "king",
           "fixed": "assets/svg/character/body/026_king/static.svg",
           "primary": "assets/svg/character/body/026_king/primary.svg",
-          "secondary": "assets/svg/character/body/026_king/secondary.svg"
+          "secondary": "assets/svg/character/body/026_king/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 27,
           "name": "queen",
           "fixed": "assets/svg/character/body/027_queen/static.svg",
           "primary": "assets/svg/character/body/027_queen/primary.svg",
-          "secondary": "assets/svg/character/body/027_queen/secondary.svg"
+          "secondary": "assets/svg/character/body/027_queen/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 28,
           "name": "sir",
           "fixed": "assets/svg/character/body/028_sir/static.svg",
           "primary": "assets/svg/character/body/028_sir/primary.svg",
-          "secondary": "assets/svg/character/body/028_sir/secondary.svg"
+          "secondary": "assets/svg/character/body/028_sir/secondary.svg",
+          "fixedBands": {
+            "under": 1,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 29,
           "name": "fred",
           "fixed": "assets/svg/character/body/029_fred/static.svg",
           "primary": "assets/svg/character/body/029_fred/primary.svg",
-          "secondary": "assets/svg/character/body/029_fred/secondary.svg"
+          "secondary": "assets/svg/character/body/029_fred/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 30,
@@ -640,21 +920,35 @@
           "name": "taco",
           "fixed": "assets/svg/character/body/031_taco/static.svg",
           "primary": "assets/svg/character/body/031_taco/primary.svg",
-          "secondary": "assets/svg/character/body/031_taco/secondary.svg"
+          "secondary": "assets/svg/character/body/031_taco/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 32,
           "name": "slender",
           "fixed": "assets/svg/character/body/032_slender/static.svg",
           "primary": "assets/svg/character/body/032_slender/primary.svg",
-          "secondary": "assets/svg/character/body/032_slender/secondary.svg"
+          "secondary": "assets/svg/character/body/032_slender/secondary.svg",
+          "fixedBands": {
+            "under": 1,
+            "middle": 1
+          }
         },
         {
           "id": 34,
           "name": "santa",
           "fixed": "assets/svg/character/body/034_santa/static.svg",
           "primary": "assets/svg/character/body/034_santa/primary.svg",
-          "secondary": "assets/svg/character/body/034_santa/secondary.svg"
+          "secondary": "assets/svg/character/body/034_santa/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 35,
@@ -668,49 +962,80 @@
           "name": "reindeer",
           "fixed": "assets/svg/character/body/036_reindeer/static.svg",
           "primary": "assets/svg/character/body/036_reindeer/primary.svg",
-          "secondary": "assets/svg/character/body/036_reindeer/secondary.svg"
+          "secondary": "assets/svg/character/body/036_reindeer/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 37,
           "name": "crocodile",
           "fixed": "assets/svg/character/body/037_crocodile/static.svg",
           "primary": "assets/svg/character/body/037_crocodile/primary.svg",
-          "secondary": "assets/svg/character/body/037_crocodile/secondary.svg"
+          "secondary": "assets/svg/character/body/037_crocodile/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 38,
           "name": "valentine",
           "fixed": "assets/svg/character/body/038_valentine/static.svg",
           "primary": "assets/svg/character/body/038_valentine/primary.svg",
-          "secondary": "assets/svg/character/body/038_valentine/secondary.svg"
+          "secondary": "assets/svg/character/body/038_valentine/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 39,
           "name": "bunny",
           "fixed": "assets/svg/character/body/039_bunny/static.svg",
           "primary": "assets/svg/character/body/039_bunny/primary.svg",
-          "secondary": "assets/svg/character/body/039_bunny/secondary.svg"
+          "secondary": "assets/svg/character/body/039_bunny/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 40,
           "name": "gecko",
           "fixed": "assets/svg/character/body/040_gecko/static.svg",
           "primary": "assets/svg/character/body/040_gecko/primary.svg",
-          "secondary": "assets/svg/character/body/040_gecko/secondary.svg"
+          "secondary": "assets/svg/character/body/040_gecko/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 41,
           "name": "bat",
           "fixed": "assets/svg/character/body/041_bat/static.svg",
           "primary": "assets/svg/character/body/041_bat/primary.svg",
-          "secondary": "assets/svg/character/body/041_bat/secondary.svg"
+          "secondary": "assets/svg/character/body/041_bat/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 42,
           "name": "sea",
           "fixed": "assets/svg/character/body/042_sea/static.svg",
           "primary": "assets/svg/character/body/042_sea/primary.svg",
-          "secondary": "assets/svg/character/body/042_sea/secondary.svg"
+          "secondary": "assets/svg/character/body/042_sea/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 43,
@@ -738,21 +1063,34 @@
           "name": "turkey",
           "fixed": "assets/svg/character/body/048_turkey/static.svg",
           "primary": "assets/svg/character/body/048_turkey/primary.svg",
-          "secondary": "assets/svg/character/body/048_turkey/secondary.svg"
+          "secondary": "assets/svg/character/body/048_turkey/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 49,
           "name": "dog",
           "fixed": "assets/svg/character/body/049_dog/static.svg",
           "primary": "assets/svg/character/body/049_dog/primary.svg",
-          "secondary": "assets/svg/character/body/049_dog/secondary.svg"
+          "secondary": "assets/svg/character/body/049_dog/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 50,
           "name": "gladiator",
           "fixed": "assets/svg/character/body/050_gladiator/static.svg",
           "primary": "assets/svg/character/body/050_gladiator/primary.svg",
-          "secondary": "assets/svg/character/body/050_gladiator/secondary.svg"
+          "secondary": "assets/svg/character/body/050_gladiator/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         }
       ]
     },
@@ -767,7 +1105,12 @@
           "name": "classic",
           "fixed": "assets/svg/character/feet/001_classic/static.svg",
           "primary": "assets/svg/character/feet/001_classic/primary.svg",
-          "secondary": "assets/svg/character/feet/001_classic/secondary.svg"
+          "secondary": "assets/svg/character/feet/001_classic/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 2,
@@ -781,14 +1124,24 @@
           "name": "loafer",
           "fixed": "assets/svg/character/feet/003_loafer/static.svg",
           "primary": "assets/svg/character/feet/003_loafer/primary.svg",
-          "secondary": "assets/svg/character/feet/003_loafer/secondary.svg"
+          "secondary": "assets/svg/character/feet/003_loafer/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 4,
           "name": "cleat",
           "fixed": "assets/svg/character/feet/004_cleat/static.svg",
           "primary": "assets/svg/character/feet/004_cleat/primary.svg",
-          "secondary": "assets/svg/character/feet/004_cleat/secondary.svg"
+          "secondary": "assets/svg/character/feet/004_cleat/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 5,
@@ -802,7 +1155,11 @@
           "name": "tiny",
           "fixed": "assets/svg/character/feet/006_tiny/static.svg",
           "primary": "assets/svg/character/feet/006_tiny/primary.svg",
-          "secondary": "assets/svg/character/feet/006_tiny/secondary.svg"
+          "secondary": "assets/svg/character/feet/006_tiny/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 7,
@@ -816,14 +1173,22 @@
           "name": "bare",
           "fixed": "assets/svg/character/feet/008_bare/static.svg",
           "primary": "assets/svg/character/feet/008_bare/primary.svg",
-          "secondary": "assets/svg/character/feet/008_bare/secondary.svg"
+          "secondary": "assets/svg/character/feet/008_bare/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 9,
           "name": "nice",
           "fixed": "assets/svg/character/feet/009_nice/static.svg",
           "primary": "assets/svg/character/feet/009_nice/primary.svg",
-          "secondary": "assets/svg/character/feet/009_nice/secondary.svg"
+          "secondary": "assets/svg/character/feet/009_nice/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 10,
@@ -851,7 +1216,12 @@
           "name": "cat",
           "fixed": "assets/svg/character/feet/013_cat/static.svg",
           "primary": "assets/svg/character/feet/013_cat/primary.svg",
-          "secondary": "assets/svg/character/feet/013_cat/secondary.svg"
+          "secondary": "assets/svg/character/feet/013_cat/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 14,
@@ -865,28 +1235,48 @@
           "name": "elephant",
           "fixed": "assets/svg/character/feet/015_elephant/static.svg",
           "primary": "assets/svg/character/feet/015_elephant/primary.svg",
-          "secondary": "assets/svg/character/feet/015_elephant/secondary.svg"
+          "secondary": "assets/svg/character/feet/015_elephant/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 16,
           "name": "ant",
           "fixed": "assets/svg/character/feet/016_ant/static.svg",
           "primary": "assets/svg/character/feet/016_ant/primary.svg",
-          "secondary": "assets/svg/character/feet/016_ant/secondary.svg"
+          "secondary": "assets/svg/character/feet/016_ant/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 17,
           "name": "astronaut",
           "fixed": "assets/svg/character/feet/017_astronaut/static.svg",
           "primary": "assets/svg/character/feet/017_astronaut/primary.svg",
-          "secondary": "assets/svg/character/feet/017_astronaut/secondary.svg"
+          "secondary": "assets/svg/character/feet/017_astronaut/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 18,
           "name": "alien",
           "fixed": "assets/svg/character/feet/018_alien/static.svg",
           "primary": "assets/svg/character/feet/018_alien/primary.svg",
-          "secondary": "assets/svg/character/feet/018_alien/secondary.svg"
+          "secondary": "assets/svg/character/feet/018_alien/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 19,
@@ -900,7 +1290,12 @@
           "name": "dino",
           "fixed": "assets/svg/character/feet/020_dino/static.svg",
           "primary": "assets/svg/character/feet/020_dino/primary.svg",
-          "secondary": "assets/svg/character/feet/020_dino/secondary.svg"
+          "secondary": "assets/svg/character/feet/020_dino/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 21,
@@ -921,63 +1316,105 @@
           "name": "gingerbread",
           "fixed": "assets/svg/character/feet/023_gingerbread/static.svg",
           "primary": "assets/svg/character/feet/023_gingerbread/primary.svg",
-          "secondary": "assets/svg/character/feet/023_gingerbread/secondary.svg"
+          "secondary": "assets/svg/character/feet/023_gingerbread/secondary.svg",
+          "fixedBands": {
+            "under": 1,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 24,
           "name": "king",
           "fixed": "assets/svg/character/feet/024_king/static.svg",
           "primary": "assets/svg/character/feet/024_king/primary.svg",
-          "secondary": "assets/svg/character/feet/024_king/secondary.svg"
+          "secondary": "assets/svg/character/feet/024_king/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 25,
           "name": "queen",
           "fixed": "assets/svg/character/feet/025_queen/static.svg",
           "primary": "assets/svg/character/feet/025_queen/primary.svg",
-          "secondary": "assets/svg/character/feet/025_queen/secondary.svg"
+          "secondary": "assets/svg/character/feet/025_queen/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 26,
           "name": "sir",
           "fixed": "assets/svg/character/feet/026_sir/static.svg",
           "primary": "assets/svg/character/feet/026_sir/primary.svg",
-          "secondary": "assets/svg/character/feet/026_sir/secondary.svg"
+          "secondary": "assets/svg/character/feet/026_sir/secondary.svg",
+          "fixedBands": {
+            "under": 3,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 27,
           "name": "very_invisible",
           "fixed": "assets/svg/character/feet/027_very_invisible/static.svg",
           "primary": "assets/svg/character/feet/027_very_invisible/primary.svg",
-          "secondary": "assets/svg/character/feet/027_very_invisible/secondary.svg"
+          "secondary": "assets/svg/character/feet/027_very_invisible/secondary.svg",
+          "fixedBands": {
+            "under": 1,
+            "middle": 0
+          }
         },
         {
           "id": 28,
           "name": "bubble",
           "fixed": "assets/svg/character/feet/028_bubble/static.svg",
           "primary": "assets/svg/character/feet/028_bubble/primary.svg",
-          "secondary": "assets/svg/character/feet/028_bubble/secondary.svg"
+          "secondary": "assets/svg/character/feet/028_bubble/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 2,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 29,
           "name": "taco",
           "fixed": "assets/svg/character/feet/029_taco/static.svg",
           "primary": "assets/svg/character/feet/029_taco/primary.svg",
-          "secondary": "assets/svg/character/feet/029_taco/secondary.svg"
+          "secondary": "assets/svg/character/feet/029_taco/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 30,
           "name": "slender",
           "fixed": "assets/svg/character/feet/030_slender/static.svg",
           "primary": "assets/svg/character/feet/030_slender/primary.svg",
-          "secondary": "assets/svg/character/feet/030_slender/secondary.svg"
+          "secondary": "assets/svg/character/feet/030_slender/secondary.svg",
+          "fixedBands": {
+            "under": 1,
+            "middle": 0
+          }
         },
         {
           "id": 34,
           "name": "santa",
           "fixed": "assets/svg/character/feet/034_santa/static.svg",
           "primary": "assets/svg/character/feet/034_santa/primary.svg",
-          "secondary": "assets/svg/character/feet/034_santa/secondary.svg"
+          "secondary": "assets/svg/character/feet/034_santa/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 35,
@@ -991,49 +1428,79 @@
           "name": "reindeer",
           "fixed": "assets/svg/character/feet/036_reindeer/static.svg",
           "primary": "assets/svg/character/feet/036_reindeer/primary.svg",
-          "secondary": "assets/svg/character/feet/036_reindeer/secondary.svg"
+          "secondary": "assets/svg/character/feet/036_reindeer/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 37,
           "name": "crocodile",
           "fixed": "assets/svg/character/feet/037_crocodile/static.svg",
           "primary": "assets/svg/character/feet/037_crocodile/primary.svg",
-          "secondary": "assets/svg/character/feet/037_crocodile/secondary.svg"
+          "secondary": "assets/svg/character/feet/037_crocodile/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 38,
           "name": "valentine",
           "fixed": "assets/svg/character/feet/038_valentine/static.svg",
           "primary": "assets/svg/character/feet/038_valentine/primary.svg",
-          "secondary": "assets/svg/character/feet/038_valentine/secondary.svg"
+          "secondary": "assets/svg/character/feet/038_valentine/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 39,
           "name": "bunny",
           "fixed": "assets/svg/character/feet/039_bunny/static.svg",
           "primary": "assets/svg/character/feet/039_bunny/primary.svg",
-          "secondary": "assets/svg/character/feet/039_bunny/secondary.svg"
+          "secondary": "assets/svg/character/feet/039_bunny/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 40,
           "name": "gecko",
           "fixed": "assets/svg/character/feet/040_gecko/static.svg",
           "primary": "assets/svg/character/feet/040_gecko/primary.svg",
-          "secondary": "assets/svg/character/feet/040_gecko/secondary.svg"
+          "secondary": "assets/svg/character/feet/040_gecko/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 41,
           "name": "bat",
           "fixed": "assets/svg/character/feet/041_bat/static.svg",
           "primary": "assets/svg/character/feet/041_bat/primary.svg",
-          "secondary": "assets/svg/character/feet/041_bat/secondary.svg"
+          "secondary": "assets/svg/character/feet/041_bat/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 42,
           "name": "sea",
           "fixed": "assets/svg/character/feet/042_sea/static.svg",
           "primary": "assets/svg/character/feet/042_sea/primary.svg",
-          "secondary": "assets/svg/character/feet/042_sea/secondary.svg"
+          "secondary": "assets/svg/character/feet/042_sea/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 43,
@@ -1068,14 +1535,22 @@
           "name": "dog",
           "fixed": "assets/svg/character/feet/049_dog/static.svg",
           "primary": "assets/svg/character/feet/049_dog/primary.svg",
-          "secondary": "assets/svg/character/feet/049_dog/secondary.svg"
+          "secondary": "assets/svg/character/feet/049_dog/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 50,
           "name": "gladiator",
           "fixed": "assets/svg/character/feet/050_gladiator/static.svg",
           "primary": "assets/svg/character/feet/050_gladiator/primary.svg",
-          "secondary": "assets/svg/character/feet/050_gladiator/secondary.svg"
+          "secondary": "assets/svg/character/feet/050_gladiator/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         }
       ]
     },
@@ -1104,7 +1579,12 @@
           "name": "kong",
           "fixed": "assets/svg/character/hat/003_kong/static.svg",
           "primary": "assets/svg/character/hat/003_kong/primary.svg",
-          "secondary": "assets/svg/character/hat/003_kong/secondary.svg"
+          "secondary": "assets/svg/character/hat/003_kong/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 4,
@@ -1128,56 +1608,89 @@
           "name": "cowboy",
           "fixed": "assets/svg/character/hat/005_cowboy/static.svg",
           "primary": "assets/svg/character/hat/005_cowboy/primary.svg",
-          "secondary": "assets/svg/character/hat/005_cowboy/secondary.svg"
+          "secondary": "assets/svg/character/hat/005_cowboy/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1,
+            "middleHiddenByEpic": true
+          }
         },
         {
           "id": 6,
           "name": "crown",
           "fixed": "assets/svg/character/hat/006_crown/static.svg",
           "primary": "assets/svg/character/hat/006_crown/primary.svg",
-          "secondary": "assets/svg/character/hat/006_crown/secondary.svg"
+          "secondary": "assets/svg/character/hat/006_crown/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 7,
           "name": "santa",
           "fixed": "assets/svg/character/hat/007_santa/static.svg",
           "primary": "assets/svg/character/hat/007_santa/primary.svg",
-          "secondary": "assets/svg/character/hat/007_santa/secondary.svg"
+          "secondary": "assets/svg/character/hat/007_santa/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 8,
           "name": "party",
           "fixed": "assets/svg/character/hat/008_party/static.svg",
           "primary": "assets/svg/character/hat/008_party/primary.svg",
-          "secondary": "assets/svg/character/hat/008_party/secondary.svg"
+          "secondary": "assets/svg/character/hat/008_party/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 9,
           "name": "top",
           "fixed": "assets/svg/character/hat/009_top/static.svg",
           "primary": "assets/svg/character/hat/009_top/primary.svg",
-          "secondary": "assets/svg/character/hat/009_top/secondary.svg"
+          "secondary": "assets/svg/character/hat/009_top/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 10,
           "name": "jump_start",
           "fixed": "assets/svg/character/hat/010_jump_start/static.svg",
           "primary": "assets/svg/character/hat/010_jump_start/primary.svg",
-          "secondary": "assets/svg/character/hat/010_jump_start/secondary.svg"
+          "secondary": "assets/svg/character/hat/010_jump_start/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 11,
           "name": "moon",
           "fixed": "assets/svg/character/hat/011_moon/static.svg",
           "primary": "assets/svg/character/hat/011_moon/primary.svg",
-          "secondary": "assets/svg/character/hat/011_moon/secondary.svg"
+          "secondary": "assets/svg/character/hat/011_moon/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 12,
           "name": "thief",
           "fixed": "assets/svg/character/hat/012_thief/static.svg",
           "primary": "assets/svg/character/hat/012_thief/primary.svg",
-          "secondary": "assets/svg/character/hat/012_thief/secondary.svg"
+          "secondary": "assets/svg/character/hat/012_thief/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 13,
@@ -1206,7 +1719,11 @@
           "name": "artifact",
           "fixed": "assets/svg/character/hat/014_artifact/static.svg",
           "primary": "assets/svg/character/hat/014_artifact/primary.svg",
-          "secondary": "assets/svg/character/hat/014_artifact/secondary.svg"
+          "secondary": "assets/svg/character/hat/014_artifact/secondary.svg",
+          "fixedBands": {
+            "under": 0,
+            "middle": 1
+          }
         },
         {
           "id": 15,

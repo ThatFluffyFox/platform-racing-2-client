@@ -123,6 +123,30 @@ class SvgAsset {
 		return shapeFromPrepared(content);
 	}
 
+	/**
+		Renders only some XFL layers of an Animate export. The export wraps its
+		layers in one root group, one child group per layer from bottom to top;
+		`start` and `end` index those layer groups (end exclusive).
+	**/
+	public static function createLayerRange(assetPath:String, start:Int, end:Int):Shape {
+		var cacheKey = assetPath + "#layers:" + start + "-" + end;
+		var svg = parsed.get(cacheKey);
+		if (svg == null) {
+			var document = Xml.parse(prepare(loadText(assetPath)));
+			var root = document.firstElement();
+			if (root == null) throw 'Invalid SVG asset $assetPath';
+			var groups = [for (child in root.elements()) if (localName(child.nodeName) == "g") child];
+			if (groups.length != 1) throw 'SVG asset $assetPath does not have one root layer group';
+			var layers = [for (child in groups[0].elements()) if (localName(child.nodeName) == "g") child];
+			for (index in 0...layers.length) {
+				if (index < start || index >= end) groups[0].removeChild(layers[index]);
+			}
+			svg = new SvgDocument(prepare(document.toString()));
+			parsed.set(cacheKey, svg);
+		}
+		return svg.createShape();
+	}
+
 	/** Applies Flash-style solid color channels to named XFL instance groups before rendering. */
 	public static function createTinted(assetPath:String, tints:Map<String, Int>, hidden:Array<String>):Shape {
 		var document = Xml.parse(prepare(loadText(assetPath)));
