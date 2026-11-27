@@ -207,6 +207,21 @@ def part_variants(kind: str, include_excluded: bool = False) -> list[dict[str, o
                 }
                 for channel in ("primary", "static", "secondary")
             ]
+        if kind == "head" and part_id == 27:
+            # The bubble head's face spins: Symbol 753 rotates it over 101 frames
+            # in both colour clips.
+            record["channelAnimations"] = [
+                {
+                    "channel": channel,
+                    "frameRate": 30,
+                    "endBehavior": "loop",
+                    "frames": [
+                        f"assets/svg/character/head/027_bubble/{channel}_frames/frame_{frame:03d}.svg"
+                        for frame in range(1, 102)
+                    ],
+                }
+                for channel in ("primary", "secondary")
+            ]
         variants.append(record)
     return variants
 
