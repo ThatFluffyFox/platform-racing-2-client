@@ -23,6 +23,8 @@ class IntroAnimationView extends Sprite {
 	private static inline var JIGGMIN_SOUND = "assets/audio/sfx/logo_theme.mp3";
 	#end
 	private final playSound:IntroSoundPlayer;
+	/** When the theme's cue fired while the browser was still blocking sound. */
+	private var lockedCueMs:Float = -1;
 
 	public function new(kind:String, ?playSound:IntroSoundPlayer) {
 		super();
@@ -46,6 +48,7 @@ class IntroAnimationView extends Sprite {
 	public function stop():Void timeline.stop();
 
 	public function dispose():Void {
+		stopWaitingForAudio();
 		timeline.removeEventListener(Event.COMPLETE, onComplete);
 		timeline.markerHandler = null;
 		timeline.dispose();
@@ -61,8 +64,43 @@ class IntroAnimationView extends Sprite {
 	private function onMarker(marker:String):Void {
 		if (marker != "sound:logo_theme") return;
 		if (soundChannel != null) soundChannel.stop();
+		#if (js && html5)
+		// Browsers block sound until the player first clicks or presses a key,
+		// and the intro starts before that. Flash had no such rule, so when sound
+		// is still blocked, start the theme as soon as it is allowed, at the point
+		// the intro has reached.
+		if (audioBlocked()) {
+			lockedCueMs = haxe.Timer.stamp() * 1000;
+			addEventListener(Event.ENTER_FRAME, checkAudioUnblocked);
+			return;
+		}
+		#end
 		soundChannel = playSound(JIGGMIN_SOUND, Settings.soundLevel / 100);
 	}
+
+	private function checkAudioUnblocked(_:Event):Void {
+		#if (js && html5)
+		if (audioBlocked()) return;
+		var elapsed = haxe.Timer.stamp() * 1000 - lockedCueMs;
+		stopWaitingForAudio();
+		var volume = Settings.soundLevel / 100;
+		if (volume <= 0 || !Assets.exists(JIGGMIN_SOUND)) return;
+		var sound = Assets.getSound(JIGGMIN_SOUND);
+		if (sound == null || elapsed >= sound.length) return;
+		soundChannel = sound.play(elapsed, 0, new SoundTransform(volume));
+		#end
+	}
+
+	private function stopWaitingForAudio():Void {
+		lockedCueMs = -1;
+		removeEventListener(Event.ENTER_FRAME, checkAudioUnblocked);
+	}
+
+	#if (js && html5)
+	private static function audioBlocked():Bool {
+		return js.Syntax.code("(typeof Howler !== 'undefined' && Howler.ctx != null && Howler.ctx.state !== 'running')");
+	}
+	#end
 
 	private static function playAssetSound(path:String, volume:Float):Null<SoundChannel> {
 		if (volume <= 0) return null;
