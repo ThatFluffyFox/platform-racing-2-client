@@ -22,6 +22,12 @@ class CursorEyedropper extends CustomCursor {
 	private var exclusions:Array<DisplayObject> = [];
 	private var cursorContainer:Null<BitmapData>;
 	private var sampleSource:Null<DisplayObject>;
+	#if html5
+	/** Flash's cursorContainer: the frame captured when the eyedropper appears. */
+	private var frameCapture:Null<js.lib.Uint8Array>;
+	private var frameCaptureWidth:Int = 0;
+	private var frameCaptureHeight:Int = 0;
+	#end
 
 	public function new(?sampleSource:DisplayObject) {
 		super();
@@ -70,6 +76,9 @@ class CursorEyedropper extends CustomCursor {
 			cursorContainer.dispose();
 			cursorContainer = null;
 		}
+		#if html5
+		frameCapture = null;
+		#end
 		exclusions = [];
 		sampleSource = null;
 	}
@@ -98,14 +107,6 @@ class CursorEyedropper extends CustomCursor {
 				hideMouse();
 				drawEyedropper();
 			}
-			#if html5
-			// Sampling the Stage draws the display list. Doing that every frame
-			// (Flash read an already-cached BitmapData) stalls the editor while the
-			// picker is open, so the Stage is sampled once, on click, below.
-			if (Std.isOfType(currentSampleSource(), Stage)) {
-				return;
-			}
-			#end
 			updateColor();
 			dispatchEvent(new Event(Event.CHANGE));
 		} else if (visible) {
@@ -157,10 +158,11 @@ class CursorEyedropper extends CustomCursor {
 			return;
 		}
 		#if html5
-		// The browser already has the completed game frame in its canvas. Drawing
-		// the Stage into BitmapData makes OpenFL walk the editor's full 60,000px
-		// display tree and can stall indefinitely on art-heavy levels.
-		if (Std.isOfType(source, Stage)) {
+		// Like Flash, capture the screen once when the eyedropper appears; hover
+		// previews then read from that capture.
+		var captureStage = Std.downcast(source, Stage);
+		if (captureStage != null) {
+			captureFrame(captureStage);
 			return;
 		}
 		#end
@@ -215,7 +217,7 @@ class CursorEyedropper extends CustomCursor {
 		#if html5
 		var sourceStage = Std.downcast(source, Stage);
 		if (sourceStage != null) {
-			color = sampleStagePixel(sourceStage, CustomCursor.eventStagePoint(me));
+			color = capturedPixel(sourceStage, CustomCursor.eventStagePoint(me));
 			return;
 		}
 		#end
@@ -241,9 +243,38 @@ class CursorEyedropper extends CustomCursor {
 		colours.
 	**/
 	private function sampleStagePixel(sourceStage:Stage, stagePoint:Point):Int {
+		var sampled = -1;
+		withFreshFrame(sourceStage, function(gl:Dynamic, width:Int, height:Int):Void {
+			var pixel = bufferPixel(sourceStage, stagePoint, width, height);
+			var pixels = new js.lib.Uint8Array(4);
+			gl.readPixels(pixel.x, height - 1 - pixel.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+			sampled = (pixels[0] << 16) | (pixels[1] << 8) | pixels[2];
+		});
+		return sampled;
+	}
+
+	private function captureFrame(sourceStage:Stage):Void {
+		frameCapture = null;
+		withFreshFrame(sourceStage, function(gl:Dynamic, width:Int, height:Int):Void {
+			var pixels = new js.lib.Uint8Array(width * height * 4);
+			gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+			frameCapture = pixels;
+			frameCaptureWidth = width;
+			frameCaptureHeight = height;
+		});
+	}
+
+	private function capturedPixel(sourceStage:Stage, stagePoint:Point):Int {
+		if (frameCapture == null) return -1;
+		var pixel = bufferPixel(sourceStage, stagePoint, frameCaptureWidth, frameCaptureHeight);
+		var index = ((frameCaptureHeight - 1 - pixel.y) * frameCaptureWidth + pixel.x) * 4;
+		return (frameCapture[index] << 16) | (frameCapture[index + 1] << 8) | frameCapture[index + 2];
+	}
+
+	/** Render a frame with the eyedropper hidden and read it before the browser clears it. */
+	private function withFreshFrame(sourceStage:Stage, read:(Dynamic, Int, Int) -> Void):Void {
 		var wasVisible = visible;
 		visible = false;
-		var sampled = -1;
 		try {
 			var window = sourceStage.window;
 			var gl:Dynamic = window == null ? null : window.context.webgl;
@@ -252,19 +283,17 @@ class CursorEyedropper extends CustomCursor {
 					sourceStage.__renderDirty = true;
 					sourceStage.__render(window.context);
 				}
-				var display:Matrix = @:privateAccess sourceStage.__displayMatrix;
-				var point = display.transformPoint(stagePoint);
-				var width:Int = gl.drawingBufferWidth;
-				var height:Int = gl.drawingBufferHeight;
-				var px = clamp(Math.floor(point.x), 0, width - 1);
-				var py = clamp(Math.floor(point.y), 0, height - 1);
-				var pixels = new js.lib.Uint8Array(4);
-				gl.readPixels(px, height - 1 - py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-				sampled = (pixels[0] << 16) | (pixels[1] << 8) | pixels[2];
+				read(gl, gl.drawingBufferWidth, gl.drawingBufferHeight);
 			}
 		} catch (_:Dynamic) {}
 		visible = wasVisible;
-		return sampled;
+	}
+
+	/** The drawing-buffer pixel under a stage point, through the renderer's display matrix. */
+	private static function bufferPixel(sourceStage:Stage, stagePoint:Point, width:Int, height:Int):{x:Int, y:Int} {
+		var display:Matrix = @:privateAccess sourceStage.__displayMatrix;
+		var point = display.transformPoint(stagePoint);
+		return {x: clamp(Math.floor(point.x), 0, width - 1), y: clamp(Math.floor(point.y), 0, height - 1)};
 	}
 	#end
 
