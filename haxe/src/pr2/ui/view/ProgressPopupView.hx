@@ -7,6 +7,7 @@ import pr2.assets.NativeAssetIds.FontAsset;
 import pr2.assets.NativeAssetIds.StaticSvg;
 import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
+import pr2.ui.FlashTextBox;
 
 /** Explicit native composition of UploadingPopupGraphic, shared by upload/load flows. */
 class ProgressPopupView extends NativeView {
@@ -26,10 +27,7 @@ class ProgressPopupView extends NativeView {
 
 		message = new TextField();
 		message.name = "textBox";
-		message.x = -98;
-		message.y = -38.15;
-		message.width = 196;
-		message.height = 14.55;
+		FlashTextBox.applyXflBox(message, -98, -38.15, 196, 14.55);
 		message.selectable = false;
 		message.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0, null, null, null, null, null, TextFormatAlign.CENTER);
 		message.text = messageText;

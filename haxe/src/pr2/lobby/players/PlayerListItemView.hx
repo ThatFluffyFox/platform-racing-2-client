@@ -6,6 +6,7 @@ import openfl.text.TextFormatAlign;
 import pr2.assets.NativeAssetIds.FontAsset;
 import pr2.assets.NativeAssets;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native three-column player/guild list row. */
 class PlayerListItemView extends NativeView {
@@ -25,10 +26,7 @@ class PlayerListItemView extends NativeView {
 	private function field(name:String, x:Float, y:Float, width:Float):TextField {
 		var text = new TextField();
 		text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = name == "nameBox" ? 12.05 : 12.15;
+		FlashTextBox.applyXflBox(text, x, y, width, name == "nameBox" ? 12.05 : 12.15);
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x000000, false, null, null, null, null,
 			TextFormatAlign.LEFT);

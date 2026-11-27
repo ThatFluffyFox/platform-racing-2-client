@@ -21,6 +21,7 @@ import pr2.ui.controls.ControlState;
 import pr2.ui.controls.GameButton;
 import pr2.ui.controls.GameSlider;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native options panel covering audio, filtering, art, controls, and account actions. */
 class OptionsView extends NativeView {
@@ -85,6 +86,7 @@ class OptionsView extends NativeView {
 		label("art", "artLabel", -106.2, -104.5, 26, 14.55, 12, false, TextFormatAlign.CENTER);
 		componentButton("artOff_bt", "Off", -118.2, -54.5, 50);
 		componentButton("artOn_bt", "On", -118.2, -82.45, 50);
+		// Centred over the panel the port widens for its cached-sprites column (Flash: x -53).
 		title = label("-- Options --", null, -88, -133, 106, 17.05, 14, true, TextFormatAlign.CENTER);
 	}
 
@@ -147,10 +149,7 @@ class OptionsView extends NativeView {
 		align:TextFormatAlign):TextField {
 		var field = new TextField();
 		if (name != null) field.name = name;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0x000000, bold, null, null, null, null, align);
 		field.text = value;

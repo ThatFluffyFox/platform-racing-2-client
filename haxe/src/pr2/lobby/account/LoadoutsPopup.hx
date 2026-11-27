@@ -13,6 +13,7 @@ import pr2.lobby.dialogs.Popup;
 import pr2.levelEditor.GetLevelsView;
 import pr2.ui.controls.GameButton;
 import pr2.util.DisplayUtil;
+import pr2.ui.FlashTextBox;
 
 /** Flash-faithful loadout chooser built from `GetLevelsPopupGraphic`. */
 class LoadoutsPopup extends Popup {
@@ -219,10 +220,7 @@ private class LoadoutListing extends Sprite {
 	private function createText(name:String, x:Float, y:Float, width:Float, size:Int, height:Float):TextField {
 		var field = new TextField();
 		field.name = name;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0, name == "loadoutNum");
 		return field;

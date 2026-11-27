@@ -12,6 +12,7 @@ import pr2.lobby.LobbyArt;
 import pr2.lobby.NumberFormat;
 import pr2.lobby.chat.HtmlNameMaker;
 import pr2.runtime.SvgAsset;
+import pr2.ui.FlashTextBox;
 
 /**
 	Port of Flash `dialogs.GuildMemberName`: one linked member row in
@@ -75,10 +76,7 @@ class GuildMemberName extends Sprite {
 	private function createField(name:String, x:Float, y:Float, width:Float):TextField {
 		var field = new TextField();
 		field.name = name;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = 14.55;
+		FlashTextBox.applyXflBox(field, x, y, width, 14.55);
 		field.multiline = true;
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0);

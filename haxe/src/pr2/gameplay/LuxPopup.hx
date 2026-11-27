@@ -15,6 +15,7 @@ import pr2.ui.view.NativeView;
 import pr2.util.DisplayUtil;
 import pr2.runtime.SvgAsset;
 import pr2.ui.AuthoredScale9;
+import pr2.ui.FlashTextBox;
 
 /** Port of Flash `gameplay.LuxPopup`, shown by the in-race `setLuxGain` command. */
 class LuxPopup extends Popup {
@@ -83,10 +84,7 @@ private class LuxPopupView extends NativeView {
 		exactBackground.name = "exactBackground";
 		addChild(exactBackground);
 		var heading = new TextField();
-		heading.x = 100;
-		heading.y = 7.95;
-		heading.width = 161.95;
-		heading.height = 14.55;
+		FlashTextBox.applyXflBox(heading, 100, 7.95, 161.95, 14.55);
 		heading.selectable = false;
 		heading.defaultTextFormat = new TextFormat("Verdana", 12, 0x000000, false, null, null, null, null,
 			TextFormatAlign.CENTER);

@@ -425,7 +425,7 @@ class LevelInfoPopupTest {
 		assertEquals(-122.5, modView.panel.x, "moderation ShadowBG keeps its XFL X");
 		assertEquals(-68.75, modView.panel.y, "moderation ShadowBG keeps its XFL Y");
 		assertEquals("-- Moderate Level --", modView.title.text, "moderation title keeps exact XFL copy");
-		assertEquals(-107.95, modView.title.x, "moderation title accounts for its XFL left bound");
+		assertEquals(-109.95, modView.title.x, "moderation title accounts for its XFL left bound");
 		assertEquals(-97.8, modView.unpublishButton.x, "Unpublish button keeps its XFL X");
 		assertEquals(84.9899291992188, modView.unpublishButton.controlWidth, "moderation action buttons keep their authored width");
 		assertEquals(23.5989074707032, modView.restrictButton.controlHeight, "moderation action buttons keep their authored height");

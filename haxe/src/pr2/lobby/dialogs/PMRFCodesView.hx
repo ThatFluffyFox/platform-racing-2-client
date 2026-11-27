@@ -9,6 +9,7 @@ import pr2.assets.NativeAssetIds.StaticSvg;
 import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Exact native composition of the authored rich-formatting reference sheet. */
 class PMRFCodesView extends NativeView {
@@ -93,10 +94,7 @@ class PMRFCodesView extends NativeView {
 	private function addText(value:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool,
 		align:TextFormatAlign):TextField {
 		var field = new TextField();
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.multiline = value.indexOf("\n") >= 0 || height > 18;
 		field.wordWrap = false;
 		field.selectable = false;

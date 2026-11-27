@@ -9,6 +9,7 @@ import pr2.assets.NativeAssetIds.StaticSvg;
 import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native course confirmation/countdown menu. */
 class CourseMenuView extends NativeView {
@@ -25,10 +26,7 @@ class CourseMenuView extends NativeView {
 		addChild(panel);
 		countdown = new TextField();
 		countdown.name = "textBox";
-		countdown.x = 33.6;
-		countdown.y = 39.05;
-		countdown.width = 69.35;
-		countdown.height = 12.15;
+		FlashTextBox.applyXflBox(countdown, 33.6, 39.05, 69.35, 12.15);
 		countdown.selectable = false;
 		countdown.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0, false, null, null, null, null,
 			TextFormatAlign.CENTER);

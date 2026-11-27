@@ -11,6 +11,7 @@ import pr2.ui.controls.GameButton;
 import pr2.ui.controls.NativeControl;
 import pr2.ui.view.NativeView;
 import pr2.ui.view.LoadingView;
+import pr2.ui.FlashTextBox;
 
 /** Native player profile card and its social/guild action controls. */
 class PlayerView extends NativeView {
@@ -125,10 +126,7 @@ class PlayerView extends NativeView {
 		align:TextFormatAlign, color:Int = 0x151515):TextField {
 		var text = new TextField();
 		if (name != null) text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, color, bold, null, null, null, null, align);
 		parent.addChild(text);
@@ -167,10 +165,7 @@ private class PlayerSourceButton extends NativeControl {
 			return;
 		}
 		var text = new TextField();
-		text.x = 2;
-		text.y = 2;
-		text.width = kind == Kick ? 73.75 : 27.25;
-		text.height = 12.15;
+		FlashTextBox.applyXflBox(text, 2, 2, kind == Kick ? 73.75 : 27.25, 12.15);
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, over ? 0x000000 : 0x4E4EFE);
 		text.text = kind == Kick ? "kick from guild" : "invite";

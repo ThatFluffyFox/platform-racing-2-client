@@ -68,12 +68,12 @@ class MessagesItemTest {
 		assertNotNull(time, "authored date field exists");
 		assertNotNull(background, "authored TextArea background exists");
 		assertNotNull(guild, "authored everyone icon exists");
-		assertClose(2, name.x, "sender field keeps XFL X");
-		assertClose(6.95, name.y, "sender field keeps XFL Y");
-		assertClose(5, body.x, "message field keeps XFL X");
-		assertClose(29.95, body.y, "message field keeps XFL Y");
-		assertClose(52, time.x, "date field keeps XFL X");
-		assertClose(115.95, time.width, "date field keeps authored width");
+		assertClose(0.0, name.x, "sender field matches the SWF field box for its XFL X");
+		assertClose(4.95, name.y, "sender field matches the SWF field box for its XFL Y");
+		assertClose(3.0, body.x, "message field matches the SWF field box for its XFL X");
+		assertClose(27.95, body.y, "message field matches the SWF field box for its XFL Y");
+		assertClose(50.0, time.x, "date field matches the SWF field box for its XFL X");
+		assertClose(119.95, time.width, "date field matches the SWF field box for its XFL width");
 		assertClose(24, background.y, "TextArea skin keeps XFL Y");
 		assertClose(152 * 1.13815307617188, background.width, "TextArea skin keeps XFL horizontal scale");
 		assertClose(157.55, guild.x, "everyone icon keeps XFL X");

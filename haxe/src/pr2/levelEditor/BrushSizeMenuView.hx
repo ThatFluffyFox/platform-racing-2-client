@@ -8,6 +8,7 @@ import pr2.ui.AuthoredScale9;
 import pr2.ui.controls.GameSlider;
 import pr2.ui.controls.GameTextInput;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native numeric brush-size slider and input. */
 class BrushSizeMenuView extends NativeView {
@@ -25,10 +26,7 @@ class BrushSizeMenuView extends NativeView {
 		addChild(background);
 		var title = new TextField();
 		title.name = "title";
-		title.x = -50.95;
-		title.y = -49;
-		title.width = 102.35;
-		title.height = 14.55;
+		FlashTextBox.applyXflBox(title, -50.95, -49, 102.35, 14.55);
 		title.scaleX = 1.00047302246094;
 		title.selectable = false;
 		title.mouseEnabled = false;

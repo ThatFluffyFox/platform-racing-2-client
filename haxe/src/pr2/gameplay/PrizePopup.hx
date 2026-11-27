@@ -75,7 +75,7 @@ class PrizePopup extends Popup {
 		}
 
 		if (type == "exp") {
-			moveY("titleBox", -105);
+			moveY("titleBox", -105 - pr2.ui.FlashTextBox.GUTTER);
 			target = container("exp");
 			targetName = "exp";
 			if (desc != "" && target != null) target.y = -80;
@@ -86,7 +86,7 @@ class PrizePopup extends Popup {
 		if (type == "cancel") {
 			moveY("bg", -120);
 			setHeight("bg", 150);
-			moveY("titleBox", -105);
+			moveY("titleBox", -105 - pr2.ui.FlashTextBox.GUTTER);
 			setVisible("textBox", false);
 			moveY("close_bt", -10);
 			target = container("exp");

@@ -34,6 +34,7 @@ import pr2.ui.RatingSelect.RatingStarMeter;
 import pr2.ui.view.NativeView;
 import pr2.util.AsyncRemovalGuard;
 import pr2.util.DisplayUtil;
+import pr2.ui.FlashTextBox;
 
 typedef FavoriteUploadFactory = String->Map<String, String>->String->(Dynamic->Void)->Null<UploadingPopup>;
 typedef FavoriteHoverDelayFactory = (Void->Void, Int)->Null<Timer>;
@@ -687,10 +688,7 @@ private class LevelItemView extends NativeView {
 		color:Int):TextField {
 		var text = new TextField();
 		text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, color, bold, null, null, null, null, align);
 		addChild(text);
@@ -721,10 +719,7 @@ private class LevelAccessCoverView extends NativeView {
 		addChild(NativeAssets.svg(StaticSvg.LevelItemAccessCover));
 		var message = new TextField();
 		message.name = "textBox";
-		message.x = 0;
-		message.y = 21.95;
-		message.width = 99.95;
-		message.height = 12.15;
+		FlashTextBox.applyXflBox(message, 0, 21.95, 99.95, 12.15);
 		message.multiline = true;
 		message.wordWrap = true;
 		message.selectable = false;

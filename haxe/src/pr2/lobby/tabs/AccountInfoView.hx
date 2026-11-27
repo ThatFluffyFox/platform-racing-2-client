@@ -9,6 +9,7 @@ import openfl.text.TextFormatAlign;
 import pr2.assets.NativeAssetIds.FontAsset;
 import pr2.assets.NativeAssets;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native account-tab background and named information/action controls. */
 class AccountInfoView extends NativeView {
@@ -33,10 +34,7 @@ class AccountInfoView extends NativeView {
 	private function field(name:String, x:Float, y:Float, width:Float, height:Float):Void {
 		var text = new TextField();
 		text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.selectable = false;
 		text.multiline = true;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0x000000, false, null, null, null, null,
@@ -67,10 +65,7 @@ private class RankTokenButton extends Sprite {
 
 		var text = new TextField();
 		text.name = "textBox";
-		text.x = 16;
-		text.y = 2;
-		text.width = 23;
-		text.height = 14.55;
+		FlashTextBox.applyXflBox(text, 16, 2, 23, 14.55);
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0x737373);
 		addChild(text);
@@ -122,10 +117,7 @@ private class LoadoutsIconButton extends Sprite {
 		name = "loadouts_bt";
 		buttonMode = useHandCursor = true;
 		var text = new TextField();
-		text.x = 2;
-		text.y = 2;
-		text.width = 15.2;
-		text.height = 16.75;
+		FlashTextBox.applyXflBox(text, 2, 2, 15.2, 16.75);
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Icons), 14, 0x000000);
 		text.text = "";

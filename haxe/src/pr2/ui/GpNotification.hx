@@ -60,10 +60,7 @@ class GpNotification extends Sprite {
 		anim.addChild(panel);
 		var textBox = new TextField();
 		textBox.name = "textBox";
-		textBox.x = 5;
-		textBox.y = 9;
-		textBox.width = 70;
-		textBox.height = 17.05;
+		FlashTextBox.applyXflBox(textBox, 5, 9, 70, 17.05);
 		textBox.selectable = false;
 		textBox.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 14, 0x333333, false, null, null, null, null,
 			TextFormatAlign.CENTER);

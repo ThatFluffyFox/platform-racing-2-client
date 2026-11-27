@@ -216,8 +216,8 @@ class QuitButtonTest {
 		var backgroundPanel = DisplayUtil.findByName(popup, "backgroundPanel");
 		assertEquals(true, backgroundPanel.scale9Grid != null, "LuxPopup preserves the ShadowBG scale grid");
 		var heading = Std.downcast(DisplayUtil.findByName(popup, "textBox"), openfl.text.TextField);
-		assertNear(100, heading.x, 0.001, "Lux label preserves authored x");
-		assertNear(7.95, heading.y, 0.001, "Lux label preserves authored y");
+		assertNear(98, heading.x, 0.001, "Lux label field starts at the SWF bounds, 2px left of its XFL box");
+		assertNear(5.95, heading.y, 0.001, "Lux label field starts at the SWF bounds, 2px above its XFL box");
 		var close = Std.downcast(DisplayUtil.findByName(popup, "close_bt"), InteractiveObject);
 		assertNear(144, close.x, 0.001, "Lux close button preserves authored x");
 		assertNear(38.45, close.y, 0.001, "Lux close button preserves authored y");

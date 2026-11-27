@@ -146,11 +146,9 @@ class Objects {
 		var format = new TextFormat(FontResolver.resolve("Verdana"), 18);
 		format.leading = 4;
 		textBox.defaultTextFormat = format;
-		textBox.x = 2;
-		textBox.y = 2;
+		// XFL TextObjectGraphic text box (2, 2) 76 x 29.2; Flash's field adds its 2px gutter.
+		pr2.ui.FlashTextBox.applyXflBox(textBox, 2, 2, 76, 29.2);
 		textBox.scaleY = 1.00286865234375;
-		textBox.width = 76;
-		textBox.height = 29.2;
 		textBox.selectable = false;
 		textBox.wordWrap = false;
 		textBox.multiline = true;

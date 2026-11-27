@@ -11,6 +11,7 @@ import pr2.ui.controls.GameButton;
 import pr2.ui.controls.GameTextArea;
 import pr2.ui.controls.GameTextInput;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Exact native composition of XFL `ChatGraphic` (`MovieClips/Symbol 1217`). */
 class ChatView extends NativeView {
@@ -76,10 +77,7 @@ class ChatView extends NativeView {
 
 	private function addRule(value:String, x:Float, y:Float, width:Float):Void {
 		var field = new TextField();
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = 12.15;
+		FlashTextBox.applyXflBox(field, x, y, width, 12.15);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x666666);
 		field.text = value;

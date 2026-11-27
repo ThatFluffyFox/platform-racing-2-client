@@ -10,6 +10,7 @@ import pr2.ui.controls.GameButton;
 import pr2.ui.controls.GameSelect;
 import pr2.ui.controls.GameTextInput;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Exact native composition of XFL `HandleLevelReportPopupGraphic`. */
 class HandleLevelReportView extends NativeView {
@@ -23,11 +24,11 @@ class HandleLevelReportView extends NativeView {
 		background.scaleY = 1.41368103027344;
 		addChild(background);
 
-		field("heading", -68.35, -118, 216, 17.05, 14, true, TextFormatAlign.CENTER).text = "-- Handle Report --";
-		var title = field("titleBox", -153.05, -88, 286, 12.15, 10, false, TextFormatAlign.CENTER);
+		field("heading", -108, -118, 216, 17.05, 14, true, TextFormatAlign.CENTER).text = "-- Handle Report --";
+		var title = field("titleBox", -143, -88, 286, 12.15, 10, false, TextFormatAlign.CENTER);
 		title.multiline = true;
 		title.text = "Newbieland 2 by Jiggmin";
-		field("detailsLabel", -92.05, -76.15, 146, 12.15, 10, false, TextFormatAlign.CENTER, true).text = "Report details:";
+		field("detailsLabel", -82, -76.15, 146, 12.15, 10, false, TextFormatAlign.CENTER, true).text = "Report details:";
 		var info = new EditorNativeGraphic("ReportInfoButton");
 		info.name = "info_bt";
 		info.x = 32.95;
@@ -35,7 +36,7 @@ class HandleLevelReportView extends NativeView {
 		info.scaleX = info.scaleY = 0.999984741210938;
 		addChild(info);
 
-		field("banLabel", -136.85, -54, 176, 12.15, 10, true, TextFormatAlign.CENTER).text = "Unpublish Level and Ban User";
+		field("banLabel", -88, -54, 176, 12.15, 10, true, TextFormatAlign.CENTER).text = "Unpublish Level and Ban User";
 		field("reasonHelp", -44.5, -33.85, 276, 12.15, 10, false, TextFormatAlign.CENTER, true).text =
 			"All reasons start with \"Inappropriate Level -- \"";
 		var reason = ownControl(new GameSelect<String>());
@@ -76,7 +77,7 @@ class HandleLevelReportView extends NativeView {
 		graphics.lineStyle(1, 0x999999);
 		graphics.moveTo(-125, 55);
 		graphics.lineTo(125, 55);
-		field("orLabel", -75.05, 67.5, 21, 12.15, 10, true, TextFormatAlign.CENTER).text = "OR";
+		field("orLabel", -10.5, 67.5, 21, 12.15, 10, true, TextFormatAlign.CENTER).text = "OR";
 		button("archive_bt", "Archive", -100, 90, 90, 23);
 		button("cancel_bt", "Cancel", 10, 90, 90, 23);
 	}
@@ -94,10 +95,7 @@ class HandleLevelReportView extends NativeView {
 		italic:Bool = false):TextField {
 		var text = new TextField();
 		text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0x000000, bold, italic, null, null, null, align);
 		addChild(text);

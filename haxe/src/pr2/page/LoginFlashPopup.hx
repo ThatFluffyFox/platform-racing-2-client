@@ -24,6 +24,7 @@ import pr2.ui.controls.GameTextInput;
 import pr2.ui.controls.NativeControl;
 import pr2.ui.view.NativeView;
 import pr2.runtime.SvgAsset;
+import pr2.ui.FlashTextBox;
 
 class LoginFlashPopup extends Sprite {
 	public static inline var LOADED:String = "loaded";
@@ -257,7 +258,7 @@ private class LoginPopupView extends NativeView {
 		background.scaleY = 0.785446166992188;
 		addChild(background);
 		label("-- Login --", null, -43, -64.15, 86, 17.05, 14, true, TextFormatAlign.CENTER);
-		label("user:", null, -97.95, -27.7, 31.6, 14.55, 12, false, TextFormatAlign.RIGHT);
+		label("user:", null, -90.55, -27.7, 35.8, 14.55, 12, false, TextFormatAlign.RIGHT);
 		var users = combo("userSelect", -50, -31.7, 131.001281738281);
 		users.prompt = "Guest";
 		users.enabled = false;
@@ -278,7 +279,7 @@ private class LoginPopupView extends NativeView {
 		background.scaleX = 0.604461669921875;
 		background.scaleY = 0.505264282226562;
 		addChild(background);
-		label("Connecting...", null, -37, -28.2, 79.6, 14.55, 12, false, TextFormatAlign.LEFT);
+		label("Connecting...", null, -38.55, -28.2, 79.6, 14.55, 12, false, TextFormatAlign.LEFT);
 		button("var_1", "Close", -48, 10, 100, 22);
 	}
 
@@ -346,10 +347,7 @@ private class LoginPopupView extends NativeView {
 		align:TextFormatAlign):Void {
 		var field = new TextField();
 		if (name != null) field.name = name;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0x000000, bold, null, null, null, null, align);
 		field.text = value;

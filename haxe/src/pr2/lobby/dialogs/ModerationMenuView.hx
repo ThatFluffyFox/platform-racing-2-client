@@ -10,6 +10,7 @@ import pr2.assets.NativeAssetIds.StaticSvg;
 import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native button panel shared by the player moderation menus. */
 class ModerationMenuView extends NativeView {
@@ -27,10 +28,7 @@ class ModerationMenuView extends NativeView {
 		addChild(panel);
 
 		heading = new TextField();
-		heading.x = layout == Admin ? -38 : -32.2;
-		heading.y = layout == Admin ? -67 : -88.1;
-		heading.width = layout == Admin ? 76 : 64.3;
-		heading.height = layout == Admin ? 14.55 : 17.05;
+		FlashTextBox.applyXflBox(heading, layout == Admin ? -38 : -32.2, layout == Admin ? -67 : -88.1, layout == Admin ? 76 : 64.3, layout == Admin ? 14.55 : 17.05);
 		heading.selectable = false;
 		heading.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), layout == Admin ? 12 : 14, 0, false, null, null, null, null,
 			layout == Admin ? TextFormatAlign.CENTER : TextFormatAlign.LEFT);

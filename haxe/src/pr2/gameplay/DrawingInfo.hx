@@ -17,6 +17,7 @@ import pr2.lobby.LobbySession;
 import pr2.lobby.dialogs.HoverPopup;
 import pr2.net.CommandHandler;
 import pr2.util.DisplayUtil;
+import pr2.ui.FlashTextBox;
 
 /**
 	Port of Flash `gameplay.DrawingInfo`: drawing-readiness rows and finish table.
@@ -92,10 +93,7 @@ class DrawingInfo extends Removable {
 	private function createField(name:String, x:Float, y:Float, width:Float, height:Float, color:Int, scaleX:Float = 1):TextField {
 		var field = new TextField();
 		field.name = name;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.scaleX = scaleX;
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, color);

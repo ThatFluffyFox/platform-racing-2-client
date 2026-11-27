@@ -8,6 +8,7 @@ import pr2.assets.NativeAssets;
 import pr2.ui.AuthoredScale9;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native reconstruction of XFL `ChooseLevelsModePopupGraphic`. */
 class ChooseLevelsModeView extends NativeView {
@@ -31,10 +32,7 @@ class ChooseLevelsModeView extends NativeView {
 	private function label(name:String, value:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool):Void {
 		var text = new TextField();
 		text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.mouseEnabled = false;
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0x000000, bold, null, null, null, null,

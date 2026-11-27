@@ -18,6 +18,7 @@ import pr2.lobby.account.AccountCharacter;
 import pr2.net.ServerConfig;
 import pr2.runtime.EpicFlash;
 import pr2.util.DisplayUtil;
+import pr2.ui.FlashTextBox;
 
 class StoreListing extends Sprite {
 	public static inline var PURCHASE:String = "itemPurchase";
@@ -112,10 +113,7 @@ class StoreListing extends Sprite {
 	private function createField(name:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool, color:Int = 0):TextField {
 		var field = new TextField();
 		field.name = name;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.multiline = true;
 		field.wordWrap = true;
 		field.selectable = false;
@@ -184,7 +182,7 @@ class StoreListing extends Sprite {
 		}
 		if (listing.saleMultiplier() < 1) {
 			if (saleBox != null) {
-				if (coin != null) saleBox.x = Math.round(coin.x + coin.width + 3);
+				if (coin != null) saleBox.x = Math.round(coin.x + coin.width + 3) - pr2.ui.FlashTextBox.GUTTER;
 				saleBox.text = listing.saleValue + "% off!";
 			}
 			if (priceBG != null && coin != null && saleBox != null) {

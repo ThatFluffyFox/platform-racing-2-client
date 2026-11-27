@@ -13,6 +13,7 @@ import pr2.ui.controls.GameButton;
 import pr2.ui.controls.GameTextArea;
 import pr2.ui.controls.GameTextInput;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Exact native composition of the authored CreateGuildPopupGraphic. */
 class CreateGuildView extends NativeView {
@@ -93,10 +94,7 @@ class CreateGuildView extends NativeView {
 		align:TextFormatAlign, color:Int):Void {
 		var field = new TextField();
 		if (name != null) field.name = name;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, color, bold, null, null, null, null, align);
 		field.text = value;
@@ -115,10 +113,7 @@ private class GuildTextLink extends Sprite {
 		graphics.drawRect(0, 0, width, 16.15);
 		graphics.endFill();
 		field = new TextField();
-		field.x = 2;
-		field.y = 2;
-		field.width = width - 4;
-		field.height = 12.15;
+		FlashTextBox.applyXflBox(field, 2, 2, width - 4, 12.15);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x4E4EFE, false, null, null, null, null, align);
 		field.text = value;

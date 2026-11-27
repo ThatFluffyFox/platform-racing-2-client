@@ -10,6 +10,7 @@ import pr2.assets.NativeAssets;
 import pr2.ui.AuthoredScale9;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Exact native composition of the authored PartPopupGraphic shell. */
 class PartPopupView extends NativeView {
@@ -46,10 +47,7 @@ class PartPopupView extends NativeView {
 		color:Int):TextField {
 		var text = new TextField();
 		text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, color, bold, null, null, null, null, align);
 		addChild(text);

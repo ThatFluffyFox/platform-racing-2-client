@@ -120,11 +120,11 @@ class ObjectsCompatTest {
 		var textBox = Std.downcast(Objects.getFromCode(ObjectCodes.TextCode), TextField);
 		assertNotNull(textBox, "text object returns nested textBox");
 		assertEquals("textBox", textBox.name, "text object text field name");
-		assertEquals(2.0, textBox.x, "text object preserves authored x registration");
-		assertEquals(2.0, textBox.y, "text object preserves authored y registration");
+		assertEquals(0.0, textBox.x, "text object matches the SWF field box for its XFL x registration");
+		assertEquals(0.0, textBox.y, "text object matches the SWF field box for its XFL y registration");
 		assertEquals(1.00286865234375, textBox.scaleY, "text object preserves authored vertical matrix scale");
-		assertEquals(76.0, textBox.width, "text object preserves authored width");
-		assertNear(29.2 * 1.00286865234375, textBox.height, "text object preserves authored height and matrix scale");
+		assertEquals(80.0, textBox.width, "text object matches the SWF field box for its XFL width");
+		assertNear((29.2 + 4) * 1.00286865234375, textBox.height, "text object matches the SWF field box for its XFL height and matrix scale");
 		assertEquals(false, textBox.selectable, "text object preserves authored selection behavior");
 		assertEquals(false, textBox.wordWrap, "text object preserves authored no-wrap behavior");
 		assertEquals(true, textBox.multiline, "text object preserves authored multiline behavior");

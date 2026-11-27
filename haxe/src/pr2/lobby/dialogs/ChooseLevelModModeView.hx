@@ -8,6 +8,7 @@ import pr2.assets.NativeAssetIds.StaticSvg;
 import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native composition of ChooseLevelModModePopupGraphic. */
 class ChooseLevelModModeView extends NativeView {
@@ -54,10 +55,7 @@ class ChooseLevelModModeView extends NativeView {
 	private function addLabel(value:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool,
 		align:TextFormatAlign):TextField {
 		var field = new TextField();
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0, bold, null, null, null, null, align);
 		field.text = value;

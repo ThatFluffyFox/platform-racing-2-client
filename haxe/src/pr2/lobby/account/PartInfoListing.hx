@@ -154,11 +154,12 @@ class PartInfoListing extends Removable {
 
 	private function showPartPreview():Void {
 		if (art == null) return;
+		// AS3 sets each TextField's placement y; its box starts at the 2px gutter above it.
 		if (ownedBox != null) {
-			ownedBox.y = 23.55;
+			ownedBox.y = 23.55 - pr2.ui.FlashTextBox.GUTTER;
 		}
 		if (epicBox != null) {
-			epicBox.y = partType == "FEET" ? 23.55 : 75.35;
+			epicBox.y = (partType == "FEET" ? 23.55 : 75.35) - pr2.ui.FlashTextBox.GUTTER;
 		}
 		target = PartPopup.setupPartPreview(art, partType, partId, partOwned, 2);
 		djinnPreview = PartPopup.setupDjinnPreview(art, partType, partId, partOwned, 65, 85);

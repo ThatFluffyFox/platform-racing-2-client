@@ -23,9 +23,9 @@ class LevelReportPopupTest {
 		assertEquals("-- Report Level --", view.title.text, "report title keeps exact authored copy");
 		assertEquals("Please let the moderators know what's wrong with this level.", view.prompt.text, "report prompt keeps exact authored copy");
 		if (pr2.DeterministicTestMode.finishSmokeSuite("LevelReportPopupTest")) return;
-		assertNear(-108, view.title.x, "report title keeps authored left bound");
-		assertNear(-107.95, view.prompt.x, "report prompt keeps authored left bound");
-		assertNear(-106.63, view.reasonLabel.x, "reason label keeps authored left bound");
+		assertNear(-110.0, view.title.x, "report title matches the SWF field box for its XFL left bound");
+		assertNear(-109.95, view.prompt.x, "report prompt matches the SWF field box for its XFL left bound");
+		assertNear(-108.63, view.reasonLabel.x, "reason label matches the SWF field box for its XFL left bound");
 		assertNear(-43.5, view.reasonInput.x, "reason input keeps XFL X");
 		assertNear(130, view.reasonInput.controlWidth, "reason input keeps XFL horizontal scale");
 		assertNear(-80, view.reportButton.x, "Report keeps XFL X");

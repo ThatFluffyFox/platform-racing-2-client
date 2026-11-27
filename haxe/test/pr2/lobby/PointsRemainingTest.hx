@@ -16,15 +16,15 @@ class PointsRemainingTest {
 		assertNotNull(label, "authored points label exists");
 		assertNotNull(value, "authored points value exists");
 		assertEquals("Points Remaining:", label.text, "points label keeps authored copy");
-		assertClose(2, label.x, "points label keeps XFL X");
-		assertClose(2, label.y, "points label keeps XFL Y");
-		assertClose(128 * 0.999557495117188, label.width, "points label is widened so DejaVu Sans Bold keeps the colon");
-		assertClose(14.55, label.height, "points label keeps authored height");
+		assertClose(0.0, label.x, "points label matches the SWF field box for its XFL X");
+		assertClose(0.0, label.y, "points label matches the SWF field box for its XFL Y");
+		assertClose((128 + 4) * 0.999557495117188, label.width, "points label is widened so DejaVu Sans Bold keeps the colon");
+		assertClose(18.55, label.height, "points label matches the SWF field box for its XFL height");
 		assertClose(0.999557495117188, label.scaleX, "points label keeps XFL horizontal scale");
-		assertClose(130.05, value.x, "points value keeps XFL X");
-		assertClose(2, value.y, "points value keeps XFL Y");
-		assertClose(37.85 * 1.00167846679688, value.width, "points value keeps transformed authored width");
-		assertClose(14.5, value.height, "points value keeps authored height");
+		assertClose(128.05, value.x, "points value matches the SWF field box for its XFL X");
+		assertClose(0.0, value.y, "points value matches the SWF field box for its XFL Y");
+		assertClose((37.85 + 4) * 1.00167846679688, value.width, "points value keeps transformed authored width");
+		assertClose(18.5, value.height, "points value matches the SWF field box for its XFL height");
 		assertClose(1.00167846679688, value.scaleX, "points value keeps XFL horizontal scale");
 		assertEquals("30", value.text, "remaining total is rendered immediately");
 		stats.setStats(50, 50, 50);
@@ -38,10 +38,10 @@ class PointsRemainingTest {
 		var slider = Std.downcast(DisplayUtil.findByName(speed, "slider"), GameSlider);
 		var dec = DisplayUtil.findByName(speed, "decBtn");
 		var inc = DisplayUtil.findByName(speed, "incBtn");
-		assertClose(1.85, nameBox.x, "stat name keeps XFL X");
-		assertClose(2, nameBox.y, "stat name keeps XFL Y");
-		assertClose(93, statBox.x, "stat value keeps XFL X");
-		assertClose(2, statBox.y, "stat value keeps XFL Y");
+		assertClose(-0.15, nameBox.x, "stat name matches the SWF field box for its XFL X");
+		assertClose(0.0, nameBox.y, "stat name matches the SWF field box for its XFL Y");
+		assertClose(91.0, statBox.x, "stat value matches the SWF field box for its XFL X");
+		assertClose(0.0, statBox.y, "stat value matches the SWF field box for its XFL Y");
 		assertClose(20, slider.y, "stat slider keeps XFL Y");
 		// Flash applies the 1.5625 XFL instance scale as a width change (80 * 1.5625),
 		// keeping the SliderThumb its authored width instead of stretching it.

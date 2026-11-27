@@ -8,6 +8,7 @@ import pr2.assets.NativeAssets;
 import pr2.ui.AuthoredScale9;
 import pr2.ui.controls.GameCheckBox;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Shared native checklist used by editable settings and read-only level details. */
 class ChecklistMenuView extends NativeView {
@@ -31,10 +32,7 @@ class ChecklistMenuView extends NativeView {
 		addChild(background);
 		var title = new TextField();
 		title.name = "title";
-		title.x = -60.5;
-		title.y = -72.8;
-		title.width = 120.95;
-		title.height = 14.55;
+		FlashTextBox.applyXflBox(title, -60.5, -72.8, 120.95, 14.55);
 		title.scaleX = 1.00047302246094;
 		title.selectable = false;
 		title.mouseEnabled = false;
@@ -73,10 +71,7 @@ class ChecklistMenuView extends NativeView {
 		addChild(background);
 		var title = new TextField();
 		title.name = "title";
-		title.x = -35.6;
-		title.y = -49;
-		title.width = 70.55;
-		title.height = 14.55;
+		FlashTextBox.applyXflBox(title, -35.6, -49, 70.55, 14.55);
 		title.scaleX = 1.00047302246094;
 		title.selectable = false;
 		title.mouseEnabled = false;

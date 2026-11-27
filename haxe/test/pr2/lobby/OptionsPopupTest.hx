@@ -53,8 +53,8 @@ class OptionsPopupTest {
 		assertNear(0.901960784313726, view.panel.alpha, 0.000001, "options ShadowBG keeps authored translucent alpha");
 		assertEquals("-- Options --", view.title.text, "options title keeps exact authored copy");
 		var artLabel = LobbyArt.text(popup, "artLabel");
-		assertNear(-106.2, artLabel.x, 0.000001, "static art label keeps XFL X");
-		assertNear(-104.5, artLabel.y, 0.000001, "static art label keeps XFL Y");
+		assertNear(-108.2, artLabel.x, 0.000001, "static art label matches the SWF field box for its XFL X");
+		assertNear(-106.5, artLabel.y, 0.000001, "static art label matches the SWF field box for its XFL Y");
 		assertEquals(null, DisplayUtil.findByName(popup, "art_bt"), "art quality button is removed");
 
 		var music = slider(popup, "musicSlider");
@@ -72,8 +72,8 @@ class OptionsPopupTest {
 		music.value = 35;
 		assertNear(-118.2, DisplayUtil.findByName(popup, "artOn_bt").x, 0.000001, "art On keeps XFL X");
 		assertNear(-82.45, DisplayUtil.findByName(popup, "artOn_bt").y, 0.000001, "art On keeps XFL Y");
-		assertNear(-68.75, LobbyArt.text(popup, "wasdUp").x, 0.000001, "alternate Up field keeps XFL X");
-		assertNear(14.5, LobbyArt.text(popup, "wasdUp").y, 0.000001, "alternate Up field keeps XFL Y");
+		assertNear(-70.75, LobbyArt.text(popup, "wasdUp").x, 0.000001, "alternate Up field matches the SWF field box for its XFL X");
+		assertNear(12.5, LobbyArt.text(popup, "wasdUp").y, 0.000001, "alternate Up field matches the SWF field box for its XFL Y");
 		for (name in ["wasdUp", "wasdRight", "wasdDown", "wasdLeft", "wasdItem"]) {
 			var input = LobbyArt.text(popup, name);
 			assertEquals(true, input.border, name + " keeps the authored input outline");

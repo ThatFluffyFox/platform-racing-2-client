@@ -7,6 +7,7 @@ import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
 import pr2.ui.controls.AuthoredArrowButton;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native spectating selector with explicit controls and dual-layer name text. */
 class SpectatePickerView extends NativeView {
@@ -28,9 +29,9 @@ class SpectatePickerView extends NativeView {
 		right.y = 0;
 		right.filters = [new DropShadowFilter(3, 90, 0x000000, 1, 2, 2, 0.25, 1)];
 		addChild(right);
-		nameBg = label("box", 7.45, 0.95, 113.8, 14.55, 12, 0xB3B3B3, false);
+		nameBg = label("box", 18, 0.95, 113.8, 14.55, 12, 0xB3B3B3, false);
 		addChild(nameBg);
-		nameTop = label("box", 6.45, -0.05, 113.8, 14.55, 12, 0x333333, false);
+		nameTop = label("box", 17, -0.05, 113.8, 14.55, 12, 0x333333, false);
 		addChild(nameTop);
 		spectatingText = new Sprite();
 		spectatingText.name = "spectatingText";
@@ -48,10 +49,7 @@ class SpectatePickerView extends NativeView {
 	private static function label(name:String, x:Float, y:Float, width:Float, height:Float, size:Int, color:Int, bold:Bool):TextField {
 		var field = new TextField();
 		field.name = name;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat("Verdana", size, color, bold, null, null, null, null,
 			TextFormatAlign.CENTER);

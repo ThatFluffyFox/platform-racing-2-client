@@ -15,6 +15,7 @@ import pr2.runtime.SvgAsset;
 import pr2.ui.AuthoredScale9;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Exact XFL prize shell with native dynamic fields and source-derived part channels. */
 class PrizePopupView extends NativeView {
@@ -45,7 +46,7 @@ class PrizePopupView extends NativeView {
 		exp.name = "exp";
 		exp.x = 115.4;
 		exp.y = -70;
-		fieldOn(exp, "textBox", -1.05, 11.95, 125, 68.75, 10, false);
+		fieldOn(exp, "textBox", 2, 2, 125, 68.75, 10, false);
 		addChild(exp);
 	}
 
@@ -67,10 +68,7 @@ class PrizePopupView extends NativeView {
 	private function fieldOn(parent:Sprite, name:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool):TextField {
 		var text = new TextField();
 		text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.selectable = false;
 		text.multiline = height > 18;
 		text.wordWrap = text.multiline;

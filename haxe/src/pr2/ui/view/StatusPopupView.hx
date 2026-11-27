@@ -6,6 +6,7 @@ import pr2.assets.NativeAssetIds.FontAsset;
 import pr2.assets.NativeAssetIds.StaticSvg;
 import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
+import pr2.ui.FlashTextBox;
 
 /** Shared native composition for the authored Connecting and Logging In status popups. */
 class StatusPopupView extends NativePopupView {
@@ -27,10 +28,8 @@ class StatusPopupView extends NativePopupView {
 
 		var label = new TextField();
 		label.name = "statusLabel";
-		label.x = -37.4 + offset;
-		label.y = -28.2;
-		label.width = connectingLayout ? 79.6 : 77.1;
-		label.height = 14.55;
+		// ConnectingPopupGraphic's field starts 1.15px further left than LoggingInPopupGraphic's.
+		FlashTextBox.applyXflBox(label, connectingLayout ? -38.55 : -37.4, -28.2, connectingLayout ? 79.6 : 77.1, 14.55);
 		label.selectable = false;
 		label.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0);
 		label.text = labelText;

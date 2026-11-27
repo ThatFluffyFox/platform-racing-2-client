@@ -31,8 +31,8 @@ class PMRFCodesPopupTest {
 		assertContains(view.sizingSyntax.text, "[small]text[/small]", "PMRF includes small syntax row");
 		assertContains(view.stylingSyntax.text, "[color=#hex]text[/color]", "PMRF includes color syntax row");
 		assertContains(view.linkSyntax.text, "[level=id]text[/level]", "PMRF includes level syntax row");
-		assertEquals(12.0, view.linksBox.x, "live PMRF link examples keep their XFL X");
-		assertEquals(52.25, view.linksBox.y, "live PMRF link examples keep their XFL Y");
+		assertEquals(10.0, view.linksBox.x, "live PMRF link examples keep their XFL X");
+		assertEquals(50.25, view.linksBox.y, "live PMRF link examples keep their XFL Y");
 		assertEquals(-45.4, view.closeButton.x, "PMRF Close keeps its XFL X");
 		assertEquals(120.65, view.closeButton.y, "PMRF Close keeps its XFL Y");
 		assertContains(links.htmlText, "event:url`https://pr2hub.com/", "PR2 Hub URL link payload");

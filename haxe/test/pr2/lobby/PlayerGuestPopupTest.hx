@@ -20,11 +20,11 @@ class PlayerGuestPopupTest {
 		assertNear(0.854537963867188, view.panel.scaleX, "ShadowBG keeps XFL horizontal scale");
 		assertNear(0.68524169921875, view.panel.scaleY, "ShadowBG keeps XFL vertical scale");
 		if (pr2.DeterministicTestMode.finishSmokeSuite("PlayerGuestPopupTest")) return;
-		assertNear(-94, view.nameBox.x, "name field keeps XFL X");
-		assertNear(-52.5, view.nameBox.y, "name field keeps XFL Y");
-		assertNear(188.1, view.nameBox.width, "name field keeps XFL width");
-		assertNear(-40.85, view.groupLabel.x, "group copy keeps XFL X");
-		assertNear(-25.05, view.groupLabel.y, "group copy keeps XFL Y");
+		assertNear(-96.0, view.nameBox.x, "name field matches the SWF field box for its XFL X");
+		assertNear(-54.5, view.nameBox.y, "name field matches the SWF field box for its XFL Y");
+		assertNear(192.1, view.nameBox.width, "name field matches the SWF field box for its XFL width");
+		assertNear(-42.85, view.groupLabel.x, "group copy matches the SWF field box for its XFL X");
+		assertNear(-27.05, view.groupLabel.y, "group copy matches the SWF field box for its XFL Y");
 		assertNear(-50, view.closeButton.x, "Close keeps XFL X");
 		assertNear(30.05, view.closeButton.y, "Close keeps XFL Y");
 		view.closeButton.dispatchEvent(new MouseEvent(MouseEvent.CLICK));

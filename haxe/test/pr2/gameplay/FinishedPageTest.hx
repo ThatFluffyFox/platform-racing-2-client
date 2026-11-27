@@ -33,9 +33,9 @@ class FinishedPageTest {
 			"finished page uses the exact authored XFL shell and static copy");
 		assertEquals(true, DisplayUtil.findByName(page, "backgroundPanel").scale9Grid != null,
 			"finished-page shell preserves the ShadowBG scale grid");
-		assertNear(-127.95, LobbyArt.text(page, "bonus1").x, 0.001, "award column preserves authored x");
-		assertNear(-100.5, LobbyArt.text(page, "bonus1").y, 0.001, "first award preserves authored y");
-		assertNear(50.25, LobbyArt.text(page, "exp1").x, 0.001, "experience column preserves authored x");
+		assertNear(-129.95, LobbyArt.text(page, "bonus1").x, 0.001, "award column matches the SWF field box for its XFL x");
+		assertNear(-102.5, LobbyArt.text(page, "bonus1").y, 0.001, "first award matches the SWF field box for its XFL y");
+		assertNear(48.25, LobbyArt.text(page, "exp1").x, 0.001, "experience column matches the SWF field box for its XFL x");
 		assertNear(-111, DisplayUtil.findByName(page, "close_bt").x, 0.001, "close button preserves authored x");
 		assertNear(8, DisplayUtil.findByName(page, "return_bt").x, 0.001, "return button preserves authored x");
 		assertEquals("Physics frames: 1842", LobbyArt.text(page, "physicsFrames").text,
@@ -86,9 +86,9 @@ class FinishedPageTest {
 			"experience bar uses exact authored XFL fill");
 		assertEquals(1, Math.round(exp.fillWidthForTests()), "experience fill starts at Flash's one-pixel width");
 		var geometry = exp.textGeometryForTests();
-		assertEquals(-9275, Math.round(geometry[0] * 100), "experience text preserves authored x");
-		assertEquals(1395, Math.round(geometry[1] * 100), "experience text preserves authored y");
-		assertEquals(18545, Math.round(geometry[2] * 100), "experience text preserves authored width");
+		assertEquals(-9475, Math.round(geometry[0] * 100), "experience text matches the SWF field box for its XFL x");
+		assertEquals(1195, Math.round(geometry[1] * 100), "experience text matches the SWF field box for its XFL y");
+		assertEquals(18945, Math.round(geometry[2] * 100), "experience text matches the SWF field box for its XFL width");
 		exp.start(0, 90, 100);
 		// expStep = 90/45 = 2 per frame; readout uses floor(expStart).
 		exp.dispatchEvent(new Event(Event.ENTER_FRAME));

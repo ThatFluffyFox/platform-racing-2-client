@@ -12,6 +12,7 @@ import pr2.ui.AuthoredScale9;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.LoadingView;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Exact native composition of the authored GuildPopupGraphic states. */
 class GuildView extends NativeView {
@@ -107,10 +108,7 @@ class GuildView extends NativeView {
 		multiline:Bool = false, color:Int = 0x000000, value:String = ""):Void {
 		var text = new TextField();
 		if (name != null) text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.multiline = multiline;
 		text.wordWrap = multiline;
 		text.selectable = false;
@@ -131,10 +129,7 @@ private class GuildPopupLink extends Sprite {
 		graphics.drawRect(0, 0, width, 16.15);
 		graphics.endFill();
 		field = new TextField();
-		field.x = 2;
-		field.y = 2;
-		field.width = width - 4;
-		field.height = 12.15;
+		FlashTextBox.applyXflBox(field, 2, 2, width - 4, 12.15);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x4E4EFE);
 		field.text = value;

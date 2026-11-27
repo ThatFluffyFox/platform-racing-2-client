@@ -19,10 +19,7 @@ class GuildName extends Removable {
 		guildId = id;
 		nameBox = new TextField();
 		nameBox.name = "nameBox";
-		nameBox.x = 2;
-		nameBox.y = 2;
-		nameBox.width = wide ? 145 : 110;
-		nameBox.height = 14.55;
+		FlashTextBox.applyXflBox(nameBox, 2, 2, wide ? 141 : 106, 14.55);
 		nameBox.selectable = false;
 		nameBox.mouseEnabled = false;
 		nameBox.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0);

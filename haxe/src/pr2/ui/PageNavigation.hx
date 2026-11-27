@@ -181,10 +181,7 @@ private class PageNavigationButton extends Sprite {
 		this.clickable = clickable;
 		this.listener = listener;
 		textBox = new TextField();
-		textBox.x = 2;
-		textBox.y = 2;
-		textBox.width = 6;
-		textBox.height = 14.55;
+		FlashTextBox.applyXflBox(textBox, 2, 2, 6, 14.55);
 		textBox.selectable = false;
 		textBox.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0);
 		textBox.autoSize = TextFieldAutoSize.LEFT;

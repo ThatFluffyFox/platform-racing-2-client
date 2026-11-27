@@ -9,6 +9,7 @@ import pr2.assets.NativeAssetIds.FontAsset;
 import pr2.assets.NativeAssets;
 import pr2.runtime.SvgAsset;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native join slot with explicit hover/pending/filled/confirmed rendering. */
 class SlotView extends NativeView {
@@ -29,10 +30,7 @@ class SlotView extends NativeView {
 	private function field(name:String, x:Float, y:Float, width:Float):TextField {
 		var text = new TextField();
 		text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = 12.15;
+		FlashTextBox.applyXflBox(text, x, y, width, 12.15);
 		text.scaleY = 1.00311279296875;
 		text.multiline = true;
 		text.selectable = false;

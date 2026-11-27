@@ -9,6 +9,7 @@ import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
 import pr2.ui.controls.GameTextInput;
 import pr2.ui.view.NativePopupView;
+import pr2.ui.FlashTextBox;
 
 /** Explicit native composition of CreateAccountPopupGraphic. */
 class CreateAccountView extends NativePopupView {
@@ -74,10 +75,7 @@ class CreateAccountView extends NativePopupView {
 	private function addLabel(value:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool, align:TextFormatAlign,
 		color:Int = 0):Void {
 		var field = new TextField();
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.multiline = true;
 		field.wordWrap = true;
 		field.selectable = false;

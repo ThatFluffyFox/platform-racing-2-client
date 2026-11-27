@@ -9,6 +9,7 @@ import pr2.assets.NativeAssetIds.StaticSvg;
 import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native composition of PlayerGuestPopupGraphic. */
 class PlayerGuestView extends NativeView {
@@ -28,19 +29,13 @@ class PlayerGuestView extends NativeView {
 		addChild(panel);
 		nameBox = new TextField();
 		nameBox.name = "nameBox";
-		nameBox.x = -94;
-		nameBox.y = -52.5;
-		nameBox.width = 188.1;
-		nameBox.height = 17.05;
+		FlashTextBox.applyXflBox(nameBox, -94, -52.5, 188.1, 17.05);
 		nameBox.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 14, 0, false, null, null, null, null,
 			TextFormatAlign.CENTER);
 		nameBox.text = "-- " + name + " --";
 		addChild(nameBox);
 		groupLabel = new TextField();
-		groupLabel.x = -40.85;
-		groupLabel.y = -25.05;
-		groupLabel.width = 80.75;
-		groupLabel.height = 14.55;
+		FlashTextBox.applyXflBox(groupLabel, -40.85, -25.05, 80.75, 14.55);
 		groupLabel.selectable = false;
 		var groupFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0);
 		groupFormat.letterSpacing = -0.05;

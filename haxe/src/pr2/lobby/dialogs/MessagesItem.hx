@@ -16,6 +16,7 @@ import pr2.lobby.LobbyArt;
 import pr2.lobby.chat.ChatText;
 import pr2.lobby.chat.HtmlNameMaker;
 import pr2.util.DisplayUtil;
+import pr2.ui.FlashTextBox;
 
 /**
 	Port of Flash `chat.MessagesItem`: one private message with the sender name,
@@ -85,7 +86,7 @@ class MessagesItem extends Sprite {
 			}
 			if (timeBox != null) {
 				timeBox.text = localeDateString(time);
-				timeBox.y = textBox.height + 32;
+				timeBox.y = textBox.height + 32 - pr2.ui.FlashTextBox.GUTTER;
 			}
 		}
 		var guildIcon = DisplayUtil.directChildByName(art, "guildMsgIcon");
@@ -301,10 +302,7 @@ private class MessagesItemView extends Sprite {
 	private function addText(name:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool, align:TextFormatAlign):Void {
 		var field = new TextField();
 		field.name = name;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0, bold, null, null, null, null, align);
 		addChild(field);

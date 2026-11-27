@@ -6,6 +6,7 @@ import openfl.text.TextFormat;
 import pr2.assets.NativeAssetIds.FontAsset;
 import pr2.assets.NativeAssets;
 import pr2.character.LocalCharacter;
+import pr2.ui.FlashTextBox;
 
 /**
 	Port of Flash `ui.StatsSelect`: the speed / acceleration / jumping sliders over
@@ -38,12 +39,9 @@ class StatsSelect extends Sprite {
 		addChild(m);
 		var label = new TextField();
 		label.name = "label";
-		label.x = 2;
-		label.y = 2;
 		// XFL width is 121.85, sized for Verdana Bold. DejaVu Sans Bold runs a
 		// little wider and clipped the colon, so leave room up to the value box.
-		label.width = 128;
-		label.height = 14.55;
+		FlashTextBox.applyXflBox(label, 2, 2, 128, 14.55);
 		label.scaleX = 0.999557495117188;
 		label.selectable = false;
 		label.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0, true);
@@ -51,10 +49,7 @@ class StatsSelect extends Sprite {
 		m.addChild(label);
 		remainingBox = new TextField();
 		remainingBox.name = "textBox";
-		remainingBox.x = 130.05;
-		remainingBox.y = 2;
-		remainingBox.width = 37.85;
-		remainingBox.height = 14.5;
+		FlashTextBox.applyXflBox(remainingBox, 130.05, 2, 37.85, 14.5);
 		remainingBox.scaleX = 1.00167846679688;
 		remainingBox.selectable = false;
 		remainingBox.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0, true);

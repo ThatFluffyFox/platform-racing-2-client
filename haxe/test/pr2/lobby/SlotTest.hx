@@ -17,11 +17,11 @@ class SlotTest {
 		assertNotNull(background, "slot owns authored background state clip");
 		assertEquals("emptyUp", background.currentState, "slot starts on authored emptyUp frame");
 		assertNear(1, background.y, "background keeps XFL Y");
-		assertNear(3, rank.x, "rank field keeps XFL X");
-		assertNear(14, rank.width, "rank field keeps XFL width");
+		assertNear(1.0, rank.x, "rank field matches the SWF field box for its XFL X");
+		assertNear(18.0, rank.width, "rank field matches the SWF field box for its XFL width");
 		if (pr2.DeterministicTestMode.finishSmokeSuite("SlotTest")) return;
-		assertNear(21, name.x, "name field keeps XFL X");
-		assertNear(76, name.width, "name field keeps XFL width");
+		assertNear(19.0, name.x, "name field matches the SWF field box for its XFL X");
+		assertNear(80.0, name.width, "name field matches the SWF field box for its XFL width");
 		assertNear(1.00311279296875, name.scaleY, "name field keeps XFL vertical scale");
 
 		slot.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_OVER));

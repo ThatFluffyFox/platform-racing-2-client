@@ -10,6 +10,7 @@ import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
 import pr2.display.Removable;
 import pr2.runtime.SvgAsset;
+import pr2.ui.FlashTextBox;
 
 /**
 	Port of Flash `gameplay.ExpGain`: the experience-gain bar shown on the
@@ -98,10 +99,7 @@ private class ExpGainView extends Sprite {
 		track.addChild(fill);
 		textBox = new TextField();
 		textBox.name = "textBox";
-		textBox.x = -92.75;
-		textBox.y = 13.95;
-		textBox.width = 185.45;
-		textBox.height = 12.15;
+		FlashTextBox.applyXflBox(textBox, -92.75, 13.95, 185.45, 12.15);
 		textBox.selectable = false;
 		textBox.defaultTextFormat = new TextFormat("Verdana", 10, 0x666666, false, null, null, null, null,
 			TextFormatAlign.CENTER);

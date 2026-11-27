@@ -10,6 +10,7 @@ import pr2.ui.AuthoredScale9;
 import pr2.ui.controls.GameSelect;
 import pr2.ui.controls.GameTextInput;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native compact shell for mode, music, and scalar editor settings. */
 class EditorSettingsMenuView extends NativeView {
@@ -101,10 +102,7 @@ class EditorSettingsMenuView extends NativeView {
 		align:TextFormatAlign):TextField {
 		var text = new TextField();
 		if (name != null) text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0x000000, bold, null, null, null, null, align);
 		addChild(text);

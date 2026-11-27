@@ -162,8 +162,11 @@ class LevelArtFactory {
 		field.scaleX = text.scaleX * layerScale;
 		field.scaleY = text.scaleY * layerScale;
 		field.height = 24;
-		field.x = text.x * layerScale;
-		field.y = text.y * layerScale;
+		// Flash reuses TextObjectGraphic's textBox, whose bounds start 2px up-left
+		// of its x/y (the text gutter). OpenFL's x/y is the box corner, so move the
+		// box by that scaled gutter to keep the text where Flash drew it.
+		field.x = text.x * layerScale - pr2.ui.FlashTextBox.GUTTER * field.scaleX;
+		field.y = text.y * layerScale - pr2.ui.FlashTextBox.GUTTER * field.scaleY;
 		field.cacheAsBitmap = true;
 		container.addChild(field);
 	}

@@ -10,6 +10,7 @@ import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameCheckBox;
 import pr2.ui.view.NativeView;
 import pr2.lobby.account.OptionsSettings;
+import pr2.ui.FlashTextBox;
 
 /** Native two-column song selection menu. */
 class OptionsSongsView extends NativeView {
@@ -26,10 +27,7 @@ class OptionsSongsView extends NativeView {
 		panel.scaleY = 1.30888366699219;
 		addChild(panel);
 		title = new TextField();
-		title.x = -48.0031227111816;
-		title.y = -113;
-		title.width = 95.9;
-		title.height = 14.55;
+		FlashTextBox.applyXflBox(title, -48.0031227111816, -113, 95.9, 14.55);
 		title.scaleX = 1.00094604492188;
 		title.selectable = false;
 		title.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, 0, true, null, null, null, null, TextFormatAlign.CENTER);

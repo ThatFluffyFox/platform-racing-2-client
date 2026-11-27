@@ -1335,9 +1335,9 @@ class LobbyServicesTest {
 	private static function testPlayerListSourceComposition():Void {
 		var row = new PlayerListItemView();
 		assertEquals("nameBox", row.nameBox.name, "player row preserves the authored name field");
-		assertEquals(2, row.nameBox.x, "player row name x");
-		assertEquals(106, row.rankBox.x, "player row rank x");
-		assertEquals(146, row.hatBox.x, "player row hat x");
+		assertEquals(0.0, row.nameBox.x, "player row name x");
+		assertEquals(104.0, row.rankBox.x, "player row rank x");
+		assertEquals(144.0, row.hatBox.x, "player row hat x");
 		assertEquals(0, row.graphics.readGraphicsData().length, "player row has no invented background artwork");
 
 		var players = new PlayersTabListView(false);

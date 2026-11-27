@@ -440,10 +440,7 @@ class EditorBlockObject extends Sprite {
 		format.align = TextFormatAlign.CENTER;
 		field.defaultTextFormat = format;
 		// Authored StartBlockText box: 17x16.3 at tx=7.25, ty=8.55 within the 30px block.
-		field.width = 17;
-		field.height = 16.3;
-		field.x = 7.25;
-		field.y = 8.55;
+		pr2.ui.FlashTextBox.applyXflBox(field, 7.25, 8.55, 17, 16.3);
 		field.text = Std.string(number);
 		return field;
 	}

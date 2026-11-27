@@ -19,6 +19,7 @@ import pr2.ui.controls.GameTextInput;
 import pr2.ui.StageFocus;
 import pr2.ui.view.NativeView;
 import pr2.util.AsyncRemovalGuard.AsyncRemovable;
+import pr2.ui.FlashTextBox;
 
 typedef SearchFetchFactory = Map<String, String>->(LevelListResult->Void)->(String->Void)->AsyncRemovable;
 
@@ -238,14 +239,14 @@ class SearchView extends NativeView {
 
 	public function new() {
 		super();
-		label("Search By:", 35.85, 3, 54.95);
+		label("Search By:", 35.85, 5, 54.95);
 		modeSelect = combo("mode_cb", 98.75, 0, 100 * 1.05279541015625);
 		var mode = modeSelect;
 		mode.addItem({label: "User Name", data: "user"});
 		mode.addItem({label: "Level Title", data: "title"});
 		mode.addItem({label: "Level ID", data: "id"});
 		mode.selectedIndex = 0;
-		label("Sort By:", 4, 34, 41.55);
+		label("Sort By:", 4, 36, 41.55);
 		orderSelect = combo("order_cb", 52.8, 30, 100 * 0.901611328125);
 		var order = orderSelect;
 		order.addItem({label: "Date", data: "date"});
@@ -288,10 +289,7 @@ class SearchView extends NativeView {
 
 	private function label(value:String, x:Float, y:Float, width:Float):Void {
 		var field = new TextField();
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = 18;
+		FlashTextBox.applyXflBox(field, x, y, width, 18);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x000000, false, null, null, null, null,
 			TextFormatAlign.LEFT);

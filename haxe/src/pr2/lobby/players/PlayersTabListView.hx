@@ -7,6 +7,7 @@ import openfl.text.TextFormat;
 import pr2.assets.NativeAssetIds.FontAsset;
 import pr2.assets.NativeAssets;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Source-derived composition of XFL `TabPlayersList`, frames players/guilds. */
 class PlayersTabListView extends NativeView {
@@ -53,10 +54,7 @@ class PlayersTabListView extends NativeView {
 		control.buttonMode = true;
 		control.mouseChildren = false;
 		var text = new TextField();
-		text.x = 0;
-		text.y = 2;
-		text.width = width;
-		text.height = 12.15;
+		FlashTextBox.applyXflBox(text, 0, 2, width, 12.15);
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x000000);
 		text.text = label;

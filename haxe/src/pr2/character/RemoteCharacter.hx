@@ -12,6 +12,7 @@ import pr2.gameplay.presentation.PresentationPose;
 import pr2.net.CommandHandler;
 import pr2.runtime.FontResolver;
 import pr2.runtime.FrameClock;
+import pr2.ui.FlashTextBox;
 
 typedef RemoteCharacterPoint = {
 	var x:Float;
@@ -164,10 +165,7 @@ class RemoteCharacter extends Character {
 	private static function nameField(fieldName:String, text:String, x:Float, y:Float, color:Int):TextField {
 		var field = new TextField();
 		field.name = fieldName;
-		field.x = x;
-		field.y = y;
-		field.width = 100;
-		field.height = 14.55;
+		FlashTextBox.applyXflBox(field, x, y, 100, 14.55);
 		field.selectable = false;
 		field.mouseEnabled = false;
 		var format = new TextFormat(nameFont(), 12, color);

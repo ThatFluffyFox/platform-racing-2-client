@@ -16,6 +16,7 @@ import pr2.assets.NativeAssets;
 import pr2.ui.controls.ControlState;
 import pr2.ui.controls.GameSlider;
 import pr2.ui.controls.NativeControl;
+import pr2.ui.FlashTextBox;
 
 /**
 	Port of Flash `ui.StatSlider`: one labelled 0–100 stat row with a slider, a
@@ -91,10 +92,7 @@ class StatSlider extends Sprite {
 		field.text = value;
 		field.type = input ? TextFieldType.INPUT : TextFieldType.DYNAMIC;
 		field.selectable = input;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		return field;
 	}
 

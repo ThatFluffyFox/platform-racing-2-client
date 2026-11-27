@@ -12,6 +12,7 @@ import openfl.utils.Assets;
 import pr2.assets.NativeAssetIds.FontAsset;
 import pr2.assets.NativeAssets;
 import pr2.runtime.SvgAsset;
+import pr2.ui.FlashTextBox;
 
 /** Explicit vector replacement for the editor's small timeline-backed controls. */
 class EditorNativeGraphic extends Sprite {
@@ -202,10 +203,7 @@ class EditorNativeGraphic extends Sprite {
 		bold:Bool = true):TextField {
 		var text = new TextField();
 		if (name != null) text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.mouseEnabled = false;
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, color, bold, null, null, null, null,

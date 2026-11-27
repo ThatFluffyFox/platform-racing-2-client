@@ -10,6 +10,7 @@ import pr2.assets.NativeAssets;
 import pr2.ui.controls.GameButton;
 import pr2.ui.controls.GameTextInput;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native composition of LevelReportPopupGraphic. */
 class LevelReportView extends NativeView {
@@ -62,10 +63,7 @@ class LevelReportView extends NativeView {
 	private function addLabel(value:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool,
 		align:TextFormatAlign, wrap:Bool):TextField {
 		var field = new TextField();
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.multiline = true;
 		field.wordWrap = wrap;
 		field.selectable = false;

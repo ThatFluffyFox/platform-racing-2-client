@@ -15,6 +15,7 @@ import pr2.ui.controls.GameTextArea;
 import pr2.ui.controls.ControlSkin;
 import pr2.ui.controls.ControlState;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Native composition of SendMessagePopupGraphic. */
 class SendMessageView extends NativeView {
@@ -83,10 +84,7 @@ class SendMessageView extends NativeView {
 	private function addLabel(value:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool, align:TextFormatAlign,
 		color:Int = 0):TextField {
 		var field = new TextField();
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, color, bold, null, null, null, null, align);
 		field.text = value;

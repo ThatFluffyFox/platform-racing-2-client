@@ -15,8 +15,8 @@ class CourseMenuTest {
 		var view = findView(menu);
 		assertNear(0.514739990234375, view.panel.scaleX, "ShadowBG keeps XFL horizontal scale");
 		assertNear(0.308868408203125, view.panel.scaleY, "ShadowBG keeps XFL vertical scale");
-		assertNear(33.6, view.countdown.x, "countdown keeps XFL X");
-		assertNear(39.05, view.countdown.y, "countdown keeps XFL Y");
+		assertNear(31.6, view.countdown.x, "countdown matches the SWF field box for its XFL X");
+		assertNear(37.05, view.countdown.y, "countdown matches the SWF field box for its XFL Y");
 		assertEquals("--", view.countdown.text, "countdown starts with authored wait copy");
 		if (pr2.DeterministicTestMode.finishSmokeSuite("CourseMenuTest")) return;
 		assertNear(6, view.cancelButton.x, "Cancel keeps XFL X");

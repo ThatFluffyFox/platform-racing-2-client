@@ -501,8 +501,8 @@ class NativePresentationFoundationTest {
 		assertClose(-48, logging.getChildAt(0).y, "logging-in ShadowBG keeps its XFL Y");
 		var loggingLabel = Std.downcast(logging.getChildAt(1), TextField);
 		assertEquals("Logging In...", loggingLabel.text, "logging-in keeps exact authored copy");
-		assertClose(-37.4, loggingLabel.x, "logging-in label keeps its XFL X");
-		assertClose(-28.2, loggingLabel.y, "logging-in label keeps its XFL Y");
+		assertClose(-39.4, loggingLabel.x, "logging-in label field starts 2px gutter left of its XFL text box");
+		assertClose(-30.2, loggingLabel.y, "logging-in label field starts 2px gutter above its XFL text box");
 		assertClose(-48.4, logging.closeButton.x, "logging-in Close button keeps its XFL X");
 		assertClose(10, logging.closeButton.y, "logging-in Close button keeps its XFL Y");
 		logging.dispose();

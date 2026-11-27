@@ -10,15 +10,16 @@ class AccountInfoViewTest {
 
 	public static function main():Void {
 		var view = new AccountInfoView();
-		assertObject(view, "nameBox", 2, 2);
+		// Text fields sit 2px up-left of their XFL boxes and 4px larger: the SWF field bounds.
+		assertObject(view, "nameBox", 2 - 2, 2 - 2);
 		if (pr2.DeterministicTestMode.finishSmokeSuite("AccountInfoViewTest")) return;
-		assertField(view, "nameBox", 156.05, 14.55);
-		assertObject(view, "rankBox", 2, 20);
-		assertField(view, "rankBox", 176.05, 14.55);
-		assertObject(view, "hatBox", 2, 38);
-		assertField(view, "hatBox", 176.05, 14.55);
-		assertObject(view, "guildBox", 2, 56);
-		assertField(view, "guildBox", 176.05, 14.55);
+		assertField(view, "nameBox", 156.05 + 4, 14.55 + 4);
+		assertObject(view, "rankBox", 2 - 2, 20 - 2);
+		assertField(view, "rankBox", 176.05 + 4, 14.55 + 4);
+		assertObject(view, "hatBox", 2 - 2, 38 - 2);
+		assertField(view, "hatBox", 176.05 + 4, 14.55 + 4);
+		assertObject(view, "guildBox", 2 - 2, 56 - 2);
+		assertField(view, "guildBox", 176.05 + 4, 14.55 + 4);
 		assertObject(view, "rankTokenUp_bt", 66, 18);
 		assertObject(view, "rankTokenDown_bt", 101, 18);
 		assertObject(view, "loadouts_bt", 169, 2);

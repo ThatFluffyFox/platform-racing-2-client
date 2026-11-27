@@ -165,8 +165,8 @@ class EditorSettingsTest {
 		assertNotNull(prompt, "choose-level prompt field");
 		assertEquals("-- Choose Mode --", title.text, "choose-level title preserves XFL copy");
 		assertEquals("Which do you want to view?", prompt.text, "choose-level prompt preserves XFL copy");
-		assertClose(-107.95, title.x, "choose-level title x includes XFL text bounds");
-		assertClose(216.95, title.width, "choose-level title width follows XFL bounds");
+		assertClose(-109.95, title.x, "choose-level title x matches the SWF field box for its XFL text bounds");
+		assertClose(220.95, title.width, "choose-level title width matches the SWF field box for its XFL bounds");
 
 		var reports = Std.downcast(directChild(view, "reports_bt"), GameButton);
 		var mine = Std.downcast(directChild(view, "mine_bt"), GameButton);
@@ -217,10 +217,10 @@ class EditorSettingsTest {
 		assertEquals(2, valueButton.numChildren, "value button contains only the two authored XFL text fields");
 		assertEquals("title", valueButton.titleBox.text, "value button preserves the authored default title");
 		assertEquals("val", valueButton.valueBox.text, "value button preserves the authored default value");
-		assertClose(0.75, valueButton.titleBox.x, "value button title x follows XFL matrix");
-		assertClose(4, valueButton.titleBox.y, "value button title y follows XFL matrix");
-		assertClose(27.55, valueButton.titleBox.width, "value button title width follows XFL bounds");
-		assertClose(13.75, valueButton.valueBox.y, "value button value y follows XFL matrix");
+		assertClose(-1.25, valueButton.titleBox.x, "value button title x matches the SWF field box for its XFL matrix");
+		assertClose(2.0, valueButton.titleBox.y, "value button title y matches the SWF field box for its XFL matrix");
+		assertClose(31.55, valueButton.titleBox.width, "value button title width matches the SWF field box for its XFL bounds");
+		assertClose(11.75, valueButton.valueBox.y, "value button value y matches the SWF field box for its XFL matrix");
 		assertEquals(0x666666, valueButton.titleBox.defaultTextFormat.color, "value button title color follows XFL");
 		assertEquals(0x024775, valueButton.valueBox.defaultTextFormat.color, "value button value color follows XFL");
 		assertEquals(false, valueButton.titleBox.defaultTextFormat.bold, "value button title is not procedurally bolded");
@@ -644,12 +644,12 @@ class EditorSettingsTest {
 		assertNotNull(valueBackground, "value menu mounts authored ShadowBG");
 		assertClose(-114.95, valueBackground.x, "value menu background x follows XFL matrix");
 		assertClose(-72.75, valueBackground.y, "value menu background y follows XFL matrix");
-		assertClose(-113.45, rankPopup.art.titleBox.x, "value menu title x follows XFL matrix");
-		assertClose(-61, rankPopup.art.titleBox.y, "value menu title y follows XFL matrix");
+		assertClose(-115.45, rankPopup.art.titleBox.x, "value menu title x matches the SWF field box for its XFL matrix");
+		assertClose(-63.0, rankPopup.art.titleBox.y, "value menu title y matches the SWF field box for its XFL matrix");
 		assertClose(1.00047302246094, rankPopup.art.titleBox.scaleX, "value menu title scale follows XFL matrix");
-		assertClose(226.957305145264, rankPopup.art.titleBox.width, "value menu displayed title width follows XFL bounds");
-		assertClose(-102.5, rankPopup.art.descBox.x, "value menu description x follows XFL matrix");
-		assertClose(206, rankPopup.art.descBox.width, "value menu description width follows XFL bounds");
+		assertClose((226.85 + 4) * 1.00047302246094, rankPopup.art.titleBox.width, "value menu displayed title width matches the SWF field box for its XFL bounds");
+		assertClose(-104.5, rankPopup.art.descBox.x, "value menu description x matches the SWF field box for its XFL matrix");
+		assertClose(210.0, rankPopup.art.descBox.width, "value menu description width matches the SWF field box for its XFL bounds");
 		assertClose(-39, rankPopup.art.valueInput.x, "value menu input x follows XFL matrix");
 		assertClose(10, rankPopup.art.valueInput.y, "value menu input y follows XFL matrix");
 		assertClose(77.9998779296875, rankPopup.art.valueInput.controlWidth, "value menu input width follows XFL scale");

@@ -12,6 +12,7 @@ import pr2.ui.controls.NativeControl;
 import pr2.ui.RatingSelect.RatingStarMeter;
 import pr2.ui.view.NativeView;
 import pr2.ui.view.LoadingView;
+import pr2.ui.FlashTextBox;
 
 /** Native level-details card with explicit hover and action targets. */
 class LevelInfoView extends NativeView {
@@ -167,10 +168,7 @@ class LevelInfoView extends NativeView {
 		align:TextFormatAlign, multiline:Bool = false, color:Int = 0x000000):TextField {
 		var text = new TextField();
 		if (name != null) text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.multiline = multiline;
 		text.wordWrap = multiline;
 		text.selectable = false;

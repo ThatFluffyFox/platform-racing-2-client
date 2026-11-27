@@ -22,6 +22,7 @@ import pr2.net.ServerConfig;
 import pr2.ui.controls.GameButton;
 import pr2.ui.controls.GameSelect;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 typedef BanUploadFactory = String->Map<String, String>->String->(Dynamic->Void)->(String->Void)->Null<UploadingPopup>;
 
@@ -309,10 +310,7 @@ private class BanMenuView extends NativeView {
 	private function label(value:String, name:Null<String>, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool, align:TextFormatAlign):Void {
 		var field = new TextField();
 		if (name != null) field.name = name;
-		field.x = x;
-		field.y = y;
-		field.width = width;
-		field.height = height;
+		FlashTextBox.applyXflBox(field, x, y, width, height);
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, 0x000000, bold, null, null, null, null, align);
 		field.text = value;

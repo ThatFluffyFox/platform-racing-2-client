@@ -10,6 +10,7 @@ import pr2.runtime.SvgAsset;
 import pr2.ui.AuthoredScale9;
 import pr2.ui.controls.GameButton;
 import pr2.ui.view.NativeView;
+import pr2.ui.FlashTextBox;
 
 /** Exact XFL end-of-race shell with native dynamic award fields and buttons. */
 class FinishedPageView extends NativeView {
@@ -38,7 +39,8 @@ class FinishedPageView extends NativeView {
 		button("close_bt", "Close", -111, 121);
 		button("return_bt", "Return to Lobby", 8, 121);
 		// Port-only diagnostic: sits in the panel's top margin, above the Race Complete title.
-		field("physicsFrames", -136, -140.5, 130, 11, TextFormatAlign.LEFT, 8);
+		// Port-only label (no SWF counterpart): numbers are the XFL-style box that keeps its field at (-136, -140.5) 130 x 11.
+		field("physicsFrames", -134, -138.5, 126, 7, TextFormatAlign.LEFT, 8);
 	}
 
 	private function button(name:String, label:String, x:Float, y:Float):Void {
@@ -70,10 +72,7 @@ class FinishedPageView extends NativeView {
 	private function field(name:String, x:Float, y:Float, width:Float, height:Float, align:TextFormatAlign, size:Int = 12):Void {
 		var text = new TextField();
 		text.name = name;
-		text.x = x;
-		text.y = y;
-		text.width = width;
-		text.height = height;
+		FlashTextBox.applyXflBox(text, x, y, width, height);
 		text.selectable = false;
 		text.mouseEnabled = false;
 		text.defaultTextFormat = new TextFormat("Verdana", size, 0x000000, false, null, null, null, null, align);

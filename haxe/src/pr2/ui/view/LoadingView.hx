@@ -8,6 +8,7 @@ import openfl.text.TextFormat;
 import pr2.assets.NativeAssetIds.FontAsset;
 import pr2.assets.NativeAssetIds.StaticSvg;
 import pr2.assets.NativeAssets;
+import pr2.ui.FlashTextBox;
 
 /** Native replacement for the looping LoadingGraphic timeline. */
 class LoadingView extends NativeView {
@@ -40,10 +41,7 @@ class LoadingView extends NativeView {
 
 		label = new TextField();
 		label.name = "label";
-		label.x = -22.15;
-		label.y = -6;
-		label.width = 50;
-		label.height = 12.15;
+		FlashTextBox.applyXflBox(label, -22.15, -6, 50, 12.15);
 		label.selectable = false;
 		label.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, 0x404040);
 		label.text = "Loading...";
