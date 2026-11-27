@@ -468,6 +468,16 @@ class LevelEditor extends Page {
 		}
 	}
 
+	/** The layer being edited, which a Shift-click eyedropper samples on its own. */
+	public function eyedropperLayer():Null<openfl.display.DisplayObject> {
+		return switch (focusedEditorLayer) {
+			case "draw": activeDrawLayer;
+			case "objects": activeObjectLayer;
+			case "blocks": blockLayer;
+			default: null;
+		};
+	}
+
 	public function focusOnActiveObjectLayer():Void {
 		focusedEditorLayer = "objects";
 		updateObjectLayerInteractivity();
@@ -1231,6 +1241,14 @@ class LevelEditor extends Page {
 	}
 
 	private function placeSelectedToolFromMouse(event:MouseEvent):Void {
+		var eyedropper = Std.downcast(pr2.ui.CustomCursor.instance, pr2.lobby.account.CursorEyedropper);
+		if (eyedropper != null && eyedropper.visible) {
+			// The colour picker's eyedropper owns this click. In Flash its stage
+			// capture listener ran before the editor saw the click; here both
+			// capture on the stage and the editor's was added first, so it drew or
+			// placed instead and the eyedropper never picked a colour.
+			return;
+		}
 		if (Popup.getOpen().length > 0) {
 			// Modal dialogs live directly on the stage, above the editor. Let their
 			// controls receive the click without mutating the level underneath.

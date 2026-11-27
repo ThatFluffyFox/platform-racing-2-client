@@ -126,6 +126,19 @@ class CursorEyedropper extends CustomCursor {
 	override function mouseDownHandler(e:MouseEvent):Void {
 		if (visible) {
 			e.stopImmediatePropagation();
+			var editor = pr2.levelEditor.LevelEditor.editor;
+			var layer = e.shiftKey && editor != null ? editor.eyedropperLayer() : null;
+			if (layer != null) {
+				// Level Editor: Shift picks from the layer being edited only, not the
+				// screen. An empty spot on that layer picks nothing.
+				var sampled = sampleLayerPixel(layer, CustomCursor.eventStagePoint(e));
+				if (sampled != null) {
+					color = sampled;
+					dispatchEvent(new Event(Event.COMPLETE));
+				}
+				super.mouseDownHandler(e);
+				return;
+			}
 			#if html5
 			if (Std.isOfType(currentSampleSource(), Stage)) {
 				sampleHtml5AfterRender(CustomCursor.eventStagePoint(e));
@@ -176,6 +189,17 @@ class CursorEyedropper extends CustomCursor {
 			cursorContainer.draw(source, matrix, null, null, cursorContainer.rect);
 		}
 		visible = true;
+	}
+
+	private static function sampleLayerPixel(layer:DisplayObject, stagePoint:Point):Null<Int> {
+		var pixel = new BitmapData(1, 1, true, 0);
+		var matrix = layer.transform.concatenatedMatrix.clone();
+		matrix.translate(-Math.floor(stagePoint.x), -Math.floor(stagePoint.y));
+		pixel.draw(layer, matrix, null, null, new openfl.geom.Rectangle(0, 0, 1, 1));
+		var argb = pixel.getPixel32(0, 0);
+		pixel.dispose();
+		if ((argb >>> 24) == 0) return null;
+		return argb & 0xFFFFFF;
 	}
 
 	private function isExcluded(d:DisplayObject):Bool {
