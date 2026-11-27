@@ -188,6 +188,14 @@ private class OptionsLinkButton extends GameButton {
 		labelField.y = 2;
 		labelField.width = Math.max(0, controlWidth - 4);
 		labelField.height = authoredSize == 12 ? 14.55 : 12.15;
+		// The boxes are sized for Flash's Verdana; DejaVu Sans runs wider and cut
+		// off "Leave Guild" and "Change Email". Widen to fit, keeping the text
+		// centred where Flash's was (the links are centred under the sliders).
+		var needed = labelField.textWidth + 4;
+		if (needed > labelField.width) {
+			labelField.x -= (needed - labelField.width) / 2;
+			labelField.width = needed;
+		}
 	}
 }
 
