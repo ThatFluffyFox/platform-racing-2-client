@@ -37,7 +37,8 @@ class FinishedPageView extends NativeView {
 		staticLabel("rateLevelLabel", "Rate This Level:", -99.45 + 1.5, 90, false);
 		button("close_bt", "Close", -111, 121);
 		button("return_bt", "Return to Lobby", 8, 121);
-		field("physicsFrames", -136, -132, 130, 11, TextFormatAlign.LEFT, 8);
+		// Port-only diagnostic: sits in the panel's top margin, above the Race Complete title.
+		field("physicsFrames", -136, -140.5, 130, 11, TextFormatAlign.LEFT, 8);
 	}
 
 	private function button(name:String, label:String, x:Float, y:Float):Void {

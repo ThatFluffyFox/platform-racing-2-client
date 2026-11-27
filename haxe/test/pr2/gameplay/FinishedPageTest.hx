@@ -41,7 +41,7 @@ class FinishedPageTest {
 		assertEquals("Physics frames: 1842", LobbyArt.text(page, "physicsFrames").text,
 			"finish popup shows the measured physics-frame count");
 		assertNear(-136, LobbyArt.text(page, "physicsFrames").x, 0.001, "physics-frame count sits at the popup's left edge");
-		assertNear(-132, LobbyArt.text(page, "physicsFrames").y, 0.001, "physics-frame count sits along the popup's top edge");
+		assertNear(-140.5, LobbyArt.text(page, "physicsFrames").y, 0.001, "physics-frame count sits above the Race Complete title");
 		assertEquals(8, LobbyArt.text(page, "physicsFrames").defaultTextFormat.size, "physics-frame count uses compact text");
 
 		page.award("First Place", "+50");
