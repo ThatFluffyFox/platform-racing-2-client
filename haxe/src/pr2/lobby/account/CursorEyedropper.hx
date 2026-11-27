@@ -22,9 +22,6 @@ class CursorEyedropper extends CustomCursor {
 	private var exclusions:Array<DisplayObject> = [];
 	private var cursorContainer:Null<BitmapData>;
 	private var sampleSource:Null<DisplayObject>;
-	#if html5
-	private var html5SamplePending:Bool = false;
-	#end
 
 	public function new(?sampleSource:DisplayObject) {
 		super();
@@ -79,10 +76,6 @@ class CursorEyedropper extends CustomCursor {
 
 	private function maybeUpdate(_:Event):Void {
 		if (!pr2.runtime.FrameClock.shouldRunBrowserFrame()) return;
-		#if html5
-		// Keep the cursor hidden until the click's sample frame has been drawn.
-		if (html5SamplePending) return;
-		#end
 		var me = getMouse();
 		var targetObj = me != null ? Std.downcast(me.target, DisplayObject) : null;
 		if (targetObj == null && sampleSource != null) {
@@ -106,9 +99,9 @@ class CursorEyedropper extends CustomCursor {
 				drawEyedropper();
 			}
 			#if html5
-			// Reading one pixel from WebGL synchronizes the GPU. Doing that from
-			// ENTER_FRAME (as Flash did with its already-cached BitmapData) stalls
-			// the whole editor while the picker is open. Sample once on click below.
+			// Sampling the Stage draws the display list. Doing that every frame
+			// (Flash read an already-cached BitmapData) stalls the editor while the
+			// picker is open, so the Stage is sampled once, on click, below.
 			if (Std.isOfType(currentSampleSource(), Stage)) {
 				return;
 			}
@@ -140,8 +133,10 @@ class CursorEyedropper extends CustomCursor {
 				return;
 			}
 			#if html5
-			if (Std.isOfType(currentSampleSource(), Stage)) {
-				sampleHtml5AfterRender(CustomCursor.eventStagePoint(e));
+			var sourceStage = Std.downcast(currentSampleSource(), Stage);
+			if (sourceStage != null) {
+				color = sampleStagePixel(sourceStage, CustomCursor.eventStagePoint(e));
+				dispatchEvent(new Event(Event.COMPLETE));
 				super.mouseDownHandler(e);
 				return;
 			}
@@ -218,9 +213,9 @@ class CursorEyedropper extends CustomCursor {
 			return;
 		}
 		#if html5
-		if (Std.isOfType(source, Stage)) {
-			var sampled = sampleHtml5StagePixel(CustomCursor.eventStagePoint(me));
-			color = sampled == null ? -1 : sampled;
+		var sourceStage = Std.downcast(source, Stage);
+		if (sourceStage != null) {
+			color = sampleStagePixel(sourceStage, CustomCursor.eventStagePoint(me));
 			return;
 		}
 		#end
@@ -237,52 +232,39 @@ class CursorEyedropper extends CustomCursor {
 
 	#if html5
 	/**
-		WebGL clears the canvas once the browser has shown a frame (the context
-		does not preserve its drawing buffer), so a read from the click handler
-		returned blank pixels and every pick came out black. Read the pixel right
-		after OpenFL draws the next frame instead, with the eyedropper hidden for
-		that frame as Flash's drawEyedropper hides it while capturing.
+		Read the clicked pixel from the screen as Flash's eyedropper did, with the
+		eyedropper itself hidden. WebGL clears the canvas once the browser has
+		shown a frame, so reading it from an input handler gave black or nothing
+		depending on browser timing. Render a fresh frame first, then read the
+		pixel in the same moment. Drawing the stage into a BitmapData instead uses
+		OpenFL's canvas renderer, which draws tinted character art in the wrong
+		colours.
 	**/
-	private function sampleHtml5AfterRender(stagePoint:Point):Void {
-		var sourceStage = currentStage();
-		if (sourceStage == null || sourceStage.window == null || html5SamplePending) return;
-		html5SamplePending = true;
+	private function sampleStagePixel(sourceStage:Stage, stagePoint:Point):Int {
+		var wasVisible = visible;
 		visible = false;
-		sourceStage.window.onRender.add(function(_):Void {
-			html5SamplePending = false;
-			var sampled = sampleHtml5StagePixel(stagePoint);
-			color = sampled == null ? -1 : sampled;
-			visible = true;
-			dispatchEvent(new Event(Event.COMPLETE));
-		}, true, -100);
-	}
-
-	private function sampleHtml5StagePixel(stagePoint:Point):Null<Int> {
+		var sampled = -1;
 		try {
-			var canvas:Dynamic = js.Browser.document.querySelector("canvas");
-			var sourceStage = currentStage();
-			if (canvas == null || sourceStage == null || sourceStage.stageWidth <= 0 || sourceStage.stageHeight <= 0) {
-				return null;
+			var window = sourceStage.window;
+			var gl:Dynamic = window == null ? null : window.context.webgl;
+			if (gl != null) {
+				@:privateAccess {
+					sourceStage.__renderDirty = true;
+					sourceStage.__render(window.context);
+				}
+				var display:Matrix = @:privateAccess sourceStage.__displayMatrix;
+				var point = display.transformPoint(stagePoint);
+				var width:Int = gl.drawingBufferWidth;
+				var height:Int = gl.drawingBufferHeight;
+				var px = clamp(Math.floor(point.x), 0, width - 1);
+				var py = clamp(Math.floor(point.y), 0, height - 1);
+				var pixels = new js.lib.Uint8Array(4);
+				gl.readPixels(px, height - 1 - py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+				sampled = (pixels[0] << 16) | (pixels[1] << 8) | pixels[2];
 			}
-			var px = Std.int(Math.max(0, Math.min(canvas.width - 1, Math.floor(stagePoint.x / sourceStage.stageWidth * canvas.width))));
-			var py = Std.int(Math.max(0, Math.min(canvas.height - 1, Math.floor(stagePoint.y / sourceStage.stageHeight * canvas.height))));
-			var context2d:Dynamic = canvas.getContext("2d");
-			if (context2d != null) {
-				var data:Dynamic = context2d.getImageData(px, py, 1, 1).data;
-				return (data[0] << 16) | (data[1] << 8) | data[2];
-			}
-			var gl:Dynamic = canvas.getContext("webgl2");
-			if (gl == null) gl = canvas.getContext("webgl");
-			if (gl == null) gl = canvas.getContext("experimental-webgl");
-			if (gl == null) {
-				return null;
-			}
-			var pixels = new js.lib.Uint8Array(4);
-			gl.readPixels(px, canvas.height - 1 - py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-			return (pixels[0] << 16) | (pixels[1] << 8) | pixels[2];
-		} catch (_:Dynamic) {
-			return null;
-		}
+		} catch (_:Dynamic) {}
+		visible = wasVisible;
+		return sampled;
 	}
 	#end
 
