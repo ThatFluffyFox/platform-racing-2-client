@@ -2,6 +2,7 @@ package pr2.lobby.tabs;
 
 import openfl.display.Shape;
 import openfl.display.Sprite;
+import openfl.events.MouseEvent;
 import openfl.text.TextField;
 import openfl.text.TextFormat;
 import openfl.text.TextFormatAlign;
@@ -128,6 +129,26 @@ private class LoadoutsIconButton extends Sprite {
 		text.selectable = false;
 		text.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Icons), 14, 0x000000);
 		text.text = "";
+		text.mouseEnabled = false;
 		addChild(text);
+		icon = text;
+		// Button symbol 1268's hit frame (Graphics/Symbol 1212).
+		graphics.beginFill(0xFFFFFF, 0);
+		graphics.drawRect(-5.25, -4.75, 25.2, 24.85);
+		graphics.endFill();
+		addEventListener(MouseEvent.ROLL_OVER, function(_) { over = true; refresh(); });
+		addEventListener(MouseEvent.ROLL_OUT, function(_) { over = false; down = false; refresh(); });
+		addEventListener(MouseEvent.MOUSE_DOWN, function(_) { down = true; refresh(); });
+		addEventListener(MouseEvent.MOUSE_UP, function(_) { down = false; refresh(); });
+	}
+
+	private var icon:TextField;
+	private var over:Bool = false;
+	private var down:Bool = false;
+
+	// Symbol 1268: up is black at x 2; over is #FFFF00 and down #FFCC33, both at x 3.
+	private function refresh():Void {
+		icon.x = over || down ? 3 : 2;
+		icon.textColor = down ? 0xFFCC33 : over ? 0xFFFF00 : 0x000000;
 	}
 }
