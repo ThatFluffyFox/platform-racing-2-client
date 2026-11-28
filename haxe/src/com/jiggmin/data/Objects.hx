@@ -73,6 +73,14 @@ class Objects {
 	private static inline var TILE_SIZE:Int = 30;
 	private static inline var TELEPORT_DEFAULT_COLOR:Int = 0xFF7F50;
 
+	/**
+		TextObjectGraphic's textBox (DefineEditText 1762) is Verdana 18 with leading
+		2: Flash's embedded Verdana is 21.82px a line, so lines sit 23.8px apart.
+		The port's Verdana 18 line is 21px, so leading 3 (24px) matches that pitch.
+		Shared by the editor's text tool, Objects.TextCode and level drawing.
+	**/
+	public static inline var TEXT_OBJECT_LEADING:Int = 3;
+
 	private function new() {}
 
 	public static function getFromCode(code:Int):Null<DisplayObject> {
@@ -144,7 +152,7 @@ class Objects {
 		var textBox = new TextField();
 		textBox.name = "textBox";
 		var format = new TextFormat(FontResolver.resolve("Verdana"), 18);
-		format.leading = 4;
+		format.leading = TEXT_OBJECT_LEADING;
 		textBox.defaultTextFormat = format;
 		// XFL TextObjectGraphic text box (2, 2) 76 x 29.2; Flash's field adds its 2px gutter.
 		pr2.ui.FlashTextBox.applyXflBox(textBox, 2, 2, 76, 29.2);

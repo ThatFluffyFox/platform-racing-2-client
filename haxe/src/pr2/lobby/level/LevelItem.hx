@@ -752,6 +752,7 @@ private class LevelItemIconButton extends NativeControl {
 
 	public function new(kind:LevelItemButtonKind) {
 		super(18, 18);
+		flashSimpleButton = true;
 		this.kind = kind;
 		mouseChildren = false;
 		redraw();

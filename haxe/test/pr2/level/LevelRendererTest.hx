@@ -1092,7 +1092,7 @@ class LevelRendererTest {
 		assertClose(2.5, text.scaleY, "placed text multiplies text scaleY by layer scale");
 		assertEquals(FontResolver.resolve("Verdana"), text.defaultTextFormat.font, "placed text preserves the authored font mapping");
 		assertEquals(18.0, text.defaultTextFormat.size, "placed text preserves the authored font size");
-		assertEquals(4, text.defaultTextFormat.leading, "placed text preserves the authored line height");
+		assertEquals(3, text.defaultTextFormat.leading, "placed text preserves the authored line height");
 		assertEquals(false, text.selectable, "placed text remains nonselectable");
 		assertEquals(false, text.wordWrap, "placed text preserves no-wrap behavior");
 		assertEquals(true, text.multiline, "placed text preserves multiline behavior");

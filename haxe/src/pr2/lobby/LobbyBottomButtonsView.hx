@@ -19,11 +19,12 @@ class LobbyBottomButtonsView extends NativeView {
 	public function new(member:Bool) {
 		super();
 		scrollRect = new Rectangle(0, 0, 550, 400);
-		creditsButton = classic("creditsButton", "Credits");
-		moreGamesButton = special("moreGamesButton", Kong);
-		optionsButton = classic("optionsButton", "Options");
-		levelEditorButton = classic("levelEditorButton", "Level Editor");
+		// SWF depth order (1, 35, 69, 103, 148, 182), which is also Flash's Tab order.
 		logoutButton = classic("logoutButton", "Logout");
+		levelEditorButton = classic("levelEditorButton", "Level Editor");
+		optionsButton = classic("optionsButton", "Options");
+		moreGamesButton = special("moreGamesButton", Kong);
+		creditsButton = classic("creditsButton", "Credits");
 		vaultButton = special("vaultButton", Vault);
 		setMemberVariant(member);
 	}

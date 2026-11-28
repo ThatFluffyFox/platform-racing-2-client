@@ -287,6 +287,7 @@ private class StatArrowButton extends NativeControl {
 
 	public function new() {
 		super(10, 16);
+		flashSimpleButton = true;
 		redraw();
 	}
 

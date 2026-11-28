@@ -130,7 +130,7 @@ class ObjectsCompatTest {
 		assertEquals(true, textBox.multiline, "text object preserves authored multiline behavior");
 		assertEquals(FontResolver.resolve("Verdana"), textBox.defaultTextFormat.font, "text object preserves authored font mapping");
 		assertEquals(18.0, textBox.defaultTextFormat.size, "text object preserves authored font size");
-		assertEquals(4, textBox.defaultTextFormat.leading, "text object preserves authored rounded 21.9 line height");
+		assertEquals(3, textBox.defaultTextFormat.leading, "text object keeps Flash 23.8px Verdana 18 line pitch");
 	}
 
 	private static function testUnknownCodeReturnsNull():Void {

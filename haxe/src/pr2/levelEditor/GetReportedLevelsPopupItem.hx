@@ -28,6 +28,8 @@ class GetReportedLevelsPopupItem extends SelectableButton {
 		setText("timeBox", Data.getShortDateStr(parseFloat(field("report_time"), 0)));
 		mouseChildren = false;
 		buttonMode = true;
+		// Flash SelectableButton is a plain sprite (no buttonMode), so not a Flash tab stop; keep the hand cursor only.
+		tabEnabled = false;
 		doubleClickEnabled = true;
 		addEventListener(MouseEvent.CLICK, onClick);
 		addEventListener(MouseEvent.DOUBLE_CLICK, onDoubleClick);

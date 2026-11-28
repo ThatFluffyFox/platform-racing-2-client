@@ -420,6 +420,7 @@ private class LoginIconButton extends NativeControl {
 
 	public function new(kind:LoginIconKind) {
 		super(18, 18);
+		flashSimpleButton = true;
 		this.kind = kind;
 		mouseChildren = false;
 		redraw();

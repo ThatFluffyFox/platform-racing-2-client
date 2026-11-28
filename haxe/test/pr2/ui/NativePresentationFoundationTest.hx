@@ -347,10 +347,11 @@ class NativePresentationFoundationTest {
 		root.addChild(disabled);
 		var ordered = @:privateAccess KeyboardFocusManager.orderedCandidates(root);
 		assertEquals(3, ordered.length, "Flash tab order treats native components as atomic and excludes disabled controls");
-		assertEquals(upperLeft, ordered[0], "automatic Flash tab order starts at the upper-left control");
-		assertEquals(upperRight, ordered[1], "automatic Flash tab order moves left-to-right on a row");
-		assertEquals(lower, ordered[2], "automatic Flash tab order then moves top-to-bottom");
-		assertEquals(0, @:privateAccess KeyboardFocusManager.candidateIndex(ordered, upperLeft.textField),
+		// fl.managers.FocusManager.sortByDepth: display-list order, not screen position.
+		assertEquals(lower, ordered[0], "Flash FocusManager orders tab stops by display-list depth");
+		assertEquals(upperRight, ordered[1], "a later sibling follows regardless of its position");
+		assertEquals(upperLeft, ordered[2], "the last child is the last stop even at the upper left");
+		assertEquals(2, @:privateAccess KeyboardFocusManager.candidateIndex(ordered, upperLeft.textField),
 			"focus delegated to a TextInput field resolves back to its component tab stop");
 		lower.tabIndex = 2;
 		upperRight.tabIndex = 1;
@@ -358,6 +359,19 @@ class NativePresentationFoundationTest {
 		assertEquals(2, ordered.length, "authored tabIndex order excludes automatic controls like Flash");
 		assertEquals(upperRight, ordered[0], "authored tabIndex sorts in ascending order");
 		assertEquals(lower, ordered[1], "authored tabIndex retains the remaining indexed control");
+
+		// Siblings named like a SWF symbol's stops follow that symbol's depth order
+		// (ConfirmPopupGraphic: ok_bt, cancel_bt) whatever order the port added them.
+		var popup = new Sprite();
+		var cancel = new GameButton("Cancel");
+		cancel.name = "cancel_bt";
+		popup.addChild(cancel);
+		var ok = new GameButton("OK");
+		ok.name = "ok_bt";
+		popup.addChild(ok);
+		ordered = @:privateAccess KeyboardFocusManager.orderedCandidates(popup);
+		assertEquals(ok, ordered[0], "SWF depth order puts ok_bt first");
+		assertEquals(cancel, ordered[1], "SWF depth order puts cancel_bt second");
 	}
 
 	private static function testTypedViewOwnership():Void {

@@ -17,6 +17,12 @@ class NativeControl extends Sprite {
 	// showFocusIndicator is true: Tab traversal turns it on, pointer input turns
 	// it off. Without that gate every click leaves a blue outline behind.
 	public static var showFocusIndicator:Bool = false;
+	/**
+		True for controls that stand in for a Flash SimpleButton rather than an
+		fl.controls component: Flash draws no component focus skin for those, only
+		the Flash Player's yellow stage focus rectangle (KeyboardFocusManager).
+	**/
+	public var flashSimpleButton:Bool = false;
 
 	public var enabled(get, set):Bool;
 	public var focused(default, set):Bool = false;
@@ -179,6 +185,6 @@ class NativeControl extends Sprite {
 		art.width = controlWidth;
 		art.height = controlHeight;
 		focusIndicator.addChild(art);
-		focusIndicator.visible = focused && focusVisible && enabled && !disposed;
+		focusIndicator.visible = focused && focusVisible && enabled && !disposed && !flashSimpleButton;
 	}
 }

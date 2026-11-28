@@ -29,20 +29,22 @@ class CustomScrollBar extends Sprite {
 	private var thumbHitArea:Null<Sprite>;
 	private var upArrowHitArea:Null<Sprite>;
 	private var downArrowHitArea:Null<Sprite>;
+	private var thumbStates:ButtonStates;
+	private var upStates:ButtonStates;
+	private var downStates:ButtonStates;
 
 	public function new() {
 		super();
 		art = new Sprite();
 		track = NativeAssets.svg(StaticSvg.ScrollTrack);
 		track.y = 12.95;
-		thumb = makeVisual(StaticSvg.ScrollThumb, true);
+		thumbStates = new ButtonStates([StaticSvg.ScrollThumbUpAuthored, StaticSvg.ScrollThumbOverAuthored, StaticSvg.ScrollThumbDownAuthored], true);
+		thumb = thumbStates;
 		thumb.y = 40;
-		var thumbIcon = NativeAssets.svg(StaticSvg.ScrollThumbIcon);
-		thumbIcon.x = 4;
-		thumbIcon.y = -4;
-		Std.downcast(thumb, Sprite).addChild(thumbIcon);
-		upArrow = makeVisual(arrowAsset(true));
-		downArrow = makeVisual(arrowAsset(false));
+		upStates = new ButtonStates([arrowAsset(true), StaticSvg.ScrollArrowUpOverAuthored, StaticSvg.ScrollArrowUpDownAuthored], false);
+		upArrow = upStates;
+		downStates = new ButtonStates([arrowAsset(false), StaticSvg.ScrollArrowDownOverAuthored, StaticSvg.ScrollArrowDownDownAuthored], false);
+		downArrow = downStates;
 		downArrow.y = 190;
 		art.addChild(track);
 		art.addChild(thumb);
@@ -52,6 +54,9 @@ class CustomScrollBar extends Sprite {
 		thumbHitArea = installStableHitArea(thumb, 15, 20);
 		upArrowHitArea = installStableHitArea(upArrow, 15, 14);
 		downArrowHitArea = installStableHitArea(downArrow, 15, 14);
+		thumbStates.bind(thumbHitArea);
+		upStates.bind(upArrowHitArea);
+		downStates.bind(downArrowHitArea);
 		if (thumbHitArea != null) thumbHitArea.addEventListener(MouseEvent.MOUSE_DOWN, onThumbDown, false, 0, true);
 		if (upArrowHitArea != null) upArrowHitArea.addEventListener(MouseEvent.MOUSE_DOWN, onUpArrowDown, false, 0, true);
 		if (downArrowHitArea != null) downArrowHitArea.addEventListener(MouseEvent.MOUSE_DOWN, onDownArrowDown, false, 0, true);
@@ -208,6 +213,9 @@ class CustomScrollBar extends Sprite {
 
 	public function remove():Void {
 		removed = true;
+		thumbStates.unbind();
+		upStates.unbind();
+		downStates.unbind();
 		if (thumbHitArea != null) thumbHitArea.removeEventListener(MouseEvent.MOUSE_DOWN, onThumbDown);
 		if (upArrowHitArea != null) upArrowHitArea.removeEventListener(MouseEvent.MOUSE_DOWN, onUpArrowDown);
 		if (downArrowHitArea != null) downArrowHitArea.removeEventListener(MouseEvent.MOUSE_DOWN, onDownArrowDown);
@@ -231,14 +239,79 @@ class CustomScrollBar extends Sprite {
 			parent.removeChild(this);
 		}
 	}
+}
 
-	private static function makeVisual(asset:StaticSvg, centerVertically:Bool = false):Sprite {
-		var visual = new Sprite();
-		var svg = NativeAssets.svg(asset);
-		if (centerVertically) {
-			svg.y = -svg.height / 2;
+/**
+	The scroll bar's SimpleButtons (CustomScrollBarGraphic thumb, upArrow and
+	downArrow): up, over and down skins are the fl.controls ScrollBar skins, and
+	the thumb keeps its grip icon in every state. Flash shows the down skin only
+	while pressed with the pointer over the button, and up once it leaves.
+**/
+private class ButtonStates extends Sprite {
+	private final skins:Array<StaticSvg>;
+	private final centered:Bool;
+	private var hit:Null<Sprite>;
+	private var over:Bool = false;
+	private var pressed:Bool = false;
+	private var shown:Int = -1;
+
+	public function new(skins:Array<StaticSvg>, thumb:Bool) {
+		super();
+		this.skins = skins;
+		centered = thumb;
+		show(0);
+	}
+
+	public function bind(hit:Null<Sprite>):Void {
+		this.hit = hit;
+		if (hit == null) return;
+		hit.addEventListener(MouseEvent.ROLL_OVER, rollOver);
+		hit.addEventListener(MouseEvent.ROLL_OUT, rollOut);
+		hit.addEventListener(MouseEvent.MOUSE_DOWN, press);
+	}
+
+	public function unbind():Void {
+		if (hit != null) {
+			hit.removeEventListener(MouseEvent.ROLL_OVER, rollOver);
+			hit.removeEventListener(MouseEvent.ROLL_OUT, rollOut);
+			hit.removeEventListener(MouseEvent.MOUSE_DOWN, press);
+			hit = null;
 		}
-		visual.addChild(svg);
-		return visual;
+		if (AppStage.stage != null) AppStage.stage.removeEventListener(MouseEvent.MOUSE_UP, release);
+	}
+
+	public function stateForTests():Int return shown;
+
+	private function rollOver(_:MouseEvent):Void { over = true; refresh(); }
+	private function rollOut(_:MouseEvent):Void { over = false; refresh(); }
+
+	private function press(_:MouseEvent):Void {
+		pressed = true;
+		if (AppStage.stage != null) AppStage.stage.addEventListener(MouseEvent.MOUSE_UP, release);
+		refresh();
+	}
+
+	private function release(_:MouseEvent):Void {
+		pressed = false;
+		if (AppStage.stage != null) AppStage.stage.removeEventListener(MouseEvent.MOUSE_UP, release);
+		refresh();
+	}
+
+	private function refresh():Void show(!over ? 0 : (pressed ? 2 : 1));
+
+	private function show(state:Int):Void {
+		if (state == shown) return;
+		shown = state;
+		removeChildren();
+		var skin = NativeAssets.svg(skins[state]);
+		// ScrollThumb skins are 52 tall and placed at y -26 so the thumb centres on its y.
+		if (centered) skin.y = -26;
+		addChild(skin);
+		if (centered) {
+			var icon = NativeAssets.svg(StaticSvg.ScrollThumbIcon);
+			icon.x = 4;
+			icon.y = -4;
+			addChild(icon);
+		}
 	}
 }

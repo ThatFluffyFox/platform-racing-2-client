@@ -47,6 +47,8 @@ class ColorPicker extends Sprite {
 		skin.name = "swatchSkin";
 		addChild(skin);
 		buttonMode = true;
+		// Flash ColorPicker is a plain sprite (no buttonMode), so not a Flash tab stop; keep the hand cursor only.
+		tabEnabled = false;
 		useHandCursor = true;
 		mouseChildren = false;
 		drawSwatch();

@@ -52,14 +52,16 @@ class QuantityPopupView extends NativeView {
 		quantitySlider.setSize(180, 22);
 		quantitySlider.x = -90.15;
 		quantitySlider.y = -21.05;
-		quantitySlider.tabIndex = 1;
+		// Flash sets no tabIndex here; Tab follows QuantityPopupGraphic's depth
+		// order (buy, cancel, slider) through FlashTabOrder.
+		quantitySlider.name = "quantitySlider";
 		addChild(quantitySlider);
 
 		buyButton = ownControl(new GameButton("Buy"));
 		buyButton.setSize(74, 22);
 		buyButton.x = -80;
 		buyButton.y = 49.95;
-		buyButton.tabIndex = 2;
+		buyButton.name = "buy_bt";
 		buyButton.onPress = function():Void if (onBuy != null) onBuy();
 		addChild(buyButton);
 
@@ -67,7 +69,7 @@ class QuantityPopupView extends NativeView {
 		cancelButton.setSize(74, 22);
 		cancelButton.x = 7;
 		cancelButton.y = 49.95;
-		cancelButton.tabIndex = 3;
+		cancelButton.name = "cancel_bt";
 		cancelButton.onPress = function():Void if (onCancel != null) onCancel();
 		addChild(cancelButton);
 

@@ -76,6 +76,11 @@ class EditorValueSettingsPopup extends Sprite {
 		}
 		if (descBox != null) {
 			descBox.htmlText = spec.desc;
+			// Flash shows an overflowing description from its first line (the time
+			// limit's third line is cut off). OpenFL keeps the caret at the end of new
+			// text and scrolled the box to show the last two lines instead.
+			descBox.setSelection(0, 0);
+			descBox.scrollV = 1;
 		}
 		valueInput = art.valueInput;
 		if (valueInput != null) {
@@ -86,9 +91,8 @@ class EditorValueSettingsPopup extends Sprite {
 			}
 			valueInput.textField.displayAsPassword = spec.displayAsPassword;
 			valueInput.textField.addEventListener(Event.CHANGE, commitValue);
-			if (AppStage.stage != null) {
-				AppStage.stage.focus = valueInput.textField;
-			}
+			// Flash's ValueMenu leaves focus where it was: the box takes the caret
+			// when clicked or reached with Tab.
 		}
 	}
 

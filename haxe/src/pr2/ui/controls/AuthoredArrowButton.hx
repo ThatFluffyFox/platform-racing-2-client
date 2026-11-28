@@ -13,6 +13,7 @@ class AuthoredArrowButton extends NativeControl {
 
 	public function new(pointsRight:Bool, action:Void->Void) {
 		super(10, 16);
+		flashSimpleButton = true;
 		this.pointsRight = pointsRight;
 		this.action = action;
 		addEventListener(MouseEvent.CLICK, onClick);

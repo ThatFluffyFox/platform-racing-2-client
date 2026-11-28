@@ -256,6 +256,7 @@ private class LevelInfoActionButton extends NativeControl {
 
 	public function new(kind:LevelInfoActionKind) {
 		super(20, 20);
+		flashSimpleButton = true;
 		this.kind = kind;
 		mouseChildren = false;
 		redraw();

@@ -150,6 +150,7 @@ private class PlayerSourceButton extends NativeControl {
 
 	public function new(kind:PlayerSourceButtonKind) {
 		super(kind == Kick ? 77.75 : kind == Invite ? 31.25 : 20, kind == Message ? 20 : 16.15);
+		flashSimpleButton = true;
 		this.kind = kind;
 		mouseChildren = false;
 		redraw();

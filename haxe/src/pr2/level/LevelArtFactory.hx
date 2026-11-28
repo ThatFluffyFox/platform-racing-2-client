@@ -151,7 +151,7 @@ class LevelArtFactory {
 	public static function addLayerText(container:Sprite, text:LevelTextObject, layerScale:Float):Void {
 		var field = new TextField();
 		var format = new TextFormat(FontResolver.resolve("Verdana"), 18, text.color);
-		format.leading = 4;
+		format.leading = Objects.TEXT_OBJECT_LEADING;
 		field.defaultTextFormat = format;
 		field.selectable = false;
 		field.wordWrap = false;

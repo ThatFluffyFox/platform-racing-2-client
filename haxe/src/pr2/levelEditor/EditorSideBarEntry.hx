@@ -22,6 +22,8 @@ class EditorSideBarEntry extends HoverDelayPopup {
 		this.icon = icon;
 		name = id + "Entry";
 		buttonMode = true;
+		// Flash SidebarEntry is a plain sprite (no buttonMode), so not a Flash tab stop; keep the hand cursor only.
+		tabEnabled = false;
 		useHandCursor = true;
 		chrome = AuthoredScale9.squarePanel();
 		chrome.name = "SquareBG";

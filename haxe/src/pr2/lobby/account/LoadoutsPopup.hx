@@ -182,6 +182,8 @@ private class LoadoutListing extends Sprite {
 		mouseChildren = false;
 		doubleClickEnabled = true;
 		buttonMode = true;
+		// Flash PresetListing (SelectableButton) is a plain sprite (no buttonMode), so not a Flash tab stop; keep the hand cursor only.
+		tabEnabled = false;
 		art = new Sprite();
 		background = new Sprite();
 		background.name = "stateBackground";

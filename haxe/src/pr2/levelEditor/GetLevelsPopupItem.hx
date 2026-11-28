@@ -30,6 +30,8 @@ class GetLevelsPopupItem extends SelectableButton {
 		setText("statusBox", parseInt(field("live"), 0) == 1 ? "Published" : "Unpublished");
 		mouseChildren = false;
 		buttonMode = true;
+		// Flash SelectableButton is a plain sprite (no buttonMode), so not a Flash tab stop; keep the hand cursor only.
+		tabEnabled = false;
 		doubleClickEnabled = true;
 		addEventListener(MouseEvent.CLICK, onClick);
 		addEventListener(MouseEvent.DOUBLE_CLICK, onDoubleClick);

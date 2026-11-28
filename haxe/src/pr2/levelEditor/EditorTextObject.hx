@@ -675,7 +675,10 @@ class EditorTextObject extends Sprite {
 
 	private function createTextField():TextField {
 		var field = new TextField();
-		field.defaultTextFormat = new TextFormat(FontResolver.resolve("Verdana"), 18, color);
+		// The same textBox the level draws, so lines keep their spacing in a test run.
+		var format = new TextFormat(FontResolver.resolve("Verdana"), 18, color);
+		format.leading = com.jiggmin.data.Objects.TEXT_OBJECT_LEADING;
+		field.defaultTextFormat = format;
 		field.wordWrap = false;
 		field.multiline = true;
 		field.autoSize = TextFieldAutoSize.LEFT;

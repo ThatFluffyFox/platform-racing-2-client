@@ -33,6 +33,8 @@ class EditorStampDisplay extends Sprite {
 		scaleX = placed.scaleX;
 		scaleY = placed.scaleY;
 		buttonMode = true;
+		// Flash DrawObject is a plain sprite (no buttonMode), so not a Flash tab stop; keep the hand cursor only.
+		tabEnabled = false;
 		useHandCursor = true;
 		content = EditorObjectLayer.createStampContent(placed, size);
 		addChild(content);

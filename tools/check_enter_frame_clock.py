@@ -40,6 +40,8 @@ PRESENTATION_ONLY_CALLBACKS = {
         "presents one cold asset group to the renderer per display frame",
     ("haxe/src/pr2/runtime/FrameClock.hx", "onStageFrame"):
         "classifies the presentation frame before simulation owners run",
+    ("haxe/src/pr2/ui/KeyboardFocusManager.hx", "drawFocusRect"):
+        "keeps Flash's yellow stage focus rectangle on the keyboard-focused object",
     ("haxe/src/pr2/ui/ShadowBgShape.hx", "sync"):
         "keeps the ShadowBG drop shadow under its panel at the on-screen size",
     ("haxe/src/pr2/runtime/StandInSvgShape.hx", "enteredFrame"):

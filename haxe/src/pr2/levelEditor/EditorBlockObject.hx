@@ -58,6 +58,8 @@ class EditorBlockObject extends Sprite {
 		segY = Std.int(y / LevelEditor.segSize);
 		name = "editorBlock_" + segX + "_" + segY;
 		buttonMode = true;
+		// Flash editor blocks are plain sprites (no buttonMode), so not a Flash tab stop; keep the hand cursor only.
+		tabEnabled = false;
 		useHandCursor = true;
 		display = createDisplay(code, options);
 		refreshTeleportBackground();
