@@ -65,10 +65,27 @@ class PopupPreview extends Sprite {
 			case "level-items": showLevelItems();
 			case "level-info": pr2.app.ScreenFactory.levelInfo(6497936);
 			case "level-info-data": showLevelInfoData();
+			case "color-pickers": showColorPickers();
 			#if !pr2_mobile_ui
 			case "player-info": showPlayerInfo();
 			#end
 			default: pr2.app.ScreenFactory.message("This is a representative popup message.");
+		}
+	}
+
+	/** Colour swatches at the sizes the game uses: My Racer (20), editor (30), text (0.4). **/
+	private function showColorPickers():Void {
+		var colors = [0xFF0000, 0x00CC00, 0x0000FF, 0x000000, 0xFFFF00];
+		var sizes:Array<Float> = [20, 30, 12];
+		for (row in 0...sizes.length) {
+			for (column in 0...colors.length) {
+				var picker = new pr2.lobby.account.ColorPicker();
+				picker.setColor(colors[column]);
+				picker.width = picker.height = sizes[row];
+				picker.x = 40 + column * 50 + 0.3 * row;
+				picker.y = 40 + row * 50 + 0.45 * column;
+				addChild(picker);
+			}
 		}
 	}
 

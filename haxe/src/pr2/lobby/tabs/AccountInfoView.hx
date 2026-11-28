@@ -138,9 +138,11 @@ private class LoadoutsIconButton extends Sprite {
 	private var over:Bool = false;
 	private var down:Bool = false;
 
-	// Symbol 1268: up is black at x 2; over is #FFFF00 and down #FFCC33, both at x 3.
+	// Symbol 1268: up is black, over #FFFF00 and down #FFCC33. The XFL places the
+	// over/down copies 1px further right, but their compiled text bounds start
+	// 1px further right too, so in the SWF every state's box is at the same spot:
+	// the icon only changes colour.
 	private function refresh():Void {
-		icon.x = over || down ? 3 : 2;
 		icon.textColor = down ? 0xFFCC33 : over ? 0xFFFF00 : 0x000000;
 	}
 }

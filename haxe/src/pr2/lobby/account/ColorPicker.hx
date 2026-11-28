@@ -23,7 +23,15 @@ class ColorPicker extends Sprite {
 		0x888888, 0x555555, 0x888888, 0x555555, 0x888888, 0x555555
 	];
 
-	private static inline var COLOR_WELL:Float = 36;
+	/**
+		The colour shows through the skin's hole, (3, 3)-(19, 19) in the 22px skin,
+		which the 9-slice maps to (3, 3)-(27, 27). Flash tints a 30px square under
+		the whole skin; there the opaque bevel hides it exactly, but here two
+		antialiased shapes sharing the outer edge let the colour fringe out past
+		the bevel. Fill only the hole, reaching half a pixel under the inner ring.
+	**/
+	private static inline var WELL_MIN:Float = 2.5;
+	private static inline var WELL_SIZE:Float = 25;
 
 	public var direction:String = RIGHT;
 
@@ -34,7 +42,6 @@ class ColorPicker extends Sprite {
 	public function new() {
 		super();
 		swatch = new Sprite();
-		swatch.scaleX = swatch.scaleY = 0.833328247070312;
 		addChild(swatch);
 		var skin = createSkin();
 		skin.name = "swatchSkin";
@@ -104,7 +111,7 @@ class ColorPicker extends Sprite {
 		swatch.graphics.clear();
 		swatch.transform.colorTransform = new ColorTransform();
 		swatch.graphics.beginFill(color & 0xFFFFFF);
-		swatch.graphics.drawRect(0, 0, COLOR_WELL, COLOR_WELL);
+		swatch.graphics.drawRect(WELL_MIN, WELL_MIN, WELL_SIZE, WELL_SIZE);
 		swatch.graphics.endFill();
 	}
 

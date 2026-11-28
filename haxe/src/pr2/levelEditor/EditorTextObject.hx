@@ -64,9 +64,9 @@ class EditorTextObject extends Sprite {
 		addChild(deleteButton);
 		resizeHandle = createResizeHandle();
 		addChild(resizeHandle);
-		showEditButton();
 		addColorPicker();
 		setText(parseText(text));
+		refreshSelectionControls();
 		addEventListener(MouseEvent.MOUSE_DOWN, selectForEditing);
 		addEventListener(Event.ADDED_TO_STAGE, addedToStage);
 		addEventListener(Event.REMOVED_FROM_STAGE, removedFromStage);
@@ -79,6 +79,7 @@ class EditorTextObject extends Sprite {
 		selected = true;
 		originalText = text;
 		originalColor = color;
+		refreshSelectionControls();
 		addStageDeleteListener();
 		addStageDeselectListener();
 	}
@@ -91,6 +92,7 @@ class EditorTextObject extends Sprite {
 		removeStageDeleteListener();
 		removeStageDeselectListener();
 		selected = false;
+		refreshSelectionControls();
 		if (recordChange && parent != null && (text != originalText || color != originalColor)) {
 			owner.recordChangeText(this);
 		}
@@ -101,8 +103,6 @@ class EditorTextObject extends Sprite {
 			return;
 		}
 		displayField.visible = false;
-		hideEditButton();
-		resizeHandle.visible = false;
 		editField = createTextField();
 		editField.type = TextFieldType.INPUT;
 		editField.selectable = true;
@@ -116,8 +116,8 @@ class EditorTextObject extends Sprite {
 		editField.width = Math.max(editField.textWidth + 8, 100);
 		editField.height = Math.max(editField.textHeight + 5, 20);
 		editField.addEventListener(Event.CHANGE, editTextChanged);
-		addChild(editField);
-		positionInternals();
+		addChildAt(editField, 1);
+		refreshSelectionControls();
 		if (stage != null) {
 			stage.focus = editField;
 		}
@@ -132,9 +132,7 @@ class EditorTextObject extends Sprite {
 		removeChild(editField);
 		editField = null;
 		displayField.visible = true;
-		showEditButton();
-		resizeHandle.visible = true;
-		positionInternals();
+		refreshSelectionControls();
 		if (stage != null) {
 			stage.focus = stage;
 		}
@@ -200,14 +198,15 @@ class EditorTextObject extends Sprite {
 	}
 
 	public function beginResizeAt(stageX:Float, stageY:Float):Void {
-		if (isEditing() || resizing) {
+		if (resizing) {
 			return;
 		}
 		resizing = true;
 		resizeStartScaleX = scaleX;
 		resizeStartScaleY = scaleY;
-		resizeBaseWidth = Math.max(displayField.width, 1);
-		resizeBaseHeight = Math.max(displayField.height, 1);
+		var target = editField != null ? editField : displayField;
+		resizeBaseWidth = Math.max(target.width, 1);
+		resizeBaseHeight = Math.max(target.height, 1);
 		if (parent != null && parent.numChildren > 1) {
 			parent.setChildIndex(this, parent.numChildren - 1);
 		}
@@ -277,10 +276,9 @@ class EditorTextObject extends Sprite {
 		dragging = false;
 		alpha = 1;
 		var changed = dragMoved || x != dragStartX || y != dragStartY;
+		// Flash DrawObject.endDrag only selects the object (already done on press);
+		// editing starts from the edit button.
 		moveToLocal(x, y, changed);
-		if (!changed) {
-			startEditing();
-		}
 	}
 
 	public function getEscapedText():String {
@@ -508,6 +506,29 @@ class EditorTextObject extends Sprite {
 			editField.width = Math.max(editField.textWidth + 8, 100);
 			positionInternals();
 		}
+	}
+
+	/**
+		Flash `DrawObject.select` adds the white highlight outline and the delete and
+		resize buttons, and `TextObject.select` the edit button and colour swatch;
+		`deselect` removes them all, so an unselected text shows only its text.
+		Editing removes the edit button and clears the outline (`onTextChange` calls
+		`hideHighlight`); the delete, resize and colour controls stay.
+	**/
+	private function refreshSelectionControls():Void {
+		var editing = editField != null;
+		selectionOutline.visible = selected && !editing;
+		deleteButton.visible = selected;
+		resizeHandle.visible = selected;
+		if (colorPicker != null) {
+			colorPicker.visible = selected;
+		}
+		if (selected && !editing) {
+			showEditButton();
+		} else {
+			hideEditButton();
+		}
+		positionInternals();
 	}
 
 	private function showEditButton():Void {
