@@ -332,10 +332,20 @@ class CanvasTextField
 						{
 							context.beginPath();
 							context.strokeStyle = color;
-							context.lineWidth = 1;
+							// PR2 change: Flash draws a text underline as a one-device-pixel
+							// hairline at any zoom. OpenFL stroked 1 text unit, which the
+							// display-scale rasterization turned into 2-3 device pixels.
+							var deviceScale = 1.0;
+							#if (js && html5)
+							var canvasTransform:Dynamic = untyped context.getTransform();
+							if (canvasTransform != null) deviceScale = Math.sqrt(canvasTransform.a * canvasTransform.a + canvasTransform.b * canvasTransform.b);
+							#end
+							if (!(deviceScale > 0)) deviceScale = 1;
+							context.lineWidth = 1 / deviceScale;
 							var descent = Math.floor(group.ascent * 0.185);
 							var x = group.offsetX + scrollX - bounds.x;
-							var y = Math.ceil(group.offsetY + scrollY + group.ascent - bounds.y) + descent + 0.5;
+							var lineY = Math.ceil(group.offsetY + scrollY + group.ascent - bounds.y) + descent;
+							var y = (Math.round(lineY * deviceScale) + 0.5) / deviceScale;
 							context.moveTo(x, y);
 							context.lineTo(x + group.width, y);
 							context.stroke();
