@@ -357,11 +357,9 @@ private class LoginPopupView extends NativeView {
 }
 
 private class LoginTextButton extends Sprite {
-	private static final FOCUS_GRID = new Rectangle(4, 2, 74, 18);
 	/** Symbol 543 up-state colour; its over and down frames leave the text black. */
 	private static inline var UP_COLOR:Int = 0x4E4EFE;
 	private static inline var OVER_COLOR:Int = 0x000000;
-	private final focusIndicator:Sprite;
 	private final labelField:TextField;
 
 	public function new(label:String) {
@@ -373,10 +371,13 @@ private class LoginTextButton extends Sprite {
 		labelField = new TextField();
 		labelField.mouseEnabled = false;
 		labelField.selectable = false;
-		labelField.x = 1.964111328125;
-		labelField.y = 1.964111328125;
-		labelField.width = 111.069;
-		labelField.height = 13;
+		// Button 1476's text (DefineEditText 1472) sits at (2, 2) with bounds
+		// (-2, -2)-(124.4, 17.15), and LoginPopupGraphic scales the button 0.982:
+		// a 124.1 x 19.15 box from the origin. The old 111px box cut off the "?".
+		labelField.x = 0;
+		labelField.y = 0;
+		labelField.width = 126.4 * 0.9820556640625;
+		labelField.height = 19.15;
 		labelField.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), 10, UP_COLOR);
 		labelField.text = label;
 		addChild(labelField);
@@ -388,18 +389,8 @@ private class LoginTextButton extends Sprite {
 		addEventListener(MouseEvent.ROLL_OVER, function(_):Void setLabelColor(OVER_COLOR));
 		addEventListener(MouseEvent.ROLL_OUT, function(_):Void setLabelColor(UP_COLOR));
 
-		focusIndicator = new Sprite();
-		focusIndicator.mouseEnabled = false;
-		focusIndicator.mouseChildren = false;
-		var art = NativeAssets.svg(StaticSvg.FocusRect);
-		art.scale9Grid = FOCUS_GRID;
-		art.width = 113.033;
-		art.height = 16.928;
-		focusIndicator.addChild(art);
-		focusIndicator.visible = false;
-		addChild(focusIndicator);
-		addEventListener(FocusEvent.FOCUS_IN, function(_):Void focusIndicator.visible = NativeControl.showFocusIndicator);
-		addEventListener(FocusEvent.FOCUS_OUT, function(_):Void focusIndicator.visible = false);
+		// A SimpleButton in Flash: Tab focus shows the Flash Player's yellow
+		// rectangle (KeyboardFocusManager), not a component focus skin.
 		addEventListener(KeyboardEvent.KEY_DOWN, function(event):Void {
 			if (event.keyCode == Keyboard.ENTER || event.keyCode == Keyboard.SPACE) dispatchEvent(new Event(NativeControl.KEYBOARD_ACTIVATE));
 		});
