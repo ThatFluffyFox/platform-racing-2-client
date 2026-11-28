@@ -66,7 +66,8 @@ class StoreListing extends Sprite {
 
 	private function createArt():Sprite {
 		var root = new Sprite();
-		var bg = rectangle("bg", 0, 0, 122 * 1.04917907714844, 140 * 1.1142578125, 0xC3E2E7, 1);
+		// StoreListingGraphic's hover bg (shape 132) is pale yellow #F2FFB6.
+		var bg = rectangle("bg", 0, 0, 122 * 1.04917907714844, 140 * 1.1142578125, 0xF2FFB6, 1);
 		bg.visible = false;
 		root.addChild(bg);
 		root.addChild(rectangle("previewGuide", 8, 25, 174 * 0.6436767578125, 350 * 0.17999267578125, 0xFFFFFF, 0.501960784313725));
@@ -180,8 +181,11 @@ class StoreListing extends Sprite {
 			return;
 		}
 		if (priceBox != null) priceBox.text = Std.string(listing.currentPrice());
+		// Flash measures from the field's registration (13), which sits one gutter
+		// right of the OpenFL box corner.
+		var priceX = priceBox == null ? 0.0 : priceBox.x + pr2.ui.FlashTextBox.GUTTER;
 		if (coin != null && priceBox != null) {
-			coin.x = Math.round(priceBox.width + priceBox.x + 3);
+			coin.x = Math.round(priceBox.width + priceX + 3);
 		}
 		if (listing.saleMultiplier() < 1) {
 			if (saleBox != null) {

@@ -77,7 +77,7 @@ class StorePopup extends Popup {
 		userCoins = intField(user, "coins");
 		var coins = LobbyArt.directText(art, "coinsLeftBox");
 		if (coins != null) {
-			coins.htmlText = '<b><font color="#' + (userCoins == 0 ? "BB0000" : "006600") + '">You have ' + Data.formatNumber(userCoins) + ' Coins remaining.</font> <u><font color="#4E4EFE"><a href="event:clickNeedMore">Need more?</a></font></u></b>';
+			coins.htmlText = '<b><font color="#' + (userCoins == 0 ? "BB0000" : "006600") + '">You have ' + Data.formatNumber(userCoins) + ' Coins remaining.</font> ' + Data.urlify('event:clickNeedMore', 'Need more?') + '</b>';
 			coins.visible = true;
 		}
 		var title = info == null ? null : Reflect.field(info, "title");

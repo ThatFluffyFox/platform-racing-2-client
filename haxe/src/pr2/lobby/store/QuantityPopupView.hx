@@ -1,6 +1,5 @@
 package pr2.lobby.store;
 
-import openfl.filters.DropShadowFilter;
 import openfl.events.KeyboardEvent;
 import openfl.text.TextField;
 import openfl.text.TextFieldAutoSize;
@@ -34,14 +33,15 @@ class QuantityPopupView extends NativeView {
 		panel.y = -90;
 		panel.scaleX = 0.900650024414062;
 		panel.scaleY = 0.942291259765625;
-		panel.filters = [new DropShadowFilter(2, 90, 0, 0.6, 3, 3, 1, 2)];
+		// ShadowBG draws its own drop shadow (pr2.ui.ShadowBgShape).
 		addChild(panel);
 
 		addChild(textField("-- Quantity --", -108, -81, 217, 18, 14, true, TextFormatAlign.CENTER));
 		addChild(textField("How many of this item would\nyou like to purchase?", -108, -57, 217, 31, 12, false, TextFormatAlign.CENTER));
 		addChild(textField("1", -105.45, -20.65, 8, 16, 12, false, TextFormatAlign.CENTER));
 
-		maxQuantity = textField(Std.string(maximum), 97.05, -21.15, 30, 16, 12);
+		// maxBox: placed at (26.05, -19.15), bounds from x 69: box corner (95.05, -21.15).
+		maxQuantity = textField(Std.string(maximum), 95.05, -21.15, 30, 16, 12);
 		selectedQuantity = textField("Selected: 1", -120.45, 2.9, 241, 16, 12, false, TextFormatAlign.CENTER);
 		cost = textField("Cost: 0 Coins", -120.2, 21.45, 241, 16, 12, true, TextFormatAlign.CENTER);
 		addChild(maxQuantity);
@@ -51,7 +51,8 @@ class QuantityPopupView extends NativeView {
 		quantitySlider = ownControl(new GameSlider(1, maximum, 1, 1));
 		quantitySlider.setSize(180, 22);
 		quantitySlider.x = -90.15;
-		quantitySlider.y = -21.05;
+		// QuantityPopupGraphic places the slider at y -10.05, below the 1 / max labels.
+		quantitySlider.y = -10.05;
 		// Flash sets no tabIndex here; Tab follows QuantityPopupGraphic's depth
 		// order (buy, cancel, slider) through FlashTabOrder.
 		quantitySlider.name = "quantitySlider";

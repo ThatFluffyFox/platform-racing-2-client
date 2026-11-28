@@ -67,11 +67,30 @@ class PopupPreview extends Sprite {
 			case "level-info-data": showLevelInfoData();
 			case "color-pickers": showColorPickers();
 			case "store-listings": showStoreListings();
+			case "store": new pr2.lobby.store.StorePopup(storeFixture());
+			case "store-quantity":
+				new pr2.lobby.store.StorePopup(storeFixture());
+				new pr2.lobby.store.QuantityPopup(new pr2.lobby.store.StoreListingData(storeItem("rank_rental", "Rank Token Rental", 50, false, 10)),
+					function(_:Int):Void {});
 			#if !pr2_mobile_ui
 			case "player-info": showPlayerInfo();
 			#end
 			default: pr2.app.ScreenFactory.message("This is a representative popup message.");
 		}
+	}
+
+	private static function storeItem(slug:String, title:String, price:Int, sale:Bool, maxQuantity:Int = 1, available:Bool = true):Dynamic {
+		return {slug: slug, title: title, description: "A lovely thing for your racer.", faq: "FAQ", img_url: "", price: price,
+			available: available, max_quantity: maxQuantity, rented_tokens: 0, sale: {active: sale, value: sale ? 25 : 0, expires: 0}};
+	}
+
+	/** Offline Vault catalogue: coins, a sale title and a full page of listings. **/
+	private static function storeFixture():Dynamic {
+		return {success: true, info: {user: {coins: 1234}, title: {title: "Vault of Magics", flashing: false}}, listings: [
+			storeItem("rank_rental", "Rank Token Rental", 50, false, 10), storeItem("guild_fred", "Fred Guild", 0, false),
+			storeItem("epic_everything", "Epic Everything", 2500, true), storeItem("stats_boost", "Super Booster", 0, false),
+			storeItem("happy_hour", "Happy Hour", 150, false), storeItem("sold_out", "Sold Out", 300, false, 1, false)
+		]};
 	}
 
 	/** Vault of Magics listings: free, priced, four-digit and on-sale prices. **/
