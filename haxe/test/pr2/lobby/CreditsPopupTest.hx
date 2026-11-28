@@ -42,13 +42,13 @@ class CreditsPopupTest {
 		assertContains(allText(cast music1), "Orbital Trance", "music page 1 uses the exact authored credit copy");
 
 		var artNav = text(popup, "art_nav_bts");
-		assertNear(78.0, artNav.x, "art navigation keeps its authored left bound");
-		assertNear(2.0, artNav.y, "art navigation keeps its XFL Y");
-		assertNear(-150.25, text(popup, "music_nav_bt").x, "music navigation keeps its XFL X");
-		assertNear(60.55, text(popup, "versionBox").x, "version field keeps its authored left bound");
-		assertNear(145.0, text(popup, "versionBox").y, "version field keeps its XFL Y");
-		assertNear(60.55, text(popup, "buildBox").x, "build field keeps its authored left bound");
-		assertNear(153.25, text(popup, "buildBox").y, "build field keeps its XFL Y");
+		assertNear(78.0 - pr2.ui.FlashTextBox.GUTTER, artNav.x, "art navigation keeps its authored left bound, less the field gutter");
+		assertNear(2.0 - pr2.ui.FlashTextBox.GUTTER, artNav.y, "art navigation keeps its XFL Y, less the field gutter");
+		assertNear(-150.25 - pr2.ui.FlashTextBox.GUTTER, text(popup, "music_nav_bt").x, "music navigation keeps its XFL X, less the field gutter");
+		assertNear(60.55 - pr2.ui.FlashTextBox.GUTTER, text(popup, "versionBox").x, "version field keeps its authored left bound, less the field gutter");
+		assertNear(145.0 - pr2.ui.FlashTextBox.GUTTER, text(popup, "versionBox").y, "version field keeps its XFL Y, less the field gutter");
+		assertNear(60.55 - pr2.ui.FlashTextBox.GUTTER, text(popup, "buildBox").x, "build field keeps its authored left bound, less the field gutter");
+		assertNear(153.25 - pr2.ui.FlashTextBox.GUTTER, text(popup, "buildBox").y, "build field keeps its XFL Y, less the field gutter");
 		assertNear(-50.0, view.closeButton.x, "Close keeps its XFL X");
 		assertNear(143.0, view.closeButton.y, "Close keeps its XFL Y");
 		artNav.dispatchEvent(new TextEvent(TextEvent.LINK, false, false, "artNext"));

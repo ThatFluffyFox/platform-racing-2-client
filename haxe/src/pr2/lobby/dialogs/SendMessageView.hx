@@ -108,15 +108,21 @@ private class SendMessageInfoButton extends GameButton {
 
 	override public function redraw():Void {
 		super.redraw();
-		if (labelField == null) return;
+		if (labelField != null) layoutLabel();
+	}
+
+	/**
+		The codes button's "?" is a 7 x 10.7 XFL text box at (1.5, -0.2). GameButton
+		laid the label out across its 10px width minus padding, which left a 0px
+		field and no question mark; use the authored box with Flash's 2px gutter.
+	**/
+	override private function layoutLabel():Void {
+		labelField.text = "?";
 		var format = new TextFormat(NativeAssets.font(FontAsset.Interface), 12, hovered || pressed ? 0xFFFF00 : 0, false, null, null, null, null,
 			TextFormatAlign.CENTER);
 		labelField.defaultTextFormat = format;
 		labelField.setTextFormat(format);
-		labelField.x = 1.5;
-		labelField.y = -0.2;
-		labelField.width = 7;
-		labelField.height = 10.7;
+		FlashTextBox.applyXflBox(labelField, 1.5, -0.2, 7, 10.7);
 	}
 }
 

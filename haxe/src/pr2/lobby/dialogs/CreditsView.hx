@@ -64,8 +64,12 @@ class CreditsView extends NativeView {
 		var field = new TextField();
 		var fieldName = Reflect.field(record, "name");
 		if (fieldName != null) field.name = Std.string(fieldName);
-		field.width = number(record, "width", 1);
-		field.height = number(record, "height", 1);
+		// The XFL box is the text area; OpenFL's field adds Flash's 2px gutter
+		// inside it, so grow it by the gutter on each side (and move it up-left
+		// below) or the last letters were clipped ("Mfdom", "Mr.Black").
+		var gutter = pr2.ui.FlashTextBox.GUTTER;
+		field.width = number(record, "width", 1) + gutter * 2;
+		field.height = number(record, "height", 1) + gutter * 2;
 		field.multiline = Reflect.field(record, "multiline") == true;
 		field.wordWrap = false;
 		field.selectable = Reflect.field(record, "selectable") == true;
@@ -86,9 +90,24 @@ class CreditsView extends NativeView {
 			offset += text.length;
 		}
 		var matrix = Reflect.field(record, "matrix");
-		var left = number(record, "left", 0);
-		field.transform.matrix = new Matrix(number(matrix, "a", 1), number(matrix, "b", 0), number(matrix, "c", 0), number(matrix, "d", 1),
-			number(matrix, "tx", 0) + number(matrix, "a", 1) * left, number(matrix, "ty", 0) + number(matrix, "b", 0) * left);
+		var left = number(record, "left", 0) - gutter;
+		// Flash draws static text without clipping it to its box. The port's
+		// Verdana runs a little wider than the SWF's, so let a static line grow to
+		// fit, keeping its alignment ("Everything Else", "PR2 Menu Music").
+		if (Reflect.field(record, "dynamic") != true && !field.multiline) {
+			var extra = field.textWidth + gutter * 2 - field.width;
+			if (extra > 0) {
+				field.width += extra;
+				var align = runs.length > 0 ? stringValue(Reflect.field(runs[0], "attrs"), "alignment", "left") : "left";
+				left -= align == "right" ? extra : (align == "center" ? extra / 2 : 0);
+			}
+		}
+		var top = -gutter;
+		var a = number(matrix, "a", 1);
+		var b = number(matrix, "b", 0);
+		var c = number(matrix, "c", 0);
+		var d = number(matrix, "d", 1);
+		field.transform.matrix = new Matrix(a, b, c, d, number(matrix, "tx", 0) + a * left + c * top, number(matrix, "ty", 0) + b * left + d * top);
 		return field;
 	}
 
