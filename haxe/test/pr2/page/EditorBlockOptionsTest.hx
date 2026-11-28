@@ -344,7 +344,7 @@ class EditorBlockOptionsTest {
 		var slider = Std.downcast(stat.childNamed("slider"), GameSlider);
 		assertNear(-90, slider.x, "stat slider x");
 		assertNear(24.85, slider.y, "stat slider y");
-		assertNear(184.5, slider.controlWidth, "stat slider authored width");
+		assertNear(180, slider.controlWidth, "stat slider authored width");
 		var statValue = Std.downcast(stat.childNamed("statBox"), TextField);
 		assertEquals("5", statValue.text, "stat authored default value");
 		assertNear(-14.95, statValue.x, "stat value x");

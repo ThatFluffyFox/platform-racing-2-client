@@ -17,12 +17,12 @@ import pr2.runtime.SvgAsset;
 /** Typed entry point for assets used by native PR2 presentation code. */
 final class NativeAssets {
 	public static function svg(id:StaticSvg):Shape {
+		// ShadowBG carries its knocked-out drop shadow, which OpenFL never drew as a
+		// filter on a 9-slice shape.
+		if (id == StaticSvg.QuantityPanel) return new pr2.ui.ShadowBgShape();
 		var art = SvgAsset.create(id);
 		if (id == StaticSvg.HalfSquarePanel) {
 			art.scale9Grid = new Rectangle(4.55, 3.9, 90.85, 91.4);
-		} else if (id == StaticSvg.QuantityPanel) {
-			art.scale9Grid = new Rectangle(4.65, 6.65, 262.95, 180.05);
-			art.filters = [new DropShadowFilter(2, 90, 0x000000, 0.6, 3, 3, 1, 2)];
 		}
 		return art;
 	}

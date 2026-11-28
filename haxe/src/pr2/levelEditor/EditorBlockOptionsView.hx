@@ -42,7 +42,9 @@ class EditorBlockOptionsView extends NativeView {
 		slider.name = "slider";
 		slider.x = -90;
 		slider.y = 24.85;
-		slider.setSize(184.5, 22);
+		// XFL instance matrix is a uniform 2.25 on the 80px Slider avatar; Flash's
+		// UIComponent turns that into setSize(80 * 2.25, ...) at unit scale.
+		slider.setSize(180, 22);
 		addChild(slider);
 		named.set(slider.name, slider);
 		var stat = field("statBox", -12.95, 46.5, 23.5, 14.55, 12, false, TextFormatAlign.CENTER);

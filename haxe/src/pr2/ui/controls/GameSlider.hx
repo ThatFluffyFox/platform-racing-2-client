@@ -5,7 +5,6 @@ import openfl.events.KeyboardEvent;
 import openfl.events.MouseEvent;
 import openfl.display.Sprite;
 import openfl.geom.Point;
-import openfl.geom.Rectangle;
 import openfl.ui.Keyboard;
 import pr2.runtime.SvgAsset;
 
@@ -140,17 +139,44 @@ class GameSlider extends NativeControl {
 		thumb.y = 0;
 	}
 
+	/**
+		SliderTrack_skin / SliderTrack_disabledSkin, drawn directly: four 1px bands
+		on an 80x3 skin, stretched through Flash's 9-slice grid (x 2.25..78) to the
+		component width and 4px tall (configUI's track.setSize(80, 4)). OpenFL's
+		scale9Grid ignores the parent's scale, so inside a scaled owner (the
+		level-editor test's 0.66 stats picker) the old scale9 shape shrank a second
+		time and the track ended well short of the thumb's range.
+	**/
 	private function drawTrack():Void {
 		if (track == null) return;
 		while (track.numChildren > 0) track.removeChildAt(0);
-		var art = SvgAsset.create(enabled ? "assets/svg/ui/slider_track_up.svg" : "assets/svg/ui/slider_track_disabled.svg");
-		art.scale9Grid = new Rectangle(2.25, 0, 75.75, 3);
-		art.width = controlWidth;
-		// fl.controls.Slider sizes its track button to 4px tall (configUI's
-		// track.setSize(80, 4)). The skin's vertical grid (-1..3.95) spans all
-		// three 1px bands, so each band stretches to 1.33px.
-		art.height = TRACK_HEIGHT;
-		track.addChild(art);
+		var g = track.graphics;
+		g.clear();
+		var stretch = controlWidth - 80;
+		var middle = (78 - 2.25 + stretch) / (78 - 2.25);
+		inline function mx(x:Float):Float return x <= 2.25 ? x : (x >= 78 ? x + stretch : 2.25 + (x - 2.25) * middle);
+		var sy = TRACK_HEIGHT / 3;
+		function band(color:Int, x0:Float, y0:Float, x1:Float, y1:Float):Void {
+			g.beginFill(color);
+			g.drawRect(mx(x0), y0 * sy, mx(x1) - mx(x0), (y1 - y0) * sy);
+			g.endFill();
+		}
+		// Band colours in SWF draw order: corner pixels, lower band, top edge, highlight.
+		var corner = enabled ? 0x8C9295 : 0xBBBBBB;
+		var lower = enabled ? 0xAEB2B4 : 0xCCCCCC;
+		var edge = enabled ? 0x575E62 : 0x999999;
+		band(corner, 1, 2, 2, 3);
+		band(corner, 0, 1, 1, 2);
+		band(corner, 79, 1, 80, 2);
+		band(corner, 78, 2, 79, 3);
+		band(lower, 2, 2, 78, 3);
+		if (enabled) {
+			band(edge, 1, 0, 79, 1);
+			band(0xEBEBEB, 1, 1, 79, 2);
+		} else {
+			band(0xEBEBEB, 1, 1, 79, 2);
+			band(edge, 1, 0, 79, 1);
+		}
 		track.y = 0;
 	}
 
