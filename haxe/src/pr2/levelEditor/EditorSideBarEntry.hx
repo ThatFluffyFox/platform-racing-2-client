@@ -48,10 +48,13 @@ class EditorSideBarEntry extends HoverDelayPopup {
 		addEventListener(MouseEvent.MOUSE_OUT, outIcon);
 	}
 
+	/**
+		Tracks the chosen tool only. Flash's SidebarEntry has no selected look:
+		no border and no lasting tint, just the hover tint while the pointer is
+		over it. (The port drew a blue outline and kept the hover tint on.)
+	**/
 	public function setSelected(selected:Bool):Void {
 		this.selected = selected;
-		draw();
-		applyIconHover(selected);
 	}
 
 	public function setDisplayedValue(value:String):Void {
@@ -109,10 +112,6 @@ class EditorSideBarEntry extends HoverDelayPopup {
 		graphics.beginFill(0x000000, 0);
 		graphics.drawRect(0, 0, 30, 30);
 		graphics.endFill();
-		if (selected) {
-			graphics.lineStyle(2, 0x1F66CC);
-			graphics.drawRect(0, 0, 30, 30);
-		}
 	}
 
 	private function overIcon(_:MouseEvent):Void {
@@ -120,7 +119,7 @@ class EditorSideBarEntry extends HoverDelayPopup {
 	}
 
 	private function outIcon(_:MouseEvent):Void {
-		applyIconHover(selected);
+		applyIconHover(false);
 	}
 
 	private function applyIconHover(active:Bool):Void {

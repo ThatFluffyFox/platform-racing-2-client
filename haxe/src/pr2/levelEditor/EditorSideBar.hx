@@ -113,7 +113,10 @@ class EditorSideBar extends Sprite {
 			}
 			return;
 		}
-		if (editor != null && id == "tools" && entry.id == "color") {
+		// The colour swatches open their own picker. Falling through to
+		// selectEditorTool swapped the custom cursor and destroyed the picker's
+		// eyedropper as it opened, so the background swatch had none.
+		if (editor != null && (id == "tools" || id == "backgrounds") && entry.id == "color") {
 			return;
 		}
 		if (editor != null && id == "backgrounds") {

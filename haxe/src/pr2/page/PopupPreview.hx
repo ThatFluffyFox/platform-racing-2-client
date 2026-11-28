@@ -66,10 +66,30 @@ class PopupPreview extends Sprite {
 			case "level-info": pr2.app.ScreenFactory.levelInfo(6497936);
 			case "level-info-data": showLevelInfoData();
 			case "color-pickers": showColorPickers();
+			case "store-listings": showStoreListings();
 			#if !pr2_mobile_ui
 			case "player-info": showPlayerInfo();
 			#end
 			default: pr2.app.ScreenFactory.message("This is a representative popup message.");
+		}
+	}
+
+	/** Vault of Magics listings: free, priced, four-digit and on-sale prices. **/
+	private function showStoreListings():Void {
+		var specs:Array<Dynamic> = [
+			{title: "Free Item", price: 0, sale: {active: false, value: 0, expires: 0}},
+			{title: "Rank Token", price: 150, sale: {active: false, value: 0, expires: 0}},
+			{title: "Big Item", price: 2500, sale: {active: false, value: 0, expires: 0}},
+			{title: "Sale Item", price: 1000, sale: {active: true, value: 25, expires: 0}}
+		];
+		for (i in 0...specs.length) {
+			var spec = specs[i];
+			var listing = new pr2.lobby.store.StoreListing(new pr2.lobby.store.StoreListingData({slug: "item" + i, title: spec.title,
+				description: "Description", faq: "FAQ", img_url: "", price: spec.price, available: true, max_quantity: 1, rented_tokens: 0,
+				sale: spec.sale}));
+			listing.x = 10 + i * 133;
+			listing.y = 60;
+			addChild(listing);
 		}
 	}
 

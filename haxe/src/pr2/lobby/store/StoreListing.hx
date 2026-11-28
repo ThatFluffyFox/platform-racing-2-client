@@ -83,8 +83,10 @@ class StoreListing extends Sprite {
 		root.addChild(priceBG);
 		root.addChild(createField("titleBox", 10.05, 7, 109, 14.55, 12, false));
 		root.addChild(createField("descBox", 10, 96, 107, 57.95, 10, false));
-		root.addChild(createField("priceBox", 13, 72, 6.55, 12.15, 10, false));
-		root.addChild(createField("saleBox", 52, 72, 55.75, 12.05, 10, false, 0x339900));
+		// StoreListingGraphic's priceBox and saleBox are single-line, no word wrap.
+		// Wrapped, the autosizing 6.55px price box stacked each digit on its own line.
+		root.addChild(createField("priceBox", 13, 72, 6.55, 12.15, 10, false, 0, false));
+		root.addChild(createField("saleBox", 52, 72, 55.75, 12.05, 10, false, 0x339900, false));
 		var coin = NativeAssets.svg(StaticSvg.StoreCoin);
 		coin.name = "coin";
 		coin.x = 30;
@@ -110,12 +112,13 @@ class StoreListing extends Sprite {
 		return sprite;
 	}
 
-	private function createField(name:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool, color:Int = 0):TextField {
+	private function createField(name:String, x:Float, y:Float, width:Float, height:Float, size:Int, bold:Bool, color:Int = 0,
+			wrap:Bool = true):TextField {
 		var field = new TextField();
 		field.name = name;
 		FlashTextBox.applyXflBox(field, x, y, width, height);
-		field.multiline = true;
-		field.wordWrap = true;
+		field.multiline = wrap;
+		field.wordWrap = wrap;
 		field.selectable = false;
 		field.defaultTextFormat = new TextFormat(NativeAssets.font(FontAsset.Interface), size, color, bold);
 		return field;
