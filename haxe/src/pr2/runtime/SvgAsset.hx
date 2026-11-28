@@ -567,6 +567,9 @@ private class SvgDocument {
 	private final rendered:Shape;
 	private final hasHairlines:Bool;
 	private final authoredBounds:Rectangle;
+	private static inline var MAX_HAIRLINE_RENDERS:Int = 4;
+	private final hairlineRenders:Map<String, Shape> = new Map();
+	private var hairlineRenderCount:Int = 0;
 
 	public function new(content:String) {
 		this.content = content;
@@ -599,10 +602,28 @@ private class SvgDocument {
 		return shape;
 	}
 
+	/**
+		Every hairline instance used to parse and render the SVG again, twice when
+		a scale9 grid was set after creation; the 30-odd SquarePanel buttons of an
+		editor sidebar spent most of its build doing that. Render once per
+		thickness (one per window scale) and copy, as `createShape` does.
+	**/
 	private function renderHairlines(graphics:Graphics, thickness:Float):Void {
+		var key = Std.string(thickness);
+		var cached = hairlineRenders.get(key);
+		if (cached == null) {
+			if (hairlineRenderCount >= MAX_HAIRLINE_RENDERS) {
+				hairlineRenders.clear();
+				hairlineRenderCount = 0;
+			}
+			cached = new Shape();
+			var svg = new SVG(content);
+			new SvgGradientStrokeRenderer(svg.data, content, thickness).render(cached.graphics);
+			hairlineRenders.set(key, cached);
+			hairlineRenderCount++;
+		}
 		graphics.clear();
-		var svg = new SVG(content);
-		new SvgGradientStrokeRenderer(svg.data, content, thickness).render(graphics);
+		graphics.copyFrom(cached.graphics);
 	}
 }
 

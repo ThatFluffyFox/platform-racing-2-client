@@ -37,6 +37,7 @@ class AccountTabTest {
 		pr2.DeterministicTestMode.runTest("AccountTabTest.testPartSelectorArrowsChangePart", testPartSelectorArrowsChangePart);
 		pr2.DeterministicTestMode.runTest("AccountTabTest.testHatPartPreviewAnimations", testHatPartPreviewAnimations);
 		pr2.DeterministicTestMode.runTest("AccountTabTest.testStatSlidersDoNotRunUnderRightArrow", testStatSlidersDoNotRunUnderRightArrow);
+		pr2.DeterministicTestMode.runTest("AccountTabTest.testStatSliderTypingKeepsCaret", testStatSliderTypingKeepsCaret);
 		pr2.DeterministicTestMode.runTest("AccountTabTest.testHotkeys", testHotkeys);
 		pr2.DeterministicTestMode.runTest("AccountTabTest.testHoverDelayPopupCleanup", testHoverDelayPopupCleanup);
 		pr2.DeterministicTestMode.runTest("AccountTabTest.testRandomizeStyleButtonUsesDelayedHover", testRandomizeStyleButtonUsesDelayedHover);
@@ -122,6 +123,51 @@ class AccountTabTest {
 		assertEquals(true, @:privateAccess incButton.graphics.__hitTest(-5, -2, true, new openfl.geom.Matrix()),
 			"right stat arrow accepts a point outside its triangle but inside the square target");
 		stats.remove();
+	}
+
+	private static function testStatSliderTypingKeepsCaret():Void {
+		// The level editor's custom stats block uses StatSlider without a StatsSelect.
+		var slider = new pr2.lobby.account.StatSlider("Jumping", null);
+		slider.setValue(50);
+		var textBox:TextField = @:privateAccess slider.textBox;
+		var stage = pr2.app.AppStage.stage;
+		if (stage != null) {
+			stage.addChild(slider);
+			stage.focus = textBox;
+		}
+		// Backspace leaves "5" with the caret after it: the box must not be
+		// rewritten, or OpenFL would move the caret back to the start.
+		textBox.text = "5";
+		textBox.setSelection(1, 1);
+		textBox.dispatchEvent(new openfl.events.Event(openfl.events.Event.CHANGE));
+		assertEquals(5, slider.value, "typed stat value applies");
+		assertEquals("5", textBox.text, "typed stat text is kept");
+		assertEquals(1, textBox.caretIndex, "typing keeps the caret after the typed digit");
+		textBox.text = "57";
+		textBox.setSelection(2, 2);
+		textBox.dispatchEvent(new openfl.events.Event(openfl.events.Event.CHANGE));
+		assertEquals(57, slider.value, "second typed digit appends");
+		// Clearing the box shows 0; with the caret after it, typing 7 then 7 reads 77.
+		textBox.text = "";
+		textBox.setSelection(0, 0);
+		textBox.dispatchEvent(new openfl.events.Event(openfl.events.Event.CHANGE));
+		assertEquals("0", textBox.text, "cleared stat box shows 0");
+		if (stage != null) assertEquals(1, textBox.caretIndex, "caret follows the normalised 0");
+		textBox.text = "07";
+		textBox.setSelection(2, 2);
+		textBox.dispatchEvent(new openfl.events.Event(openfl.events.Event.CHANGE));
+		assertEquals("7", textBox.text, "leading zero is dropped");
+		textBox.text = "77";
+		textBox.setSelection(2, 2);
+		textBox.dispatchEvent(new openfl.events.Event(openfl.events.Event.CHANGE));
+		assertEquals(77, slider.value, "clearing and typing 77 gives 77");
+		textBox.text = "577";
+		textBox.setSelection(3, 3);
+		textBox.dispatchEvent(new openfl.events.Event(openfl.events.Event.CHANGE));
+		assertEquals(100, slider.value, "typed stat clamps to 100");
+		assertEquals("100", textBox.text, "clamped stat text is shown");
+		if (stage != null) stage.focus = null;
+		slider.remove();
 	}
 
 	private static function testHotkeys():Void {

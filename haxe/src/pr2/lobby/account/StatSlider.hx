@@ -142,9 +142,7 @@ class StatSlider extends Sprite {
 
 	public function setValue(v:Int):Void {
 		value = CustomizationRules.stat(v, target == null ? 100 : value + target.getPointsRemaining());
-		if (textBox != null) {
-			textBox.text = Std.string(value);
-		}
+		showValueText();
 		if (slider != null) {
 			slider.value = value;
 		}
@@ -153,6 +151,25 @@ class StatSlider extends Sprite {
 			if (target.getPointsRemaining() <= 0 && holdStart > 0) {
 				arrowBtnUp();
 			}
+		}
+	}
+
+	/**
+		Rewrites the entry box only when its text differs from the clamped value.
+		OpenFL moves the caret to the start whenever `text` is assigned, so each
+		keystroke used to send it there: Backspace on "50" left "5" with the caret
+		before it, and the next digits went in front ("775" -> 100). When the text
+		is normalised ("" -> "0", "07" -> "7", "150" -> "100") the caret goes to
+		the end, so clearing the box and typing 77 gives 77.
+	**/
+	private function showValueText():Void {
+		if (textBox == null) return;
+		var shown = Std.string(value);
+		if (textBox.text == shown) return;
+		var focused = textBox.stage != null && textBox.stage.focus == textBox;
+		textBox.text = shown;
+		if (focused) {
+			textBox.setSelection(shown.length, shown.length);
 		}
 	}
 
